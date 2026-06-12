@@ -1,9 +1,11 @@
-const { createToken } = require('./_auth');
+const { createToken, readBody } = require('./_auth');
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { password } = req.body || {};
+  const body = await readBody(req);
+  const { password } = body;
+
   if (!password || password !== process.env.NJR_PASSWORD) {
     return res.status(401).json({ error: 'Senha incorreta.' });
   }
