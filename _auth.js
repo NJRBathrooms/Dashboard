@@ -29,17 +29,23 @@ function getCookieValue(cookieHeader, name) {
   return found ? found.slice(name.length + 1) : null;
 }
 
-// Vercel Node.js functions don't auto-parse req.body — read the stream manually
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', chunk => { raw += chunk.toString(); });
-    req.on('end', () => {
-      try { resolve(JSON.parse(raw || '{}')); }
-      catch (e) { resolve({}); }
-    });
-    req.on('error', reject);
-  });
+// Read and parse JSON body from a Node.js IncomingMessage stream
+async function readBody(req) {
+  // Some Vercel configurations already parse the body
+  if (req.body !== undefined) {
+    return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+  }
+  // Fall back to async stream reading
+  try {
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const raw = Buffer.concat(chunks).toString();
+    return JSON.parse(raw || '{}');
+  } catch (e) {
+    return {};
+  }
 }
 
 module.exports = { createToken, verifyToken, getCookieValue, readBody };
