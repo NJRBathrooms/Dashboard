@@ -1,4 +1,4 @@
-const { verifyToken, getCookieValue } = require('./_auth');
+const { verifyToken, getCookieValue, readBody } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -8,7 +8,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Não autorizado.' });
   }
 
-  const body = req.body || {};
+  const body = await readBody(req);
   const { action, ...params } = body;
   const appsUrl = process.env.APPS_SCRIPT_URL;
 
