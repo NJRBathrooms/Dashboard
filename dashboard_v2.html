@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NJR Bathrooms | Dashboard v2</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root { --navy:#0d2137; --navy2:#1a3a5c; --orange:#e8820c; --orng2:#f59c2a; --bg:#f0f4f8; }
+* { box-sizing:border-box; }
+body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:#1a2b3c; margin:0; }
+
+/* LOGIN */
+#loginScreen { min-height:100vh; background:linear-gradient(135deg,#061522 0%,var(--navy2) 50%,#061522 100%); display:flex; align-items:center; justify-content:center; padding:24px; }
+.login-wrap  { width:100%; max-width:420px; }
+.login-card  { background:rgba(255,255,255,.07); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:48px 40px; text-align:center; }
+.login-icon  { width:80px; height:80px; background:var(--orange); border-radius:20px; display:inline-flex; align-items:center; justify-content:center; font-size:34px; color:#fff; margin-bottom:24px; box-shadow:0 8px 32px rgba(232,130,12,.45); }
+.login-card h1 { color:#fff; font-size:26px; font-weight:800; margin:0 0 6px; }
+.login-card p  { color:rgba(255,255,255,.5); font-size:14px; margin:0 0 36px; }
+.login-input   { width:100%; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:14px 18px; font-size:15px; color:#fff; transition:border-color .25s; margin-bottom:12px; }
+.login-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.12); }
+.login-input::placeholder { color:rgba(255,255,255,.35); }
+.login-btn   { width:100%; background:var(--orange); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:700; color:#fff; cursor:pointer; transition:all .25s; }
+.login-btn:hover { background:var(--orng2); transform:translateY(-2px); box-shadow:0 8px 24px rgba(232,130,12,.4); }
+.login-error  { color:#ff6b6b; font-size:13px; margin-top:12px; display:none; }
+.login-footer { color:rgba(255,255,255,.25); font-size:12px; text-align:center; margin-top:20px; }
+
+/* MAIN APP */
+#mainApp { display:none; }
+.app-header { background:var(--navy); height:64px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; }
+.brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
+.brand-icon { width:38px; height:38px; background:var(--orange); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#fff; flex-shrink:0; }
+.brand-name { color:#fff; font-size:18px; font-weight:800; line-height:1; }
+.brand-sub  { color:rgba(255,255,255,.45); font-size:11px; display:block; margin-top:2px; }
+.header-right { display:flex; align-items:center; gap:14px; }
+.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:6px; }
+.update-badge.ok  { color:#2ecc71; border-color:rgba(46,204,113,.3); background:rgba(46,204,113,.08); }
+.update-badge.err { color:#e74c3c; border-color:rgba(231,76,60,.3); }
+.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:7px 16px; color:rgba(255,255,255,.8); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+.logout-btn:hover { background:rgba(255,255,255,.15); }
+
+/* TABS */
+.tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; }
+.tab-btn { background:none; border:none; border-bottom:3px solid transparent; padding:16px 18px; font-size:13px; font-weight:600; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; gap:8px; transition:color .2s,border-color .2s; white-space:nowrap; flex-shrink:0; }
+.tab-btn.active { color:var(--navy); border-bottom-color:var(--orange); }
+.tab-btn:hover:not(.active) { color:var(--navy2); }
+
+/* PAGE */
+.page { padding:24px; max-width:1440px; margin:0 auto; }
+
+/* TOOLBAR */
+.toolbar { background:#fff; border-radius:16px; padding:18px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+.toolbar-icon { color:var(--orange); font-size:18px; flex-shrink:0; }
+.addr-wrap { position:relative; flex:1; min-width:220px; }
+.addr-input { width:100%; border:2px solid #dde7f1; border-radius:10px; padding:10px 14px; font-size:14px; font-weight:500; color:var(--navy); background:#fff; transition:border-color .2s; }
+.addr-input:focus { outline:none; border-color:var(--orange); }
+.addr-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:2px solid var(--orange); border-radius:12px; max-height:300px; overflow-y:auto; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,.14); }
+.addr-dropdown.open { display:block; }
+.addr-opt { padding:10px 14px; font-size:13.5px; cursor:pointer; color:var(--navy); display:flex; align-items:center; gap:8px; transition:background .15s; }
+.addr-opt:hover,.addr-opt.active { background:rgba(232,130,12,.08); color:var(--orange); }
+.addr-opt-empty { padding:12px 14px; font-size:13px; color:#7b8ea4; }
+.refresh-btn { background:var(--navy); border:none; border-radius:10px; padding:10px 20px; font-size:13px; font-weight:700; color:#fff; cursor:pointer; display:flex; align-items:center; gap:8px; white-space:nowrap; transition:background .2s; }
+.refresh-btn:hover { background:var(--navy2); }
+
+/* METRIC CARDS */
+.metric-card { background:#fff; border-radius:16px; padding:20px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); border-left:4px solid transparent; height:100%; transition:transform .2s,box-shadow .2s; }
+.metric-card:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.09); }
+.m-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.9px; color:#7b8ea4; margin-bottom:8px; }
+.m-value { font-size:22px; font-weight:800; line-height:1; margin-bottom:5px; word-break:break-all; }
+.m-sub   { font-size:12px; color:#7b8ea4; }
+@media (max-width:576px) {
+  .metric-card { padding:14px; }
+  .m-label { font-size:10px; letter-spacing:.5px; }
+  .m-value { font-size:17px; }
+  .m-sub   { font-size:11px; }
+}
+.c-total  { border-color:var(--orange); } .c-total  .m-value { color:var(--orange); }
+.c-labor  { border-color:#2980b9; }       .c-labor  .m-value { color:#2980b9; }
+.c-mat    { border-color:#27ae60; }       .c-mat    .m-value { color:#27ae60; }
+.c-sub    { border-color:#8e44ad; }       .c-sub    .m-value { color:#8e44ad; }
+.c-reimb  { border-color:#e67e22; }       .c-reimb  .m-value { color:#e67e22; }
+.c-extra  { border-color:#16a085; }       .c-extra  .m-value { color:#16a085; }
+.c-budget { border-color:#27ae60; }       .c-budget .m-value { color:#27ae60; }
+.c-pos    { border-color:#1abc9c; }       .c-pos    .m-value { color:#1abc9c; }
+.c-neg    { border-color:#e74c3c; }       .c-neg    .m-value { color:#e74c3c; }
+
+/* RESULTADO FINANCEIRO */
+.resultado-card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); margin-bottom:20px; }
+.resultado-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+.resultado-title { font-size:14px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px; }
+.res-badge { padding:5px 16px; border-radius:20px; font-size:12px; font-weight:700; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+.res-badge.rb-lucro    { background:#d4f4e2; color:#155724; }
+.res-badge.rb-risco    { background:#fff3cd; color:#856404; }
+.res-badge.rb-prejuizo { background:#f8d7da; color:#721c24; }
+.res-metric { text-align:center; border-radius:14px; padding:18px 12px; height:100%; }
+.res-metric.rmc-receita { background:#f8fafd; border-top:3px solid #7b8ea4; }
+.res-metric.rmc-custo   { background:#fff8f3; border-top:3px solid #e67e22; }
+.res-metric.rmc-lucro-pos { background:linear-gradient(160deg,#f0fdf6,#e6faf0); border:2px solid #27ae60; border-top:4px solid #27ae60; }
+.res-metric.rmc-lucro-neg { background:linear-gradient(160deg,#fdf2f2,#fde8e8); border:2px solid #e74c3c; border-top:4px solid #e74c3c; }
+.rmc-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:#7b8ea4; margin-bottom:10px; }
+.rmc-val { font-size:24px; font-weight:900; line-height:1; color:var(--navy); margin-bottom:6px; }
+.rmc-custo   .rmc-val { color:#e67e22; }
+.rmc-lucro-pos .rmc-val { font-size:32px; color:#27ae60; }
+.rmc-lucro-neg .rmc-val { font-size:32px; color:#e74c3c; }
+.rmc-sub { font-size:12px; color:#7b8ea4; }
+.rmc-lucro-pos .rmc-sub { color:#27ae60; font-weight:700; font-size:14px; }
+.rmc-lucro-neg .rmc-sub { color:#e74c3c; font-weight:700; font-size:14px; }
+.rmc-pendente .rmc-val { color:#7b8ea4; font-size:20px; }
+.res-bar-wrap { margin-top:22px; }
+.res-bar-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#7b8ea4; margin-bottom:8px; }
+.res-bar { height:38px; border-radius:12px; background:#f0f4f8; overflow:hidden; display:flex; position:relative; }
+.res-bar-cost { display:flex; align-items:center; justify-content:flex-end; padding-right:10px; background:linear-gradient(90deg,#c0392b,#e67e22); color:#fff; font-weight:800; font-size:13px; transition:width 1s ease; min-width:0; overflow:hidden; white-space:nowrap; }
+.res-bar-profit { display:flex; align-items:center; justify-content:flex-start; padding-left:10px; background:linear-gradient(90deg,#27ae60,#2ecc71); color:#fff; font-weight:800; font-size:13px; transition:width 1s ease; white-space:nowrap; }
+.res-bar-legend { display:flex; justify-content:space-between; margin-top:10px; font-size:13px; font-weight:700; flex-wrap:wrap; gap:6px; }
+.res-bar-legend .leg-cost   { color:#e67e22; }
+.res-bar-legend .leg-profit { color:#27ae60; }
+.res-bar-legend .leg-over   { color:#e74c3c; }
+.res-equation { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:700; color:#7b8ea4; margin-top:14px; padding-top:14px; border-top:1px solid #f0f4f8; }
+.res-equation .eq-val  { font-size:16px; font-weight:900; color:var(--navy); }
+.res-equation .eq-op   { font-size:18px; opacity:.4; }
+.res-equation .eq-result-pos { font-size:18px; font-weight:900; color:#27ae60; }
+.res-equation .eq-result-neg { font-size:18px; font-weight:900; color:#e74c3c; }
+
+/* CHARTS */
+.chart-card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); height:100%; }
+.chart-title { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:18px; }
+
+/* OBRA INFO BANNER */
+.obra-info-banner { background:#fff; border-radius:16px; padding:18px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); border-left:4px solid var(--orange); margin-bottom:20px; display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start; }
+.oib-title { font-size:13px; font-weight:700; color:var(--navy); margin-bottom:12px; }
+.obra-info-item { display:flex; flex-direction:column; gap:2px; }
+.obra-info-item .lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#7b8ea4; }
+.obra-info-item .val { font-size:13px; font-weight:600; color:var(--navy); }
+.orc-section-title { font-size:13px; font-weight:700; color:var(--navy); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+/* DATA TABLE */
+.data-table { background:#fff; border-radius:16px; box-shadow:0 2px 12px rgba(0,0,0,.05); overflow:hidden; }
+.table-head { padding:18px 22px; border-bottom:1px solid #f0f4f8; font-size:14px; font-weight:700; color:var(--navy); }
+.table-responsive { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+thead th { background:#f8fafd; padding:11px 18px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#7b8ea4; text-align:left; white-space:nowrap; }
+tbody td { padding:14px 18px; border-bottom:1px solid #f4f7fb; font-size:13.5px; color:#2c3e50; vertical-align:middle; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover td { background:#fafbfe; }
+.tr-total td { background:#f8fafd; font-weight:700; color:var(--navy); }
+.emp-badge { display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+.emp-dot   { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* WEEK */
+.week-bar { background:#fff; border-radius:16px; padding:18px 24px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:20px; }
+.wk-nav { width:40px; height:40px; border-radius:10px; border:2px solid #dde7f1; background:#fff; color:var(--navy); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.wk-nav:hover { border-color:var(--orange); color:var(--orange); }
+.wk-display { text-align:center; min-width:200px; }
+.wk-range { font-size:19px; font-weight:800; color:var(--navy); }
+.wk-sub   { font-size:12px; color:#7b8ea4; margin-top:3px; }
+
+/* EMP HOUR CARDS */
+.emp-card { background:#fff; border-radius:16px; padding:20px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); border-top:4px solid transparent; height:100%; }
+.ec-firstname { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:2px; }
+.ec-fullname  { font-size:11px; color:#7b8ea4; margin-bottom:10px; }
+.ec-hours     { font-size:30px; font-weight:900; line-height:1; margin-bottom:4px; }
+.ec-days      { font-size:12px; color:#7b8ea4; }
+
+/* STATES */
+.loading-box { padding:60px 24px; text-align:center; color:#7b8ea4; font-size:14px; display:flex; align-items:center; justify-content:center; gap:12px; }
+.spinner { width:22px; height:22px; border:3px solid #dde7f1; border-top-color:var(--orange); border-radius:50%; animation:spin .75s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.empty-box { padding:60px 24px; text-align:center; color:#7b8ea4; }
+.empty-box i { font-size:44px; display:block; margin-bottom:14px; opacity:.35; }
+.empty-box strong { color:var(--navy); }
+.badge-done   { background:#d4f4e2; color:#155724; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge-active { background:#cce5ff; color:#004085; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+
+/* FORMS (TABS 3 & 4) */
+.form-section { background:#fff; border-radius:16px; padding:28px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+.section-title { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid #f0f4f8; display:flex; align-items:center; gap:10px; }
+.required-note { font-size:12px; color:#7b8ea4; margin-bottom:18px; }
+.required-note span { color:var(--orange); font-weight:700; }
+.f-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:#7b8ea4; margin-bottom:6px; display:block; }
+.f-req { color:var(--orange); }
+.f-input { width:100%; border:2px solid #dde7f1; border-radius:10px; padding:11px 14px; font-size:14px; color:var(--navy); background:#fff; transition:border-color .2s; font-family:inherit; }
+.f-input:focus { outline:none; border-color:var(--orange); }
+.f-input-prefix { position:relative; }
+.f-input-prefix .prefix { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:14px; font-weight:700; color:#7b8ea4; pointer-events:none; }
+.f-input-prefix .f-input { padding-left:30px; }
+.submit-btn { background:var(--orange); border:none; border-radius:12px; padding:13px 30px; font-size:15px; font-weight:700; color:#fff; cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:8px; margin-top:8px; }
+.submit-btn:hover { background:var(--orng2); transform:translateY(-2px); box-shadow:0 8px 24px rgba(232,130,12,.35); }
+.submit-btn:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow:none; }
+.f-alert { border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; display:flex; align-items:center; gap:10px; margin-top:16px; }
+.f-alert.ok  { background:#d4edda; border:1px solid #c3e6cb; color:#155724; }
+.f-alert.err { background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; }
+
+/* DRIVE BUTTON */
+.drive-btn { background:#fff; border:2px solid #4285f4; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:700; color:#4285f4; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:7px; transition:all .2s; flex-shrink:0; }
+.drive-btn:hover { background:#4285f4; color:#fff; }
+.drive-btn:disabled { opacity:.6; cursor:not-allowed; }
+
+/* CLOSE FORM CARD */
+.close-form-card { background:#fff9f0; border:2px solid var(--orange); border-radius:16px; padding:22px; margin-top:4px; }
+.close-form-card .cfc-title { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:16px; }
+
+/* FINALIZED OBRA DETAIL IN TAB 4 */
+.fin-detail-wrap { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); margin-top:16px; border-top:4px solid #27ae60; }
+
+/* PHOTO UPLOAD ZONE */
+.photo-upload-zone { border:2px dashed #dde7f1; border-radius:12px; padding:18px; background:#fafcff; transition:border-color .2s; }
+.photo-upload-zone:hover { border-color:#aac4e0; }
+.upload-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.upload-btn-main { background:var(--orange); border:none; border-radius:10px; padding:11px 18px; font-size:13px; font-weight:700; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:all .2s; }
+.upload-btn-main:hover { background:var(--orng2); transform:translateY(-1px); }
+.upload-btn-main:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.photo-thumbs { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+.photo-thumb { width:76px; height:76px; border-radius:8px; object-fit:cover; border:2px solid #dde7f1; }
+.upload-status-bar { border-radius:8px; padding:10px 14px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.upload-status-bar.usb-loading { background:#e8f4fd; color:#1565c0; }
+.upload-status-bar.usb-ok      { background:#d4edda; color:#155724; }
+.upload-status-bar.usb-err     { background:#f8d7da; color:#721c24; }
+.upload-prog { flex:1; height:6px; background:#c8ddf0; border-radius:3px; overflow:hidden; }
+.upload-prog-fill { height:100%; background:var(--orange); transition:width .3s; border-radius:3px; }
+.drive-link-row { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed #dde7f1; }
+.drive-link-row-lbl { font-size:11px; color:#7b8ea4; white-space:nowrap; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-icon"><i class="fas fa-shower"></i></div>
+      <h1>NJR Bathrooms</h1>
+      <p>Dashboard de Controle de Obras</p>
+      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="current-password">
+      <button class="login-btn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
+      <div class="login-error" id="loginErr"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i>Senha incorreta</div>
+    </div>
+    <div class="login-footer">NJR Bathrooms &copy; 2026 &nbsp;·&nbsp; Área restrita</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="mainApp">
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-icon"><i class="fas fa-shower"></i></div>
+      <div>
+        <div class="brand-name">NJR Bathrooms</div>
+        <span class="brand-sub">Dashboard de Obras</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="update-badge" id="updateBadge">
+        <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Carregando...
+      </div>
+      <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i>Sair</button>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" id="t1btn" onclick="showTab(1)"><i class="fas fa-building"></i> Controle de Obras</button>
+    <button class="tab-btn" id="t2btn" onclick="showTab(2)"><i class="fas fa-user-clock"></i> Controle de Horas</button>
+    <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra</button>
+    <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
+  </div>
+
+  <!-- TAB 1 -->
+  <div id="t1page" class="page">
+    <div class="toolbar">
+      <i class="fas fa-map-marker-alt toolbar-icon"></i>
+      <div class="addr-wrap">
+        <input type="text" id="addrInput" class="addr-input" placeholder="Digite para filtrar endereços..."
+               oninput="filterAddrs(this.value)" onfocus="filterAddrs(this.value)" onblur="closeAddrDD()" autocomplete="off">
+        <div id="addrDropdown" class="addr-dropdown"></div>
+      </div>
+      <button class="refresh-btn" onclick="loadData()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+    </div>
+    <div id="t1body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="t2page" class="page" style="display:none">
+    <div class="week-bar">
+      <button class="wk-nav" onclick="moveWeek(-1)"><i class="fas fa-chevron-left"></i></button>
+      <div class="wk-display">
+        <div class="wk-range" id="wkRange">—</div>
+        <div class="wk-sub" id="wkSub">Dom → Sáb</div>
+      </div>
+      <button class="wk-nav" onclick="moveWeek(1)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div id="t2body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+  </div>
+
+  <!-- TAB 3 — Incluir Obra -->
+  <div id="t3page" class="page" style="display:none">
+    <div class="form-section">
+      <div class="section-title"><i class="fas fa-hard-hat" style="color:var(--orange)"></i>Incluir Nova Obra</div>
+      <p class="required-note"><span>*</span> Campos obrigatórios</p>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
+          <input type="text" id="f3Addr" class="f-input" placeholder="Ex: 857 Eddy St, San Francisco, CA">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Nome do Cliente <span class="f-req">*</span></label>
+          <input type="text" id="f3Cliente" class="f-input" placeholder="Nome completo">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Contato do Cliente <span class="f-req">*</span></label>
+          <input type="text" id="f3Contato" class="f-input" placeholder="Telefone ou e-mail">
+        </div>
+        <div class="col-12">
+          <label class="f-label">Descrição do Escopo <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <textarea id="f3Escopo" class="f-input" rows="3" placeholder="Resumo do que será feito..."></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Orçamento Passado ao Cliente <span class="f-req">*</span></label>
+          <div class="f-input-prefix">
+            <span class="prefix">$</span>
+            <input type="number" id="f3Orcamento" class="f-input" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Data Prevista de Início <span class="f-req">*</span></label>
+          <input type="date" id="f3DtInicio" class="f-input">
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Data Prevista de Finalização <span class="f-req">*</span></label>
+          <input type="date" id="f3DtFim" class="f-input">
+        </div>
+        <div class="col-12">
+          <label class="f-label">Fotos "Antes" da Obra <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <div class="photo-upload-zone">
+            <input type="file" id="f3PhotoInput" accept="image/*" multiple style="display:none"
+              onchange="handlePhotoUpload(this,'Antes',()=>document.getElementById('f3Addr').value.trim(),'f3PhotoStatus','f3FotosBefore')">
+            <div class="upload-row">
+              <button type="button" class="upload-btn-main" id="f3UploadBtn"
+                onclick="document.getElementById('f3PhotoInput').click()">
+                <i class="fas fa-camera"></i> Tirar / Selecionar Fotos
+              </button>
+              <button type="button" class="drive-btn" id="f3DriveBtn"
+                onclick="createDriveFolder(()=>document.getElementById('f3Addr').value.trim(),'f3FotosBefore','f3DriveBtn','Antes')">
+                <i class="fab fa-google-drive"></i> Só criar pasta
+              </button>
+            </div>
+            <div id="f3PhotoThumbs" class="photo-thumbs"></div>
+            <div id="f3PhotoStatus"></div>
+            <div class="drive-link-row">
+              <span class="drive-link-row-lbl"><i class="fab fa-google-drive" style="color:#4285f4"></i> Link Drive:</span>
+              <input type="text" id="f3FotosBefore" class="f-input"
+                style="flex:1;padding:8px 12px;font-size:13px"
+                placeholder="Preenchido automaticamente após o upload...">
+            </div>
+          </div>
+          <small style="color:#7b8ea4;font-size:11px;margin-top:6px;display:block">
+            <i class="fas fa-info-circle" style="color:#4285f4"></i>
+            Selecione fotos (ou tire com a câmera no celular). Elas serão comprimidas e enviadas para a pasta
+            <strong>NJR Bathrooms - Fotos / NJR - [Endereço] / Antes</strong> no Drive.
+          </small>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="submit-btn" id="f3Btn" onclick="submitObra()">
+          <i class="fas fa-plus-circle"></i> Cadastrar Obra
+        </button>
+      </div>
+      <div id="f3Msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- TAB 4 — Fechar / Consultar -->
+  <div id="t4page" class="page" style="display:none">
+
+    <!-- Section A: Encerrar -->
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-flag-checkered" style="color:var(--orange)"></i>Encerrar Obra</div>
+      <p style="font-size:13px;color:#7b8ea4;margin-bottom:16px">Selecione qualquer obra pelo endereço para registrar o encerramento.</p>
+      <div style="position:relative;margin-bottom:16px">
+        <input type="text" id="addrInputT4" class="f-input" placeholder="Pesquisar obra pelo endereço..."
+               oninput="filterAddrsT4(this.value)" onfocus="filterAddrsT4(this.value)" onblur="closeAddrDDT4()" autocomplete="off" style="padding-left:40px">
+        <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+        <div id="addrDropdownT4" class="addr-dropdown"></div>
+      </div>
+      <div id="t4CloseArea">
+        <div class="empty-box" style="padding:30px 24px">
+          <i class="fas fa-search" style="font-size:32px"></i>
+          <strong>Selecione uma obra acima</strong>
+        </div>
+      </div>
+      <div id="t4CloseMsg" style="display:none"></div>
+    </div>
+
+    <!-- Section B: Obras Finalizadas -->
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-check-circle me-2" style="color:#27ae60"></i>Obras Finalizadas</div>
+      <div style="padding:20px">
+        <div style="position:relative;margin-bottom:16px">
+          <input type="text" id="addrInputFin" class="f-input" placeholder="Pesquisar obra finalizada..."
+                 oninput="filterAddrsF(this.value)" onfocus="filterAddrsF(this.value)" onblur="closeAddrDDF()" autocomplete="off" style="padding-left:40px">
+          <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+          <div id="addrDropdownFin" class="addr-dropdown"></div>
+        </div>
+        <div id="t4DetailBody">
+          <div class="empty-box" style="padding:30px 24px">
+            <i class="fas fa-check-circle" style="font-size:32px;color:#27ae60;opacity:.4"></i>
+            <strong>Selecione uma obra finalizada acima</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIGURAÇÃO
+// ══════════════════════════════════════════════════════════
+const CFG = {
+  API: 'https://script.google.com/macros/s/AKfycbwKuKqnSg145325YFwCY0IlA7WDtbEh-NLgGqO5SZesCCSJEZpToyr804nWmQ1U3TQxGw/exec',
+  PWD: 'NJR2026',
+  RATES: {
+    'Leandro Venâncio':21,'Leandro':21,'Denys Pifane':32,'Denys':32,
+    'João La Pastina':23,'João':23,'Edelson de Oliveira':29,'Edelson':29,
+    'Nilmar Rebellatto':25,'Nilmar':25,
+  },
+  COLORS: {
+    'Leandro Venâncio':'#e8820c','Leandro':'#e8820c','Denys Pifane':'#2980b9','Denys':'#2980b9',
+    'João La Pastina':'#27ae60','João':'#27ae60','Edelson de Oliveira':'#16a085','Edelson':'#16a085',
+    'Nilmar Rebellatto':'#8e44ad','Nilmar':'#8e44ad',
+  }
+};
+
+// AUTH
+function doLogin() {
+  if (document.getElementById('pwdInput').value === CFG.PWD) {
+    sessionStorage.setItem('njr_ok','1');
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    loadData();
+  } else {
+    const el=document.getElementById('loginErr'); el.style.display='block';
+    setTimeout(()=>el.style.display='none',3000);
+  }
+}
+function doLogout() { sessionStorage.removeItem('njr_ok'); location.reload(); }
+document.getElementById('pwdInput').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+if (sessionStorage.getItem('njr_ok')==='1') {
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+}
+
+// DATA STORE
+let DB   = { labor:[],materials:[],subcontractors:[],obras:[],lastUpdated:null };
+let PROC = { labor:[],materials:[],subs:[],obras:[] };
+let wkOff = 0;
+const T1CH = { donut:null, budget:null, bar:null };
+const T4CH = { donut:null, budget:null, bar:null };
+let T1_NEEDS_CHARTS = false;
+
+// JSONP
+function jsonp(url) {
+  return new Promise((resolve,reject) => {
+    const cb='njrCb_'+Date.now();
+    const s=document.createElement('script');
+    window[cb]=data=>{ delete window[cb]; document.head.removeChild(s); resolve(data); };
+    s.onerror=()=>{ delete window[cb]; document.head.removeChild(s); reject(new Error('Falha na requisição.')); };
+    s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&t='+Date.now();
+    document.head.appendChild(s);
+  });
+}
+function buildUrl(base, params) {
+  return base+'?'+Object.entries(params).filter(([,v])=>v!==''&&v!=null)
+    .map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+}
+
+// LOAD DATA
+async function loadData() {
+  setBadge('loading');
+  try {
+    DB = await jsonp(CFG.API);
+    if (DB.error) throw new Error(DB.error);
+    processAll();
+    fillAddresses();
+    renderTab1();
+    renderTab2();
+    setBadge('ok','Atualizado '+new Date().toLocaleTimeString('pt-BR'));
+  } catch(e) {
+    // Only show load error if it's truly a data fetch problem, not a chart render problem
+    if (e.message && e.message.includes('Falha na requisição')) {
+      setBadge('err','Erro ao carregar');
+      document.getElementById('t1body').innerHTML=errBox(e.message);
+      document.getElementById('t2body').innerHTML=errBox(e.message);
+    } else {
+      // Chart/render error — data loaded fine, just re-try chart render
+      setBadge('ok','Atualizado '+new Date().toLocaleTimeString('pt-BR'));
+      T1_NEEDS_CHARTS = true;
+      console.error('Render error (non-fatal):', e);
+    }
+  }
+}
+function setBadge(state,msg) {
+  const el=document.getElementById('updateBadge');
+  el.className='update-badge'+(state==='ok'?' ok':state==='err'?' err':'');
+  if (state==='loading') { el.innerHTML='<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Carregando...'; }
+  else { el.innerHTML=`<i class="fas ${state==='ok'?'fa-check-circle':'fa-exclamation-triangle'}"></i> ${msg}`; }
+}
+function errBox(msg) {
+  return `<div class="empty-box"><i class="fas fa-exclamation-triangle" style="color:#e74c3c;opacity:1"></i>
+    <strong>Erro ao carregar dados</strong><br><small style="color:#e74c3c">${msg}</small></div>`;
+}
+
+// PROCESSING
+function parseAmt(v) {
+  if (!v&&v!==0) return 0; if (typeof v==='number') return v;
+  const n=parseFloat(String(v).replace(/[^\d.,-]/g,'').replace(',','.')); return isNaN(n)?0:n;
+}
+function parseHrs(v) {
+  if (!v) return 0; if (typeof v==='number') return v<2?v*24:v;
+  const m=String(v).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  return m?parseInt(m[1])+parseInt(m[2])/60+parseInt(m[3]||0)/3600:0;
+}
+function parseDate(v) {
+  if (!v) return null; if (v instanceof Date) return v;
+  const d=new Date(String(v).replace(/\//g,'-')); return isNaN(d.getTime())?null:d;
+}
+function normAddr(a) { return String(a||'').trim().replace(/\s+/g,' '); }
+function getRate(name) {
+  const n=String(name||'').trim(); if (CFG.RATES[n]) return CFG.RATES[n];
+  for (const k of Object.keys(CFG.RATES))
+    if (n.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(n.toLowerCase())) return CFG.RATES[k];
+  return 0;
+}
+function getColor(name) {
+  const n=String(name||'').trim(); if (CFG.COLORS[n]) return CFG.COLORS[n];
+  for (const k of Object.keys(CFG.COLORS))
+    if (n.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(n.toLowerCase())) return CFG.COLORS[k];
+  return '#95a5a6';
+}
+function processAll() {
+  PROC.labor=DB.labor.map(r=>{
+    let hrs=parseHrs(r['Horas tabalhadas']||r['Horas trabalhadas']);
+    if (!hrs){ const en=parseHrs(r['Hora de entrada']),ex=parseHrs(r['Hora de saída']); if(en>0&&ex>en)hrs=ex-en; }
+    const rate=getRate(r['Nome do funcionário']);
+    const paid=String(r['Quem pagou?']||'').toLowerCase();
+    const bought=String(r['Comprou materiais hoje?']||'').toLowerCase()==='sim';
+    const isReimb=bought&&(paid.includes('employee')||paid.includes('funcionário')||paid.includes('funcionario'));
+    const amt=parseAmt(r['Valor total gasto']);
+    return { ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
+      emp:String(r['Nome do funcionário']||'').trim(), hrs,rate, laborCost:hrs*rate,
+      isReimb, reimb:isReimb?amt:0, entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
+  });
+  PROC.materials=DB.materials.map(r=>({
+    ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
+    desc:r['Descrição dos Itens']||'', amount:parseAmt(r['Valor Total Pago ($)']),
+    company:r['Selecione a empresa']||'',
+    isExtra:String(r['É um custo extra para o cliente pagar?']||'').toLowerCase()==='sim',
+  }));
+  PROC.subs=DB.subcontractors.map(r=>({
+    ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
+    type:r['Tipo de serviço']||'', desc:r['Descrição do serviço']||'',
+    company:r['Empresa Subcontratada']||'', amount:parseAmt(r['Valor do serviço']),
+    status:r['Status pagamento']||'',
+  }));
+  PROC.obras=(DB.obras||[]).map(r=>({
+    addr:normAddr(r['Endereço']), cliente:r['Nome do Cliente']||'', contato:r['Contato']||'',
+    escopo:r['Escopo']||'', orcamento:parseAmt(r['Orçamento']),
+    dtInicio:r['Data Início Prevista']||'', dtFim:r['Data Fim Prevista']||'',
+    fotosBefore:r['Link Fotos Antes']||'',
+    finalizada:String(r['Finalizada']||'').toLowerCase()==='sim',
+    dtFinal:r['Data Finalização']||'', fotosAfter:r['Link Fotos Depois']||'',
+  }));
+}
+
+// TABS
+function showTab(n) {
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('t'+i+'page').style.display=n===i?'block':'none';
+    document.getElementById('t'+i+'btn').classList.toggle('active',n===i);
+  });
+  // Re-render charts when switching to Tab 1 if they were deferred (tab was hidden)
+  if (n===1 && T1_NEEDS_CHARTS && SEL_ADDR) {
+    T1_NEEDS_CHARTS=false;
+    try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
+  }
+}
+
+// ── AUTOCOMPLETE TAB 1 ─────────────────────────────────────
+let ALL_ADDRS=[], SEL_ADDR='';
+
+function fillAddresses() {
+  const finalSet=new Set(PROC.obras.filter(o=>o.finalizada).map(o=>o.addr));
+  const s=new Set();
+  // [ALT-2] Exclude finalized obra addresses from Tab 1 dropdown
+  PROC.labor.forEach(r=>r.addr&&!finalSet.has(r.addr)&&s.add(r.addr));
+  PROC.materials.forEach(r=>r.addr&&!finalSet.has(r.addr)&&s.add(r.addr));
+  PROC.subs.forEach(r=>r.addr&&!finalSet.has(r.addr)&&s.add(r.addr));
+  PROC.obras.filter(o=>!o.finalizada).forEach(o=>o.addr&&s.add(o.addr));
+  ALL_ADDRS=[...s].sort();
+  renderAddrOpts(ALL_ADDRS);
+}
+function filterAddrs(q) {
+  const lq=(q||'').toLowerCase();
+  renderAddrOpts(lq?ALL_ADDRS.filter(a=>a.toLowerCase().includes(lq)):ALL_ADDRS);
+  document.getElementById('addrDropdown').classList.add('open');
+}
+function renderAddrOpts(list) {
+  const dd=document.getElementById('addrDropdown');
+  dd.innerHTML=list.length
+    ?list.map(a=>`<div class="addr-opt${a===SEL_ADDR?' active':''}" onmousedown="pickAddr('${esc(a)}')" ><i class="fas fa-map-marker-alt" style="font-size:11px;opacity:.6"></i>${a}</div>`).join('')
+    :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
+}
+function pickAddr(a) { SEL_ADDR=a; document.getElementById('addrInput').value=a; document.getElementById('addrDropdown').classList.remove('open'); renderTab1(); }
+function closeAddrDD() { setTimeout(()=>document.getElementById('addrDropdown').classList.remove('open'),160); }
+
+// ── AUTOCOMPLETE TAB 4 CLOSE ───────────────────────────────
+let SEL_ADDR_T4='';
+
+// [ALT-4] Show all non-finalized addresses (same pool as Tab 1)
+function activeObraAddrs() {
+  const finalSet=new Set(PROC.obras.filter(o=>o.finalizada).map(o=>o.addr));
+  const all=new Set();
+  PROC.labor.forEach(r=>r.addr&&all.add(r.addr));
+  PROC.materials.forEach(r=>r.addr&&all.add(r.addr));
+  PROC.subs.forEach(r=>r.addr&&all.add(r.addr));
+  PROC.obras.forEach(o=>o.addr&&all.add(o.addr));
+  return [...all].filter(a=>!finalSet.has(a)).sort();
+}
+function filterAddrsT4(q) {
+  const src=activeObraAddrs(), lq=(q||'').toLowerCase();
+  renderAddrOptsT4(lq?src.filter(a=>a.toLowerCase().includes(lq)):src);
+  document.getElementById('addrDropdownT4').classList.add('open');
+}
+function renderAddrOptsT4(list) {
+  const dd=document.getElementById('addrDropdownT4');
+  dd.innerHTML=list.length
+    ?list.map(a=>`<div class="addr-opt${a===SEL_ADDR_T4?' active':''}" onmousedown="pickAddrT4('${esc(a)}')" ><i class="fas fa-map-marker-alt" style="font-size:11px;opacity:.6"></i>${a}</div>`).join('')
+    :'<div class="addr-opt-empty">Nenhuma obra em andamento encontrada</div>';
+}
+function pickAddrT4(a) { SEL_ADDR_T4=a; document.getElementById('addrInputT4').value=a; document.getElementById('addrDropdownT4').classList.remove('open'); renderCloseForm(); }
+function closeAddrDDT4() { setTimeout(()=>document.getElementById('addrDropdownT4').classList.remove('open'),160); }
+
+// ── AUTOCOMPLETE TAB 4 FINALIZADAS ─────────────────────────
+let SEL_FIN_ADDR='';
+
+function finalizedAddrs() { return PROC.obras.filter(o=>o.finalizada).map(o=>o.addr).sort(); }
+function filterAddrsF(q) {
+  const src=finalizedAddrs(), lq=(q||'').toLowerCase();
+  renderAddrOptsF(lq?src.filter(a=>a.toLowerCase().includes(lq)):src);
+  document.getElementById('addrDropdownFin').classList.add('open');
+}
+function renderAddrOptsF(list) {
+  const dd=document.getElementById('addrDropdownFin');
+  dd.innerHTML=list.length
+    ?list.map(a=>`<div class="addr-opt${a===SEL_FIN_ADDR?' active':''}" onmousedown="pickAddrF('${esc(a)}')" ><i class="fas fa-check-circle" style="font-size:11px;color:#27ae60;opacity:.8"></i>${a}</div>`).join('')
+    :'<div class="addr-opt-empty">Nenhuma obra finalizada ainda</div>';
+}
+function pickAddrF(a) {
+  SEL_FIN_ADDR=a; document.getElementById('addrInputFin').value=a;
+  document.getElementById('addrDropdownFin').classList.remove('open');
+  renderFinObraDetail();
+}
+function closeAddrDDF() { setTimeout(()=>document.getElementById('addrDropdownFin').classList.remove('open'),160); }
+
+// ── CALC ───────────────────────────────────────────────────
+function calcAddr(addr) {
+  const lab=PROC.labor.filter(r=>r.addr===addr);
+  const mats=PROC.materials.filter(r=>r.addr===addr);
+  const subs=PROC.subs.filter(r=>r.addr===addr);
+  const empMap={};
+  lab.forEach(r=>{ if(!r.emp)return; if(!empMap[r.emp])empMap[r.emp]={hrs:0,lc:0,reimb:0};
+    empMap[r.emp].hrs+=r.hrs; empMap[r.emp].lc+=r.laborCost; empMap[r.emp].reimb+=r.reimb; });
+  const totL=Object.values(empMap).reduce((s,e)=>s+e.lc,0);
+  const totR=Object.values(empMap).reduce((s,e)=>s+e.reimb,0);
+  const totM=mats.filter(r=>!r.isExtra).reduce((s,r)=>s+r.amount,0);
+  const totX=mats.filter(r=>r.isExtra).reduce((s,r)=>s+r.amount,0);
+  const totS=subs.reduce((s,r)=>s+r.amount,0);
+  const grand=totL+totM+totS+totR;
+  return {empMap,totL,totR,totM,totX,totS,grand};
+}
+
+// ── OBRA DETAIL HTML (reusable for Tab 1 and Tab 4 finalized) ──
+function obraDetailHTML(addr, ids) {
+  const d=calcAddr(addr);
+  const obra=PROC.obras.find(o=>o.addr===addr);
+  const emps=Object.entries(d.empMap).sort((a,b)=>b[1].lc-a[1].lc);
+  const pct=(v,t)=>t?Math.round(v/t*100):0;
+  const hasOrc=obra&&obra.orcamento>0;
+  const saldo=hasOrc?obra.orcamento-d.grand:0;
+  const margem=hasOrc&&obra.orcamento?Math.round(saldo/obra.orcamento*100):0;
+  const pctUsed=hasOrc?Math.round(d.grand/obra.orcamento*100):0;
+  const pctColor=pctUsed>=100?'#e74c3c':pctUsed>=80?'#f39c12':'#27ae60';
+
+  const obraInfoHtml=obra?`
+    <div class="obra-info-banner mb-4">
+      <div style="flex:1;min-width:200px">
+        <div class="oib-title"><i class="fas fa-info-circle me-2" style="color:var(--orange)"></i>Dados da Obra</div>
+        <div class="row g-3">
+          ${obra.cliente?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Cliente</span><span class="val">${obra.cliente}</span></div></div>`:''}
+          ${obra.contato?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Contato</span><span class="val">${obra.contato}</span></div></div>`:''}
+          ${obra.dtInicio?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Início</span><span class="val">${fmtDt(obra.dtInicio)}</span></div></div>`:''}
+          ${obra.dtFim?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Fim Previsto</span><span class="val">${fmtDt(obra.dtFim)}</span></div></div>`:''}
+          ${obra.dtFinal?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Finalizada em</span><span class="val">${fmtDt(obra.dtFinal)}</span></div></div>`:''}
+          <div class="col-auto"><div class="obra-info-item"><span class="lbl">Status</span><span class="val">${obra.finalizada?'<span class="badge-done">Finalizada</span>':'<span class="badge-active">Em Andamento</span>'}</span></div></div>
+          ${obra.fotosBefore?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Fotos Antes</span><span class="val"><a href="${obra.fotosBefore}" target="_blank" style="color:var(--orange)"><i class="fas fa-images me-1"></i>Ver</a></span></div></div>`:''}
+          ${obra.fotosAfter?`<div class="col-auto"><div class="obra-info-item"><span class="lbl">Fotos Depois</span><span class="val"><a href="${obra.fotosAfter}" target="_blank" style="color:#27ae60"><i class="fas fa-images me-1"></i>Ver</a></span></div></div>`:''}
+        </div>
+      </div>
+    </div>`:'' ;
+
+  // ── RESULTADO FINANCEIRO (replaces old orcHtml + budget chart) ──
+  const noCosts = d.grand === 0;
+  const lucroClass = saldo < 0 ? 'rb-prejuizo' : margem < 15 ? 'rb-risco' : 'rb-lucro';
+  const lucroIcon  = saldo < 0 ? 'fa-times-circle' : margem < 15 ? 'fa-exclamation-triangle' : 'fa-check-circle';
+  const lucroLabel = saldo < 0 ? 'Obra em Prejuízo' : margem < 15 ? 'Atenção — Margem Baixa' : 'Obra Lucrativa';
+  const metricLucroClass = noCosts ? 'rmc-pendente' : saldo >= 0 ? 'rmc-lucro-pos' : 'rmc-lucro-neg';
+  const barCostPct   = noCosts ? 0 : Math.min(pctUsed, 100);
+  const barProfitPct = (!noCosts && saldo > 0) ? 100 - barCostPct : 0;
+
+  const resultadoHtml = hasOrc ? `
+  <div class="resultado-card">
+    <div class="resultado-header">
+      <div class="resultado-title"><i class="fas fa-chart-line" style="color:var(--orange)"></i>Resultado Financeiro da Obra</div>
+      ${!noCosts?`<span class="res-badge ${lucroClass}"><i class="fas ${lucroIcon}"></i>${lucroLabel}</span>`:'<span class="res-badge rb-risco"><i class="fas fa-hourglass-half"></i>Aguardando custos</span>'}
+    </div>
+
+    <div class="row g-3 align-items-stretch">
+      <div class="col-md-4">
+        <div class="res-metric rmc-receita h-100">
+          <div class="rmc-lbl"><i class="fas fa-file-invoice-dollar me-1"></i>Receita Contratada</div>
+          <div class="rmc-val">${$$(obra.orcamento)}</div>
+          <div class="rmc-sub">Valor acordado com o cliente</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="res-metric rmc-custo h-100">
+          <div class="rmc-lbl"><i class="fas fa-shopping-cart me-1"></i>Custo Realizado</div>
+          <div class="rmc-val">${$$(d.grand)}</div>
+          <div class="rmc-sub">${noCosts?'Nenhum custo registrado ainda':pctUsed+'% da receita comprometida'}</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="res-metric ${metricLucroClass} h-100">
+          <div class="rmc-lbl"><i class="fas fa-trophy me-1"></i>Lucro Estimado</div>
+          <div class="rmc-val">${noCosts?'—':$$(saldo)}</div>
+          <div class="rmc-sub">${noCosts?'Registre custos para calcular':margem+'% de margem bruta'}</div>
+        </div>
+      </div>
+    </div>
+
+    ${!noCosts?`
+    <div class="res-bar-wrap">
+      <div class="res-bar-label">Comprometimento da receita</div>
+      <div class="res-bar">
+        <div class="res-bar-cost" style="width:${barCostPct}%">
+          ${barCostPct>18?pctUsed+'% custo':''}
+        </div>
+        ${barProfitPct>0?`<div class="res-bar-profit" style="width:${barProfitPct}%">
+          ${barProfitPct>10?margem+'% lucro':''}
+        </div>`:''}
+      </div>
+      <div class="res-bar-legend">
+        <span class="leg-cost"><i class="fas fa-circle" style="font-size:9px;margin-right:4px"></i>Custo: ${$$(d.grand)}</span>
+        ${saldo>=0
+          ?`<span class="leg-profit"><i class="fas fa-circle" style="font-size:9px;margin-right:4px"></i>Lucro: ${$$(saldo)} (${margem}%)</span>`
+          :`<span class="leg-over"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i>Excede o orçamento em ${$$(Math.abs(saldo))}</span>`}
+      </div>
+    </div>
+    <div class="res-equation">
+      <span class="rmc-lbl" style="margin:0">Receita</span>
+      <span class="eq-val">${$$(obra.orcamento)}</span>
+      <span class="eq-op">−</span>
+      <span class="rmc-lbl" style="margin:0">Custo</span>
+      <span class="eq-val">${$$(d.grand)}</span>
+      <span class="eq-op">=</span>
+      <span class="rmc-lbl" style="margin:0">Lucro</span>
+      <span class="${saldo>=0?'eq-result-pos':'eq-result-neg'}">${$$(saldo)}</span>
+    </div>
+    `:''}
+  </div>` : '';
+
+  const charts=`
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-lg-6">
+        <div class="chart-card" style="min-height:300px">
+          <div class="chart-title"><i class="fas fa-chart-pie me-2" style="color:var(--orange)"></i>Composição do Gasto Total</div>
+          <canvas id="${ids.donut}"></canvas>
+        </div>
+      </div>
+      ${emps.length?`<div class="col-12 col-lg-6">
+        <div class="chart-card" style="min-height:300px">
+          <div class="chart-title"><i class="fas fa-chart-bar me-2" style="color:var(--orange)"></i>Custo Total por Funcionário</div>
+          <canvas id="${ids.bar}"></canvas>
+        </div>
+      </div>`:''}
+    </div>`;
+
+  const table=`
+    <div class="data-table mb-4">
+      <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Panorama por Funcionário</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Horas</th><th>Taxa/h</th><th>Custo M.O.</th><th>Reembolso</th><th>Total</th></tr></thead>
+          <tbody>
+            ${emps.map(([n,e])=>`<tr>
+              <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(n)}"></div>${n}</div></td>
+              <td>${fhm(e.hrs)}</td><td>$${getRate(n)}/h</td><td>${$$(e.lc)}</td>
+              <td>${e.reimb>0?$$(e.reimb):'—'}</td><td><strong>${$$(e.lc+e.reimb)}</strong></td>
+            </tr>`).join('')}
+            <tr class="tr-total">
+              <td>TOTAL GERAL</td><td>${fhm(emps.reduce((s,[,e])=>s+e.hrs,0))}</td>
+              <td>—</td><td>${$$(d.totL)}</td><td>${$$(d.totR)}</td>
+              <td style="color:var(--orange)">${$$(d.totL+d.totR)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  const metricCards=`
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-total"><div class="m-label">Gasto Total</div><div class="m-value">${$$(d.grand)}</div><div class="m-sub">Total geral</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-labor"><div class="m-label">Mão de Obra</div><div class="m-value">${$$(d.totL)}</div><div class="m-sub">${pct(d.totL,d.grand)}% do total</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-mat"><div class="m-label">Material</div><div class="m-value">${$$(d.totM)}</div><div class="m-sub">${pct(d.totM,d.grand)}% do total</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-sub"><div class="m-label">Subcontratados</div><div class="m-value">${$$(d.totS)}</div><div class="m-sub">${pct(d.totS,d.grand)}% do total</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-reimb"><div class="m-label">Reembolso Func.</div><div class="m-value">${$$(d.totR)}</div><div class="m-sub">${pct(d.totR,d.grand)}% do total</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-extra"><div class="m-label">Extra Cliente</div><div class="m-value">${$$(d.totX)}</div><div class="m-sub">${pct(d.totX,d.grand)}% do total</div></div></div>
+    </div>`;
+
+  return obraInfoHtml + resultadoHtml + metricCards + charts + table;
+}
+
+// ── RENDER CHARTS (generic, reused by Tab 1 and Tab 4) ────
+function safeGetChart(el) {
+  // Destroy any stale Chart.js instance attached to this canvas
+  if (!el) return;
+  try { const c=Chart.getChart(el); if(c) c.destroy(); } catch(e) {}
+}
+
+function renderObraCharts(addr, ids, refs) {
+  const d=calcAddr(addr);
+  const obra=PROC.obras.find(o=>o.addr===addr);
+  const hasOrc=obra&&obra.orcamento>0;
+  const emps=Object.entries(d.empMap).sort((a,b)=>b[1].lc-a[1].lc);
+  const total=d.totL+d.totS+d.totM+d.totR;
+
+  // Donut
+  if (refs.donut) { try { refs.donut.destroy(); } catch(e){} refs.donut=null; }
+  const donutEl=document.getElementById(ids.donut);
+  safeGetChart(donutEl);
+  if (donutEl) refs.donut=new Chart(donutEl.getContext('2d'),{
+    type:'doughnut', plugins:[ChartDataLabels],
+    data:{ labels:['Mão de Obra','Subcontratados','Material','Reembolso'],
+      datasets:[{data:[d.totL,d.totS,d.totM,d.totR],backgroundColor:['#2980b9','#8e44ad','#27ae60','#e67e22'],borderWidth:0,hoverOffset:10}] },
+    options:{ cutout:'62%',
+      plugins:{ legend:{position:'bottom',labels:{padding:14,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${$$(c.raw)}`}},
+        datalabels:{color:'#fff',font:{weight:'bold',size:11},formatter:v=>(!total||v/total<0.04)?'':$$(v)} },
+      animation:{duration:700} }
+  });
+
+  // Budget progress chart
+  if (refs.budget) { try { refs.budget.destroy(); } catch(e){} refs.budget=null; }
+  if (hasOrc) {
+    const budgetEl=document.getElementById(ids.budget);
+    safeGetChart(budgetEl);
+    if (budgetEl) {
+      const spent=Math.min(d.grand,obra.orcamento);
+      const left=Math.max(0,obra.orcamento-d.grand);
+      const over=Math.max(0,d.grand-obra.orcamento);
+      refs.budget=new Chart(budgetEl.getContext('2d'),{
+        type:'bar', plugins:[ChartDataLabels],
+        data:{ labels:[''],
+          datasets:[
+            {label:'Gasto',    data:[spent], backgroundColor:'#e67e22', borderWidth:0},
+            {label:'Restante', data:[left],  backgroundColor:'#27ae60', borderWidth:0},
+            {label:'Excedente',data:[over],  backgroundColor:'#e74c3c', borderWidth:0},
+          ] },
+        options:{ indexAxis:'y', maintainAspectRatio:false,
+          scales:{ x:{stacked:true,display:false}, y:{stacked:true,display:false} },
+          plugins:{
+            legend:{position:'bottom',labels:{padding:14,font:{size:11},boxWidth:12,
+              // null-safe filter: hide legend item if its dataset has value 0
+              filter:(item)=>{
+                const ds=item.chart&&item.chart.data&&item.chart.data.datasets;
+                if (!ds) return true;
+                const dataset=ds[item.datasetIndex];
+                return !!(dataset&&dataset.data&&dataset.data[0]>0);
+              }
+            }},
+            tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${$$(c.raw)}`}},
+            datalabels:{color:'#fff',font:{weight:'bold',size:12},formatter:v=>v>0?$$(v):''} },
+          animation:{duration:700} }
+      });
+    }
+  }
+
+  // Bar chart (employees)
+  if (refs.bar) { try { refs.bar.destroy(); } catch(e){} refs.bar=null; }
+  const barEl=document.getElementById(ids.bar);
+  safeGetChart(barEl);
+  if (barEl&&emps.length) refs.bar=new Chart(barEl.getContext('2d'),{
+    type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:emps.map(([n])=>n.split(' ')[0]),
+      datasets:[{label:'Custo ($)',data:emps.map(([,e])=>+(e.lc+e.reimb).toFixed(2)),
+        backgroundColor:emps.map(([n])=>getColor(n)),borderRadius:8,borderSkipped:false}] },
+    options:{ indexAxis:'y', layout:{padding:{right:80}},
+      plugins:{ legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${$$(c.raw)}`}},
+        datalabels:{anchor:'end',align:'end',color:'#2c3e50',font:{weight:'bold',size:12},formatter:v=>$$(v)} },
+      scales:{ x:{grid:{color:'#f4f7fb'},ticks:{callback:v=>'$'+v.toLocaleString('en-US')},
+          max:emps.length?Math.max(...emps.map(([,e])=>e.lc+e.reimb))*1.25:100},
+        y:{grid:{display:false}} },
+      animation:{duration:700} }
+  });
+}
+
+// ── TAB 1 ─────────────────────────────────────────────────
+function renderTab1() {
+  if (!SEL_ADDR) {
+    document.getElementById('t1body').innerHTML=`<div class="empty-box">
+      <i class="fas fa-map-marker-alt" style="color:var(--orange);opacity:1"></i>
+      <strong>Selecione um endereço</strong><br><small>Escolha a obra no menu acima</small></div>`;
+    return;
+  }
+  ['donut','budget','bar'].forEach(k=>{ if(T1CH[k]){T1CH[k].destroy();T1CH[k]=null;} });
+  const ids={donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'};
+  document.getElementById('t1body').innerHTML=obraDetailHTML(SEL_ADDR,ids);
+  // Only create Chart.js instances when the tab is visible (prevents 0-dimension canvas issue)
+  const t1Visible = document.getElementById('t1page').style.display!=='none';
+  if (t1Visible) {
+    try { renderObraCharts(SEL_ADDR,ids,T1CH); T1_NEEDS_CHARTS=false; } catch(e) { console.error('Chart error:',e); T1_NEEDS_CHARTS=true; }
+  } else {
+    T1_NEEDS_CHARTS=true;
+  }
+}
+
+// ── TAB 2 ─────────────────────────────────────────────────
+function getWeek(offset) {
+  const now=new Date(), sun=new Date(now);
+  sun.setDate(now.getDate()-now.getDay()+offset*7); sun.setHours(0,0,0,0);
+  const sat=new Date(sun); sat.setDate(sun.getDate()+6); sat.setHours(23,59,59,999);
+  return {sun,sat};
+}
+function moveWeek(d) { wkOff+=d; renderTab2(); }
+function renderTab2() {
+  const {sun,sat}=getWeek(wkOff);
+  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  document.getElementById('wkRange').textContent=`${fmt(sun)} — ${fmt(sat)}`;
+  document.getElementById('wkSub').textContent=`Semana ${wkNum(sun)} de ${sun.getFullYear()} · Dom → Sáb`;
+  const rows=PROC.labor.filter(r=>r.ts&&r.ts>=sun&&r.ts<=sat);
+  if (!rows.length) {
+    document.getElementById('t2body').innerHTML=`<div class="empty-box">
+      <i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong><br>
+      <small>Use as setas para navegar entre semanas</small></div>`;
+    return;
+  }
+  const empMap={};
+  rows.forEach(r=>{ if(!r.emp)return; if(!empMap[r.emp])empMap[r.emp]={hrs:0,days:new Set()};
+    empMap[r.emp].hrs+=r.hrs; if(r.ts)empMap[r.emp].days.add(r.ts.toDateString()); });
+  const emps=Object.entries(empMap).sort((a,b)=>b[1].hrs-a[1].hrs);
+  const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let det='';
+  for (let i=0;i<7;i++) {
+    const day=new Date(sun); day.setDate(sun.getDate()+i);
+    const dr=rows.filter(r=>r.ts&&r.ts.toDateString()===day.toDateString()).sort((a,b)=>a.ts-b.ts);
+    if (!dr.length) continue;
+    dr.forEach((r,ri)=>{ det+=`<tr>
+      ${ri===0?`<td rowspan="${dr.length}" style="font-weight:800;color:var(--navy);vertical-align:middle">${dayNames[i]}</td>
+                <td rowspan="${dr.length}" style="vertical-align:middle">${day.toLocaleDateString('pt-BR')}</td>`:''}
+      <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(r.emp)}"></div>${r.emp}</div></td>
+      <td style="max-width:220px;white-space:normal">${r.addr}</td>
+      <td>${ft(r.entryRaw)}</td><td>${ft(r.exitRaw)}</td><td><strong>${fhm(r.hrs)}</strong></td></tr>`; });
+  }
+  const totHrs=rows.reduce((s,r)=>s+r.hrs,0);
+  det+=`<tr class="tr-total"><td colspan="6">TOTAL DA SEMANA</td><td style="color:var(--orange)">${fhm(totHrs)}</td></tr>`;
+  document.getElementById('t2body').innerHTML=`
+    <div class="row g-3 mb-4">
+      ${emps.map(([n,e])=>`<div class="col-6 col-sm-4 col-xl-2">
+        <div class="emp-card" style="border-color:${getColor(n)}">
+          <div class="ec-firstname">${n.split(' ')[0]}</div><div class="ec-fullname">${n}</div>
+          <div class="ec-hours" style="color:${getColor(n)}">${fhm(e.hrs)}</div>
+          <div class="ec-days">${e.days.size} dia${e.days.size!==1?'s':''} trabalhado${e.days.size!==1?'s':''}</div>
+        </div></div>`).join('')}
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-calendar-week me-2" style="color:var(--orange)"></i>Detalhamento por Dia</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Dia</th><th>Data</th><th>Funcionário</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th></tr></thead>
+        <tbody>${det}</tbody>
+      </table></div>
+    </div>`;
+}
+
+// ── TAB 3: INCLUIR OBRA ────────────────────────────────────
+async function submitObra() {
+  const addr=document.getElementById('f3Addr').value.trim();
+  const cliente=document.getElementById('f3Cliente').value.trim();
+  const contato=document.getElementById('f3Contato').value.trim();
+  const orc=document.getElementById('f3Orcamento').value.trim();
+  const dtIni=document.getElementById('f3DtInicio').value;
+  const dtFim=document.getElementById('f3DtFim').value;
+  if (!addr)    { showF3Msg('err','Endereço é obrigatório.'); return; }
+  if (!cliente) { showF3Msg('err','Nome do cliente é obrigatório.'); return; }
+  if (!contato) { showF3Msg('err','Contato do cliente é obrigatório.'); return; }
+  if (!orc)     { showF3Msg('err','Orçamento é obrigatório.'); return; }
+  if (!dtIni)   { showF3Msg('err','Data de início é obrigatória.'); return; }
+  if (!dtFim)   { showF3Msg('err','Data de finalização é obrigatória.'); return; }
+  const btn=document.getElementById('f3Btn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
+  try {
+    const res=await jsonp(buildUrl(CFG.API,{action:'addObra',addr,cliente,contato,
+      escopo:document.getElementById('f3Escopo').value.trim(),orcamento:orc,dtInicio:dtIni,dtFim,
+      fotosBefore:document.getElementById('f3FotosBefore').value.trim()}));
+    if (res.error) throw new Error(res.error);
+    showF3Msg('ok','Obra cadastrada com sucesso!');
+    ['f3Addr','f3Cliente','f3Contato','f3Escopo','f3Orcamento','f3DtInicio','f3DtFim','f3FotosBefore']
+      .forEach(id=>document.getElementById(id).value='');
+    await loadData();
+  } catch(e) { showF3Msg('err',e.message); }
+  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus-circle"></i> Cadastrar Obra'; }
+}
+function showF3Msg(type,msg) {
+  const el=document.getElementById('f3Msg');
+  el.className='f-alert '+type;
+  el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  el.style.display='flex';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
+}
+
+// ── GOOGLE DRIVE FOLDER HELPER ─────────────────────────────
+async function createDriveFolder(getAddr, inputId, btnId, subfolder) {
+  const addr=typeof getAddr==='function'?getAddr():getAddr;
+  if (!addr) { alert('Informe o endereço da obra primeiro.'); return; }
+  const btn=document.getElementById(btnId);
+  if (!btn) return;
+  const iconHtml='<i class="fab fa-google-drive"></i>';
+  const origLabel=subfolder==='Antes'||subfolder==='antes'?'Criar pasta (Antes)':'Criar pasta (Depois)';
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#4285f4;display:inline-block"></div> Criando...';
+  try {
+    const res=await jsonp(buildUrl(CFG.API,{action:'getOrCreateFolder',addr,subfolder:subfolder||'Antes'}));
+    if (res.error) throw new Error(res.error);
+    const inp=document.getElementById(inputId);
+    if (inp) inp.value=res.url;
+    // Update button to show success and provide link
+    const btnEl=document.getElementById(btnId);
+    if (btnEl) {
+      btnEl.disabled=false;
+      btnEl.innerHTML=`${iconHtml} <i class="fas fa-check" style="color:#27ae60"></i> Abrir pasta`;
+      btnEl.onclick=()=>window.open(res.url,'_blank');
+    }
+    window.open(res.url,'_blank');
+  } catch(e) {
+    alert('Erro ao criar pasta no Drive:\n'+e.message);
+    const btnEl=document.getElementById(btnId);
+    if (btnEl) { btnEl.disabled=false; btnEl.innerHTML=`${iconHtml} Criar pasta`; }
+  }
+}
+
+// ── PHOTO UPLOAD ───────────────────────────────────────────
+const _folderCache = {};
+
+// Compress image to max 1920px / 85% quality using Canvas API
+function compressImage(file, maxPx=1920, quality=0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if (w>maxPx||h>maxPx) { if(w>=h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;} }
+      const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve({
+          base64:reader.result.split(',')[1],
+          mimeType:'image/jpeg',
+          fileName:file.name.replace(/\.[^.]+$/,'')+'_njr.jpg'
+        });
+        reader.onerror=reject;
+        reader.readAsDataURL(blob);
+      },'image/jpeg',quality);
+    };
+    img.onerror=reject;
+    img.src=blobUrl;
+  });
+}
+
+function setUploadStatus(statusId, type, msg, pct) {
+  const el=document.getElementById(statusId); if(!el)return;
+  if (!type) { el.innerHTML=''; return; }
+  const icon=type==='ok'?'fa-check-circle':type==='err'?'fa-exclamation-circle':'fa-circle-notch fa-spin';
+  const progHtml=(type==='loading'&&pct!=null)
+    ?`<div class="upload-prog"><div class="upload-prog-fill" style="width:${pct}%"></div></div>`:'';
+  el.innerHTML=`<div class="upload-status-bar usb-${type}"><i class="fas ${icon}"></i>${msg}${progHtml}</div>`;
+}
+
+function showThumbnails(files, thumbsId) {
+  const el=document.getElementById(thumbsId); if(!el)return; el.innerHTML='';
+  Array.from(files).filter(f=>f.type.startsWith('image/')).forEach(f=>{
+    const img=document.createElement('img'); img.className='photo-thumb';
+    const url=URL.createObjectURL(f); img.src=url;
+    img.onload=()=>URL.revokeObjectURL(url);
+    el.appendChild(img);
+  });
+}
+
+async function handlePhotoUpload(inputEl, subfolder, getAddr, statusId, linkInputId) {
+  const files=Array.from(inputEl.files).filter(f=>f.type.startsWith('image/'));
+  if (!files.length) return;
+  const addr=typeof getAddr==='function'?getAddr():getAddr;
+  if (!addr) { setUploadStatus(statusId,'err','Informe o endereço da obra antes de enviar fotos.'); return; }
+
+  // Show thumbnails (derive thumbsId from statusId: f3PhotoStatus → f3PhotoThumbs)
+  showThumbnails(files, statusId.replace('Status','Thumbs'));
+
+  // Step 1: get/create Drive folder (uses JSONP)
+  setUploadStatus(statusId,'loading','Preparando pasta no Drive...');
+  let folderId, folderUrl;
+  const cacheKey=addr+'|'+subfolder;
+  try {
+    if (_folderCache[cacheKey]) {
+      ({id:folderId,url:folderUrl}=_folderCache[cacheKey]);
+    } else {
+      const fr=await jsonp(buildUrl(CFG.API,{action:'getOrCreateFolder',addr,subfolder}));
+      if (fr.error) throw new Error(fr.error);
+      folderId=fr.id; folderUrl=fr.url;
+      _folderCache[cacheKey]={id:folderId,url:folderUrl};
+    }
+    const linkEl=document.getElementById(linkInputId);
+    if (linkEl) linkEl.value=folderUrl;
+  } catch(e) { setUploadStatus(statusId,'err','Erro ao acessar pasta no Drive: '+e.message); return; }
+
+  // Step 2: compress & upload each photo via doPost
+  let done=0;
+  for (const file of files) {
+    const pct=Math.round(done/files.length*100);
+    setUploadStatus(statusId,'loading',`Enviando foto ${done+1} de ${files.length}...`,pct);
+    try {
+      const {base64,mimeType,fileName}=await compressImage(file);
+      const body=new URLSearchParams({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType});
+      const res=await fetch(CFG.API,{method:'POST',body,credentials:'omit'});
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      if (data.error) throw new Error(data.error);
+      done++;
+    } catch(e) {
+      setUploadStatus(statusId,'err',`Erro ao enviar "${file.name}": ${e.message}`); return;
+    }
+  }
+  setUploadStatus(statusId,'ok',`${done} foto${done!==1?'s':''} enviada${done!==1?'s':''} com sucesso!`);
+}
+
+// ── TAB 4: FECHAR OBRA ─────────────────────────────────────
+function renderCloseForm() {
+  const addr=SEL_ADDR_T4;
+  const area=document.getElementById('t4CloseArea');
+  document.getElementById('t4CloseMsg').style.display='none';
+  if (!addr) {
+    area.innerHTML=`<div class="empty-box" style="padding:30px 24px">
+      <i class="fas fa-search" style="font-size:32px"></i><strong>Selecione uma obra acima</strong></div>`;
+    return;
+  }
+  const obra=PROC.obras.find(o=>o.addr===addr);
+  if (obra&&obra.finalizada) {
+    area.innerHTML=`<div class="f-alert ok" style="margin-top:0"><i class="fas fa-check-circle"></i>
+      Esta obra já foi finalizada em ${fmtDt(obra.dtFinal)||'—'}.</div>`;
+    return;
+  }
+  const d=calcAddr(addr);
+  const hasOrc=obra&&obra.orcamento>0;
+  const saldo=hasOrc?obra.orcamento-d.grand:null;
+  area.innerHTML=`
+    <div class="close-form-card">
+      <div class="cfc-title"><i class="fas fa-building me-2" style="color:var(--orange)"></i>${addr}</div>
+      <div class="row g-2 mb-3" style="font-size:13px">
+        ${obra&&obra.cliente?`<div class="col-auto"><strong>Cliente:</strong> ${obra.cliente}</div>`:''}
+        ${obra&&obra.contato?`<div class="col-auto"><strong>Contato:</strong> ${obra.contato}</div>`:''}
+        <div class="col-auto"><strong>Custo acumulado:</strong> ${$$(d.grand)}</div>
+        ${hasOrc?`<div class="col-auto"><strong>Orçamento:</strong> ${$$(obra.orcamento)}</div>`:''}
+        ${saldo!==null?`<div class="col-auto"><strong>Saldo:</strong> <span style="color:${saldo>=0?'#27ae60':'#e74c3c'}">${$$(saldo)}</span></div>`:''}
+      </div>
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label class="f-label">Data de Finalização <span class="f-req">*</span></label>
+          <input type="date" id="t4DtFinal" class="f-input">
+        </div>
+        <div class="col-12">
+          <label class="f-label">Fotos "Depois" da Obra <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <div class="photo-upload-zone">
+            <input type="file" id="t4PhotoInput" accept="image/*" multiple style="display:none"
+              onchange="handlePhotoUpload(this,'Depois',()=>SEL_ADDR_T4,'t4PhotoStatus','t4FotosAfter')">
+            <div class="upload-row">
+              <button type="button" class="upload-btn-main" id="t4UploadBtn"
+                onclick="document.getElementById('t4PhotoInput').click()">
+                <i class="fas fa-camera"></i> Tirar / Selecionar Fotos
+              </button>
+              <button type="button" class="drive-btn" id="t4DriveBtn"
+                onclick="createDriveFolder(()=>SEL_ADDR_T4,'t4FotosAfter','t4DriveBtn','Depois')">
+                <i class="fab fa-google-drive"></i> Só criar pasta
+              </button>
+            </div>
+            <div id="t4PhotoThumbs" class="photo-thumbs"></div>
+            <div id="t4PhotoStatus"></div>
+            <div class="drive-link-row">
+              <span class="drive-link-row-lbl"><i class="fab fa-google-drive" style="color:#4285f4"></i> Link Drive:</span>
+              <input type="text" id="t4FotosAfter" class="f-input"
+                style="flex:1;padding:8px 12px;font-size:13px"
+                placeholder="Preenchido automaticamente após o upload...">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="submit-btn" id="t4CloseBtn" onclick="submitCloseObra()">
+          <i class="fas fa-flag-checkered"></i> Marcar como Finalizada
+        </button>
+      </div>
+    </div>`;
+}
+
+async function submitCloseObra() {
+  const dtFinal=document.getElementById('t4DtFinal').value;
+  const fotosAfter=document.getElementById('t4FotosAfter').value.trim();
+  if (!dtFinal) { showT4Msg('err','Data de finalização é obrigatória.'); return; }
+  const btn=document.getElementById('t4CloseBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
+  try {
+    const res=await jsonp(buildUrl(CFG.API,{action:'closeObra',addr:SEL_ADDR_T4,dtFinal,fotosAfter}));
+    if (res.error) throw new Error(res.error);
+    showT4Msg('ok','Obra encerrada com sucesso!');
+    SEL_ADDR_T4=''; document.getElementById('addrInputT4').value='';
+    await loadData(); renderCloseForm();
+  } catch(e) {
+    showT4Msg('err',e.message);
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-flag-checkered"></i> Marcar como Finalizada';
+  }
+}
+function showT4Msg(type,msg) {
+  const el=document.getElementById('t4CloseMsg');
+  el.className='f-alert '+type;
+  el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  el.style.display='flex';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
+}
+
+// ── TAB 4: OBRAS FINALIZADAS DETAIL ───────────────────────
+function renderFinObraDetail() {
+  ['donut','budget','bar'].forEach(k=>{ if(T4CH[k]){T4CH[k].destroy();T4CH[k]=null;} });
+  const target=document.getElementById('t4DetailBody');
+  if (!SEL_FIN_ADDR) {
+    target.innerHTML=`<div class="empty-box" style="padding:30px 24px">
+      <i class="fas fa-check-circle" style="font-size:32px;color:#27ae60;opacity:.4"></i>
+      <strong>Selecione uma obra finalizada acima</strong></div>`;
+    return;
+  }
+  const ids={donut:'donutCvsF',budget:'budgetCvsF',bar:'barCvsF'};
+  target.innerHTML=`<div class="fin-detail-wrap">${obraDetailHTML(SEL_FIN_ADDR,ids)}</div>`;
+  renderObraCharts(SEL_FIN_ADDR,ids,T4CH);
+}
+
+// ── HELPERS ────────────────────────────────────────────────
+function $$(n) { return '$'+(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fhm(h) { const hr=Math.floor(h||0),mn=Math.round(((h||0)-hr)*60); return `${hr}h ${String(mn).padStart(2,'0')}m`; }
+function ft(v) { if(!v)return'—'; const p=String(v).split(':'); return p.length>=2?`${p[0]}:${p[1]}`:String(v); }
+function fmtDt(v) {
+  if (!v) return '';
+  const d=new Date(String(v).replace(/\//g,'-'));
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function wkNum(d) {
+  const D=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=D.getUTCDay()||7; D.setUTCDate(D.getUTCDate()+4-day);
+  const y0=new Date(Date.UTC(D.getUTCFullYear(),0,1));
+  return Math.ceil((((D-y0)/86400000)+1)/7);
+}
+function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+if (sessionStorage.getItem('njr_ok')==='1') loadData();
+</script>
+</body>
+</html>
