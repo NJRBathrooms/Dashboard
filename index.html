@@ -264,7 +264,8 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn active" id="t1btn" onclick="showTab(1)"><i class="fas fa-building"></i> Controle de Obras</button>
     <button class="tab-btn" id="t2btn" onclick="showTab(2)"><i class="fas fa-user-clock"></i> Controle de Horas</button>
     <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra</button>
-    <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
+    <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-clipboard-list"></i> Registros</button>
+    <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
   </div>
 
   <!-- TAB 1 -->
@@ -371,8 +372,175 @@ tbody tr:hover td { background:#fafbfe; }
     </div>
   </div>
 
-  <!-- TAB 4 — Fechar / Consultar -->
+  <!-- TAB 4 — Registros -->
   <div id="t4page" class="page" style="display:none">
+
+    <!-- Section 1: Compras de Materiais -->
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-shopping-cart" style="color:var(--orange)"></i>Registro de Compras de Materiais</div>
+      <p class="required-note"><span>*</span> Campos obrigatórios</p>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="f-label">Data da Compra <span class="f-req">*</span></label>
+          <input type="date" id="matDataCom" class="f-input">
+        </div>
+        <div class="col-12">
+          <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
+          <div style="position:relative">
+            <input type="text" id="matAddrInput" class="f-input" placeholder="Pesquisar obra pelo endereço..."
+                   oninput="filterAddrsMat(this.value)" onfocus="filterAddrsMat(this.value)" onblur="closeAddrDDMat()" autocomplete="off" style="padding-left:40px">
+            <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+            <div id="matAddrDropdown" class="addr-dropdown"></div>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <label class="f-label">É um custo extra para o cliente pagar? <span class="f-req">*</span></label>
+          <select id="matIsExtra" class="f-input">
+            <option value="Não">Não</option>
+            <option value="Sim">Sim</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="f-label">Descrição dos Itens <span class="f-req">*</span></label>
+          <textarea id="matDesc" class="f-input" rows="3" placeholder="Descreva os itens comprados..."></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Valor Total Pago ($) <span class="f-req">*</span></label>
+          <div class="f-input-prefix">
+            <span class="prefix">$</span>
+            <input type="number" id="matAmount" class="f-input" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <div class="photo-upload-zone">
+            <input type="file" id="matFileInput" accept="image/*,.pdf" style="display:none"
+              onchange="showSelectedFile(this,'matFileStatus')">
+            <div class="upload-row">
+              <button type="button" class="upload-btn-main" id="matUploadBtn"
+                onclick="document.getElementById('matFileInput').click()">
+                <i class="fas fa-paperclip"></i> Selecionar Arquivo
+              </button>
+            </div>
+            <div id="matFileStatus"></div>
+          </div>
+          <small style="color:#7b8ea4;font-size:11px;margin-top:6px;display:block">
+            <i class="fas fa-info-circle" style="color:#4285f4"></i>
+            Arquivo será enviado para <strong>NJR Bathrooms - Fotos / NJR - [Endereço] / Comprovantes</strong>
+          </small>
+        </div>
+        <div class="col-12">
+          <label class="f-label">Observações <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <textarea id="matObs" class="f-input" rows="2" placeholder="Informações adicionais..."></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Selecione a empresa <span class="f-req">*</span></label>
+          <select id="matEmpresa" class="f-input">
+            <option value="">-- Selecione --</option>
+            <option value="NJR Bathrooms">NJR Bathrooms</option>
+            <option value="NJR Drywall and Plaster">NJR Drywall and Plaster</option>
+            <option value="NJR Tile">NJR Tile</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="submit-btn" id="matBtn" onclick="submitMaterial()">
+          <i class="fas fa-save"></i> Registrar Compra
+        </button>
+      </div>
+      <div id="matMsg" style="display:none"></div>
+    </div>
+
+    <!-- Section 2: Subcontratos -->
+    <div class="form-section">
+      <div class="section-title"><i class="fas fa-handshake" style="color:var(--orange)"></i>Formulário de Subcontratos</div>
+      <p class="required-note"><span>*</span> Campos obrigatórios</p>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
+          <div style="position:relative">
+            <input type="text" id="subAddrInput" class="f-input" placeholder="Pesquisar obra pelo endereço..."
+                   oninput="filterAddrsSub(this.value)" onfocus="filterAddrsSub(this.value)" onblur="closeAddrDDSub()" autocomplete="off" style="padding-left:40px">
+            <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+            <div id="subAddrDropdown" class="addr-dropdown"></div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Data de conclusão <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <input type="date" id="subDataCon" class="f-input">
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Tipo de serviço <span class="f-req">*</span></label>
+          <select id="subTipo" class="f-input">
+            <option value="">-- Selecione --</option>
+            <option value="Plumbing">Plumbing</option>
+            <option value="Painting">Painting</option>
+            <option value="Drywall">Drywall</option>
+            <option value="Electrical">Electrical</option>
+            <option value="General Contracting">General Contracting</option>
+            <option value="Plastering">Plastering</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="f-label">Descrição do serviço <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <textarea id="subDesc" class="f-input" rows="3" placeholder="Descreva o serviço subcontratado..."></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Empresa Subcontratada <span class="f-req">*</span></label>
+          <input type="text" id="subEmpresa" class="f-input" placeholder="Nome da empresa">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Contato do Subcontratado <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <input type="text" id="subContato" class="f-input" placeholder="Telefone ou e-mail">
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Valor do serviço ($) <span class="f-req">*</span></label>
+          <div class="f-input-prefix">
+            <span class="prefix">$</span>
+            <input type="number" id="subAmount" class="f-input" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="f-label">Status pagamento <span class="f-req">*</span></label>
+          <select id="subStatus" class="f-input">
+            <option value="">-- Selecione --</option>
+            <option value="Pending">Pending</option>
+            <option value="Schedule">Schedule</option>
+            <option value="Paid">Paid</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="f-label">Anexar invoice <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <div class="photo-upload-zone">
+            <input type="file" id="subFileInput" accept="image/*,.pdf" style="display:none"
+              onchange="showSelectedFile(this,'subFileStatus')">
+            <div class="upload-row">
+              <button type="button" class="upload-btn-main" id="subUploadBtn"
+                onclick="document.getElementById('subFileInput').click()">
+                <i class="fas fa-paperclip"></i> Selecionar Arquivo
+              </button>
+            </div>
+            <div id="subFileStatus"></div>
+          </div>
+          <small style="color:#7b8ea4;font-size:11px;margin-top:6px;display:block">
+            <i class="fas fa-info-circle" style="color:#4285f4"></i>
+            Arquivo será enviado para <strong>NJR Bathrooms - Fotos / NJR - [Endereço] / Invoices</strong>
+          </small>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="submit-btn" id="subBtn" onclick="submitSubcontrato()">
+          <i class="fas fa-save"></i> Registrar Subcontrato
+        </button>
+      </div>
+      <div id="subMsg" style="display:none"></div>
+    </div>
+
+  </div>
+
+  <!-- TAB 5 — Fechar / Consultar -->
+  <div id="t5page" class="page" style="display:none">
 
     <!-- Section A: Encerrar -->
     <div class="form-section mb-4">
@@ -486,6 +654,10 @@ const T1CH = { donut:null, budget:null, bar:null };
 const T4CH = { donut:null, budget:null, bar:null };
 let T1_NEEDS_CHARTS = false;
 
+// REGISTROS TAB STATE
+let SEL_ADDR_MAT = '', SEL_ADDR_SUB = '', ALL_ADDRS_REG = [];
+let _matCompURL = '', _subInvURL = '';
+
 // ── API HELPERS ────────────────────────────────────────────
 async function apiWrite(params) {
   const res = await fetch('/api/write', {
@@ -542,7 +714,7 @@ function errBox(msg) {
 
 // TABS
 function showTab(n) {
-  [1,2,3,4].forEach(i=>{
+  [1,2,3,4,5].forEach(i=>{
     document.getElementById('t'+i+'page').style.display=n===i?'block':'none';
     document.getElementById('t'+i+'btn').classList.toggle('active',n===i);
   });
@@ -550,6 +722,7 @@ function showTab(n) {
     T1_NEEDS_CHARTS=false;
     try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
   }
+  if (n===4) fillAddressesReg();
 }
 
 // ── AUTOCOMPLETE TAB 1 ─────────────────────────────────────
@@ -679,6 +852,7 @@ function processAll() {
   }));
   fillAddressesT4();
   fillFinAddresses();
+  fillAddressesReg();
 }
 
 // ── TAB 1 RENDER ──────────────────────────────────────────
@@ -1280,6 +1454,169 @@ function renderFinObraDetail() {
   const ids={donut:'donutCvsF',budget:'budgetCvsF',bar:'barCvsF'};
   target.innerHTML=`<div class="fin-detail-wrap">${obraDetailHTML(SEL_FIN_ADDR,ids)}</div>`;
   renderObraCharts(SEL_FIN_ADDR,ids,T4CH);
+}
+
+// ── TAB 4: REGISTROS — AUTOCOMPLETE ───────────────────────
+function fillAddressesReg() {
+  const s=new Set();
+  PROC.labor.forEach(r=>r.addr&&s.add(r.addr));
+  PROC.materials.forEach(r=>r.addr&&s.add(r.addr));
+  PROC.subs.forEach(r=>r.addr&&s.add(r.addr));
+  PROC.obras.forEach(o=>o.addr&&s.add(o.addr));
+  ALL_ADDRS_REG=[...s].sort();
+}
+
+function filterAddrsMat(q) {
+  const lq=(q||'').toLowerCase();
+  const list=lq?ALL_ADDRS_REG.filter(a=>a.toLowerCase().includes(lq)):ALL_ADDRS_REG;
+  const dd=document.getElementById('matAddrDropdown');
+  dd.innerHTML=list.length
+    ?list.map(a=>`<div class="addr-opt${a===SEL_ADDR_MAT?' active':''}" onmousedown="pickAddrMat('${esc(a)}')">${a}</div>`).join('')
+    :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
+  dd.classList.add('open');
+}
+function pickAddrMat(a) { SEL_ADDR_MAT=a; document.getElementById('matAddrInput').value=a; document.getElementById('matAddrDropdown').classList.remove('open'); }
+function closeAddrDDMat() { setTimeout(()=>document.getElementById('matAddrDropdown').classList.remove('open'),160); }
+
+function filterAddrsSub(q) {
+  const lq=(q||'').toLowerCase();
+  const list=lq?ALL_ADDRS_REG.filter(a=>a.toLowerCase().includes(lq)):ALL_ADDRS_REG;
+  const dd=document.getElementById('subAddrDropdown');
+  dd.innerHTML=list.length
+    ?list.map(a=>`<div class="addr-opt${a===SEL_ADDR_SUB?' active':''}" onmousedown="pickAddrSub('${esc(a)}')">${a}</div>`).join('')
+    :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
+  dd.classList.add('open');
+}
+function pickAddrSub(a) { SEL_ADDR_SUB=a; document.getElementById('subAddrInput').value=a; document.getElementById('subAddrDropdown').classList.remove('open'); }
+function closeAddrDDSub() { setTimeout(()=>document.getElementById('subAddrDropdown').classList.remove('open'),160); }
+
+// ── FILE SELECTED PREVIEW ──────────────────────────────────
+function showSelectedFile(input, statusId) {
+  const el=document.getElementById(statusId); if(!el)return;
+  if (input.files.length) {
+    const f=input.files[0];
+    el.innerHTML=`<div class="upload-status-bar usb-loading"><i class="fas fa-file"></i> ${f.name} (${(f.size/1024).toFixed(0)} KB) — será enviado ao salvar</div>`;
+  } else {
+    el.innerHTML='';
+  }
+}
+
+// ── SINGLE FILE UPLOAD HELPER ─────────────────────────────
+async function uploadSingleFile(fileInputId, statusId, setUrl, addr, subfolder) {
+  const input=document.getElementById(fileInputId);
+  if (!input.files.length) return true;
+  if (!addr) { setUploadStatus(statusId,'err','Selecione o endereço antes de enviar o arquivo.'); return false; }
+  const file=input.files[0];
+  setUploadStatus(statusId,'loading','Preparando pasta no Drive...');
+  const cacheKey=addr+'|'+subfolder;
+  let folderId, folderUrl;
+  try {
+    if (_folderCache[cacheKey]) {
+      ({id:folderId,url:folderUrl}=_folderCache[cacheKey]);
+    } else {
+      const fr=await apiWrite({action:'getOrCreateFolder',addr,subfolder});
+      folderId=fr.id; folderUrl=fr.url;
+      _folderCache[cacheKey]={id:folderId,url:folderUrl};
+    }
+  } catch(e) { setUploadStatus(statusId,'err','Erro ao criar pasta: '+e.message); return false; }
+  setUploadStatus(statusId,'loading','Enviando arquivo...');
+  try {
+    let base64, mimeType, fileName;
+    if (file.type.startsWith('image/')) {
+      const comp=await compressImage(file);
+      base64=comp.base64; mimeType=comp.mimeType; fileName=comp.fileName;
+    } else {
+      const ab=await file.arrayBuffer();
+      const bytes=new Uint8Array(ab);
+      let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+      base64=btoa(bin); mimeType=file.type||'application/octet-stream'; fileName=file.name;
+    }
+    const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
+    if (res.status===401) { doLogout(); return false; }
+    const data=await res.json();
+    if (data.error) throw new Error(data.error);
+    setUrl(data.fileUrl||folderUrl);
+    setUploadStatus(statusId,'ok','Arquivo enviado: '+fileName);
+    return true;
+  } catch(e) { setUploadStatus(statusId,'err','Erro ao enviar: '+e.message); return false; }
+}
+
+// ── TAB 4: REGISTROS — MATERIAIS ──────────────────────────
+async function submitMaterial() {
+  const addr=SEL_ADDR_MAT;
+  const dataCom=document.getElementById('matDataCom').value;
+  const isExtra=document.getElementById('matIsExtra').value;
+  const desc=document.getElementById('matDesc').value.trim();
+  const amount=document.getElementById('matAmount').value.trim();
+  const obs=document.getElementById('matObs').value.trim();
+  const empresa=document.getElementById('matEmpresa').value;
+  if (!addr)    { showRegMsg('mat','err','Endereço é obrigatório.'); return; }
+  if (!dataCom) { showRegMsg('mat','err','Data da Compra é obrigatória.'); return; }
+  if (!desc)    { showRegMsg('mat','err','Descrição dos Itens é obrigatória.'); return; }
+  if (!amount)  { showRegMsg('mat','err','Valor Total Pago é obrigatório.'); return; }
+  if (!empresa) { showRegMsg('mat','err','Selecione a empresa.'); return; }
+  const btn=document.getElementById('matBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
+  try {
+    _matCompURL='';
+    const fileOk=await uploadSingleFile('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
+    if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
+    await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount,comprovante:_matCompURL,obs,empresa});
+    showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
+    ['matDataCom','matDesc','matAmount','matObs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('matIsExtra').value='Não';
+    document.getElementById('matEmpresa').value='';
+    document.getElementById('matAddrInput').value='';
+    document.getElementById('matFileInput').value='';
+    document.getElementById('matFileStatus').innerHTML='';
+    SEL_ADDR_MAT=''; _matCompURL='';
+    await loadData();
+  } catch(e) { showRegMsg('mat','err',e.message); }
+  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; }
+}
+
+// ── TAB 4: REGISTROS — SUBCONTRATOS ───────────────────────
+async function submitSubcontrato() {
+  const addr=SEL_ADDR_SUB;
+  const dataCon=document.getElementById('subDataCon').value;
+  const tipo=document.getElementById('subTipo').value;
+  const desc=document.getElementById('subDesc').value.trim();
+  const empresa=document.getElementById('subEmpresa').value.trim();
+  const contato=document.getElementById('subContato').value.trim();
+  const amount=document.getElementById('subAmount').value.trim();
+  const status=document.getElementById('subStatus').value;
+  if (!addr)    { showRegMsg('sub','err','Endereço é obrigatório.'); return; }
+  if (!tipo)    { showRegMsg('sub','err','Tipo de serviço é obrigatório.'); return; }
+  if (!empresa) { showRegMsg('sub','err','Empresa Subcontratada é obrigatória.'); return; }
+  if (!amount)  { showRegMsg('sub','err','Valor do serviço é obrigatório.'); return; }
+  if (!status)  { showRegMsg('sub','err','Status de pagamento é obrigatório.'); return; }
+  const btn=document.getElementById('subBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
+  try {
+    _subInvURL='';
+    const fileOk=await uploadSingleFile('subFileInput','subFileStatus',u=>_subInvURL=u,addr,'Invoices');
+    if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Subcontrato'; return; }
+    await apiWrite({action:'addSubcontrato',addr,dataCon,tipo,desc,empresa,contato,amount,status,invoice:_subInvURL});
+    showRegMsg('sub','ok','Subcontrato registrado com sucesso!');
+    ['subDataCon','subDesc','subEmpresa','subContato','subAmount'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('subTipo').value='';
+    document.getElementById('subStatus').value='';
+    document.getElementById('subAddrInput').value='';
+    document.getElementById('subFileInput').value='';
+    document.getElementById('subFileStatus').innerHTML='';
+    SEL_ADDR_SUB=''; _subInvURL='';
+    await loadData();
+  } catch(e) { showRegMsg('sub','err',e.message); }
+  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Subcontrato'; }
+}
+
+function showRegMsg(prefix,type,msg) {
+  const el=document.getElementById(prefix+'Msg');
+  el.className='f-alert '+type;
+  el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  el.style.display='flex';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
 }
 
 // ── HELPERS ────────────────────────────────────────────────
