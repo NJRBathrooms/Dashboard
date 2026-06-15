@@ -408,7 +408,7 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Valor Total Pago ($) <span class="f-req">*</span></label>
           <div class="f-input-prefix">
             <span class="prefix">$</span>
-            <input type="number" id="matAmount" class="f-input" step="any" min="0" placeholder="0.00">
+            <input type="text" id="matAmount" class="f-input" inputmode="decimal" placeholder="0.00">
           </div>
         </div>
         <div class="col-12">
@@ -498,7 +498,7 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Valor do serviço ($) <span class="f-req">*</span></label>
           <div class="f-input-prefix">
             <span class="prefix">$</span>
-            <input type="number" id="subAmount" class="f-input" step="any" min="0" placeholder="0.00">
+            <input type="text" id="subAmount" class="f-input" inputmode="decimal" placeholder="0.00">
           </div>
         </div>
         <div class="col-md-4">
@@ -1551,20 +1551,21 @@ async function submitMaterial() {
   const amount=document.getElementById('matAmount').value.trim();
   const obs=document.getElementById('matObs').value.trim();
   const empresa=document.getElementById('matEmpresa').value;
-  if (!addr)    { showRegMsg('mat','err','Endereço é obrigatório.'); return; }
-  if (!dataCom) { showRegMsg('mat','err','Data da Compra é obrigatória.'); return; }
-  if (!desc)    { showRegMsg('mat','err','Descrição dos Itens é obrigatória.'); return; }
-  if (!amount)  { showRegMsg('mat','err','Valor Total Pago é obrigatório.'); return; }
-  if (!empresa) { showRegMsg('mat','err','Selecione a empresa.'); return; }
+  const amountNum = parseFloat(amount.replace(',','.'));
+  if (!addr)          { showRegMsg('mat','err','Endereço é obrigatório.'); return; }
+  if (!dataCom)       { showRegMsg('mat','err','Data da Compra é obrigatória.'); return; }
+  if (!desc)          { showRegMsg('mat','err','Descrição dos Itens é obrigatória.'); return; }
+  if (!amount)        { showRegMsg('mat','err','Valor Total Pago é obrigatório.'); return; }
+  if (isNaN(amountNum)||amountNum<=0) { showRegMsg('mat','err','Informe um valor numérico válido (ex: 1500 ou 1500.00).'); return; }
+  if (!empresa)       { showRegMsg('mat','err','Selecione a empresa.'); return; }
   const btn=document.getElementById('matBtn');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _matCompURL='';
     const fileOk=await uploadSingleFile('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
-    const matRes = await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount,comprovante:_matCompURL,obs,empresa});
-    console.log('[NJR DEBUG addMaterial]', JSON.stringify(matRes._debug));
-    showRegMsg('mat','ok','Compra de materiais registrada com sucesso! (debug no console F12)');
+    await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount:String(amountNum),comprovante:_matCompURL,obs,empresa});
+    showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
     ['matDataCom','matDesc','matAmount','matObs'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('matIsExtra').value='Não';
     document.getElementById('matEmpresa').value='';
@@ -1587,18 +1588,20 @@ async function submitSubcontrato() {
   const contato=document.getElementById('subContato').value.trim();
   const amount=document.getElementById('subAmount').value.trim();
   const status=document.getElementById('subStatus').value;
-  if (!addr)    { showRegMsg('sub','err','Endereço é obrigatório.'); return; }
-  if (!tipo)    { showRegMsg('sub','err','Tipo de serviço é obrigatório.'); return; }
-  if (!empresa) { showRegMsg('sub','err','Empresa Subcontratada é obrigatória.'); return; }
-  if (!amount)  { showRegMsg('sub','err','Valor do serviço é obrigatório.'); return; }
-  if (!status)  { showRegMsg('sub','err','Status de pagamento é obrigatório.'); return; }
+  const subAmountNum = parseFloat(amount.replace(',','.'));
+  if (!addr)                  { showRegMsg('sub','err','Endereço é obrigatório.'); return; }
+  if (!tipo)                  { showRegMsg('sub','err','Tipo de serviço é obrigatório.'); return; }
+  if (!empresa)               { showRegMsg('sub','err','Empresa Subcontratada é obrigatória.'); return; }
+  if (!amount)                { showRegMsg('sub','err','Valor do serviço é obrigatório.'); return; }
+  if (isNaN(subAmountNum)||subAmountNum<=0) { showRegMsg('sub','err','Informe um valor numérico válido (ex: 1500 ou 1500.00).'); return; }
+  if (!status)                { showRegMsg('sub','err','Status de pagamento é obrigatório.'); return; }
   const btn=document.getElementById('subBtn');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _subInvURL='';
     const fileOk=await uploadSingleFile('subFileInput','subFileStatus',u=>_subInvURL=u,addr,'Invoices');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Subcontrato'; return; }
-    await apiWrite({action:'addSubcontrato',addr,dataCon,tipo,desc,empresa,contato,amount,status,invoice:_subInvURL});
+    await apiWrite({action:'addSubcontrato',addr,dataCon,tipo,desc,empresa,contato,amount:String(subAmountNum),status,invoice:_subInvURL});
     showRegMsg('sub','ok','Subcontrato registrado com sucesso!');
     ['subDataCon','subDesc','subEmpresa','subContato','subAmount'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('subTipo').value='';
