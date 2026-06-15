@@ -1562,8 +1562,9 @@ async function submitMaterial() {
     _matCompURL='';
     const fileOk=await uploadSingleFile('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
-    await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount,comprovante:_matCompURL,obs,empresa});
-    showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
+    const matRes = await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount,comprovante:_matCompURL,obs,empresa});
+    console.log('[NJR DEBUG addMaterial]', JSON.stringify(matRes._debug));
+    showRegMsg('mat','ok','Compra de materiais registrada com sucesso! (debug no console F12)');
     ['matDataCom','matDesc','matAmount','matObs'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('matIsExtra').value='Não';
     document.getElementById('matEmpresa').value='';
