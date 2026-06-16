@@ -713,7 +713,17 @@ function errBox(msg) {
 }
 
 // TABS
+let CURRENT_TAB = 1;
 function showTab(n) {
+  if (CURRENT_TAB===1 && n!==1) {
+    // Leaving "Controle de Obras" — reset search back to default
+    SEL_ADDR='';
+    const addrInputEl=document.getElementById('addrInput');
+    if (addrInputEl) addrInputEl.value='';
+    ['donut','budget','bar'].forEach(k=>{ if(T1CH[k]){T1CH[k].destroy();T1CH[k]=null;} });
+    T1_NEEDS_CHARTS=false;
+    renderTab1();
+  }
   [1,2,3,4,5].forEach(i=>{
     document.getElementById('t'+i+'page').style.display=n===i?'block':'none';
     document.getElementById('t'+i+'btn').classList.toggle('active',n===i);
@@ -723,6 +733,7 @@ function showTab(n) {
     try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
   }
   if (n===4) fillAddressesReg();
+  CURRENT_TAB = n;
 }
 
 // ── AUTOCOMPLETE TAB 1 ─────────────────────────────────────
