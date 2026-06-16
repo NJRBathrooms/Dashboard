@@ -1675,35 +1675,51 @@ async function uploadFiles(fileInputId, statusId, setUrls, addr, subfolder) {
     }
   } catch(e) { setUploadStatus(statusId,'err','Erro ao criar pasta: '+e.message); return false; }
 
-  const urls=[];
-  for (let i=0; i<files.length; i++) {
-    const file=files[i];
-    const pct=Math.round(i/files.length*100);
-    setUploadStatus(statusId,'loading',`Enviando arquivo ${i+1} de ${files.length}...`,pct);
-    try {
-      let base64, mimeType, fileName;
-      if (file.type.startsWith('image/')) {
-        const comp=await compressImage(file);
-        base64=comp.base64; mimeType=comp.mimeType; fileName=comp.fileName;
-      } else {
-        const ab=await file.arrayBuffer();
-        const bytes=new Uint8Array(ab);
-        let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
-        base64=btoa(bin); mimeType=file.type||'application/octet-stream'; fileName=file.name;
-      }
-      const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
-      if (res.status===401) { doLogout(); return false; }
-      const text=await res.text();
-      let data;
-      try { data=JSON.parse(text); }
-      catch(e) { throw new Error(`Servidor demorou para responder (HTTP ${res.status}). Tente enviar novamente ou uma foto por vez.`); }
-      if (data.error) throw new Error(data.error);
-      urls.push(data.fileUrl||folderUrl);
-    } catch(e) { setUploadStatus(statusId,'err',`Erro ao enviar "${file.name}": ${e.message}`); return false; }
+  // Upload all files in parallel instead of one-at-a-time — cuts total wait
+  // time down to the slowest single upload instead of the sum of all of them.
+  const total=files.length;
+  let doneCount=0, loggedOut=false;
+  setUploadStatus(statusId,'loading',`Enviando ${total} arquivo${total!==1?'s':''}...`,0);
+
+  const uploadOne = async (file) => {
+    let base64, mimeType, fileName;
+    if (file.type.startsWith('image/')) {
+      const comp=await compressImage(file);
+      base64=comp.base64; mimeType=comp.mimeType; fileName=comp.fileName;
+    } else {
+      const ab=await file.arrayBuffer();
+      const bytes=new Uint8Array(ab);
+      let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+      base64=btoa(bin); mimeType=file.type||'application/octet-stream'; fileName=file.name;
+    }
+    const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
+    if (res.status===401) { loggedOut=true; throw new Error('Sessão expirada.'); }
+    const text=await res.text();
+    let data;
+    try { data=JSON.parse(text); }
+    catch(e) { throw new Error(`Servidor demorou para responder (HTTP ${res.status}).`); }
+    if (data.error) throw new Error(data.error);
+    doneCount++;
+    setUploadStatus(statusId,'loading',`Enviando arquivos... (${doneCount} de ${total} concluído${total!==1?'s':''})`,Math.round(doneCount/total*100));
+    return data.fileUrl||folderUrl;
+  };
+
+  const results = await Promise.allSettled(files.map(uploadOne));
+  if (loggedOut) { doLogout(); return false; }
+
+  const urls=[], failed=[];
+  results.forEach((r,i)=>{
+    if (r.status==='fulfilled') urls.push(r.value);
+    else failed.push(`"${files[i].name}": ${r.reason.message}`);
+  });
+
+  if (failed.length) {
+    setUploadStatus(statusId,'err',`${failed.length} de ${total} falharam — ${failed.join('; ')}`);
+    return false;
   }
-  setUrls(urls.join(', '));
   const plural=urls.length!==1;
+  setUrls(urls.join(', '));
   setUploadStatus(statusId,'ok',`${urls.length} arquivo${plural?'s':''} enviado${plural?'s':''} com sucesso!`);
   return true;
 }
