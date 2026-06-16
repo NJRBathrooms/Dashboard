@@ -40,35 +40,33 @@ html { overflow-x:hidden; }
 
 /* MAIN APP */
 #mainApp { display:none; }
-.app-header { background:var(--navy); height:64px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:10px; }
-.brand { display:flex; align-items:center; gap:12px; text-decoration:none; min-width:0; flex-shrink:1; }
-.brand-icon { width:38px; height:38px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:4px; }
+.app-header { background:var(--navy); height:84px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:10px; }
+.brand { display:flex; align-items:center; gap:14px; text-decoration:none; min-width:0; flex-shrink:1; }
+.brand-icon { width:54px; height:54px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:5px; }
 .brand-icon img { width:100%; height:100%; object-fit:contain; }
 .brand-text { min-width:0; overflow:hidden; }
-.brand-name { color:#fff; font-size:18px; font-weight:800; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.brand-sub  { color:rgba(255,255,255,.45); font-size:11px; display:block; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-name { color:#fff; font-size:19px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-sub  { color:rgba(255,255,255,.45); font-size:12px; display:block; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .header-right { display:flex; align-items:center; gap:14px; flex-shrink:0; }
-.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; min-width:0; flex-shrink:1; box-sizing:border-box; }
 .update-badge.ok  { color:#2ecc71; border-color:rgba(46,204,113,.3); background:rgba(46,204,113,.08); }
 .update-badge.err { color:#e74c3c; border-color:rgba(231,76,60,.3); }
 .logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:7px 16px; color:rgba(255,255,255,.8); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; flex-shrink:0; white-space:nowrap; }
 .logout-btn:hover { background:rgba(255,255,255,.15); }
 
 @media (max-width:480px) {
-  .app-header { padding:0 12px; gap:6px; }
-  .brand { gap:8px; }
-  .brand-icon { width:30px; height:30px; border-radius:8px; padding:3px; }
-  .brand-name { font-size:14px; }
-  .brand-sub { font-size:9px; }
-  .header-right { gap:6px; }
-  .update-badge { padding:4px 8px; font-size:10px; max-width:96px; gap:4px; }
-  .logout-btn { padding:6px 10px; font-size:11px; }
+  .app-header { height:76px; padding:0 14px; gap:8px; }
+  .brand { gap:10px; }
+  .brand-icon { width:46px; height:46px; border-radius:10px; padding:4px; }
+  .brand-name { font-size:16px; }
+  .brand-sub { font-size:10px; }
+  .header-right { gap:8px; }
+  .update-badge { padding:5px 10px; font-size:11px; max-width:90px; gap:5px; }
+  .logout-btn { padding:7px 12px; font-size:12px; }
   .logout-btn .btn-label { display:none; }
 }
-@media (max-width:360px) {
+@media (max-width:340px) {
   .brand-sub { display:none; }
-  .update-badge { max-width:34px; padding:5px; justify-content:center; }
-  .update-badge .badge-label { display:none; }
 }
 
 /* TABS */
@@ -84,8 +82,10 @@ html { overflow-x:hidden; }
 .toolbar { background:#fff; border-radius:16px; padding:18px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
 .toolbar-icon { color:var(--orange); font-size:18px; flex-shrink:0; }
 .addr-wrap { position:relative; flex:1; min-width:220px; }
-.addr-input { width:100%; border:2px solid #dde7f1; border-radius:10px; padding:10px 14px; font-size:14px; font-weight:500; color:var(--navy); background:#fff; transition:border-color .2s; }
+.addr-input { width:100%; border:2px solid #dde7f1; border-radius:10px; padding:10px 36px 10px 14px; font-size:14px; font-weight:500; color:var(--navy); background:#fff; transition:border-color .2s; }
 .addr-input:focus { outline:none; border-color:var(--orange); }
+.addr-clear-btn { position:absolute; right:8px; top:50%; transform:translateY(-50%); width:24px; height:24px; border:none; background:#dde7f1; color:#5a7088; border-radius:50%; font-size:14px; line-height:1; cursor:pointer; display:none; align-items:center; justify-content:center; padding:0; z-index:2; }
+.addr-clear-btn:hover { background:#c8d6e5; color:#1a2b3c; }
 .addr-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:2px solid var(--orange); border-radius:12px; max-height:300px; overflow-y:auto; z-index:500; box-shadow:0 8px 28px rgba(0,0,0,.14); }
 .addr-dropdown.open { display:block; }
 .addr-opt { padding:10px 14px; font-size:13.5px; cursor:pointer; color:var(--navy); display:flex; align-items:center; gap:8px; transition:background .15s; }
@@ -302,7 +302,8 @@ tbody tr:hover td { background:#fafbfe; }
       <i class="fas fa-map-marker-alt toolbar-icon"></i>
       <div class="addr-wrap">
         <input type="text" id="addrInput" class="addr-input" placeholder="Digite para filtrar endereços..."
-               oninput="filterAddrs(this.value)" onfocus="filterAddrs(this.value)" onblur="closeAddrDD()" autocomplete="off">
+               oninput="filterAddrs(this.value); toggleClearBtn('clearAddr1',this.value)" onfocus="filterAddrs(this.value)" onblur="closeAddrDD()" autocomplete="off">
+        <button type="button" id="clearAddr1" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearAddr1()"><i class="fas fa-times"></i></button>
         <div id="addrDropdown" class="addr-dropdown"></div>
       </div>
       <button class="refresh-btn" onclick="loadData()"><i class="fas fa-sync-alt"></i> Atualizar</button>
@@ -416,8 +417,9 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
           <div style="position:relative">
             <input type="text" id="matAddrInput" class="f-input" placeholder="Pesquisar obra pelo endereço..."
-                   oninput="filterAddrsMat(this.value)" onfocus="filterAddrsMat(this.value)" onblur="closeAddrDDMat()" autocomplete="off" style="padding-left:40px">
+                   oninput="filterAddrsMat(this.value); toggleClearBtn('clearAddrMat',this.value)" onfocus="filterAddrsMat(this.value)" onblur="closeAddrDDMat()" autocomplete="off" style="padding-left:40px;padding-right:36px">
             <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+            <button type="button" id="clearAddrMat" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearAddrMat()"><i class="fas fa-times"></i></button>
             <div id="matAddrDropdown" class="addr-dropdown"></div>
           </div>
         </div>
@@ -488,8 +490,9 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
           <div style="position:relative">
             <input type="text" id="subAddrInput" class="f-input" placeholder="Pesquisar obra pelo endereço..."
-                   oninput="filterAddrsSub(this.value)" onfocus="filterAddrsSub(this.value)" onblur="closeAddrDDSub()" autocomplete="off" style="padding-left:40px">
+                   oninput="filterAddrsSub(this.value); toggleClearBtn('clearAddrSub',this.value)" onfocus="filterAddrsSub(this.value)" onblur="closeAddrDDSub()" autocomplete="off" style="padding-left:40px;padding-right:36px">
             <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+            <button type="button" id="clearAddrSub" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearAddrSub()"><i class="fas fa-times"></i></button>
             <div id="subAddrDropdown" class="addr-dropdown"></div>
           </div>
         </div>
@@ -576,8 +579,9 @@ tbody tr:hover td { background:#fafbfe; }
       <p style="font-size:13px;color:#7b8ea4;margin-bottom:16px">Selecione qualquer obra pelo endereço para registrar o encerramento.</p>
       <div style="position:relative;margin-bottom:16px">
         <input type="text" id="addrInputT4" class="f-input" placeholder="Pesquisar obra pelo endereço..."
-               oninput="filterAddrsT4(this.value)" onfocus="filterAddrsT4(this.value)" onblur="closeAddrDDT4()" autocomplete="off" style="padding-left:40px">
+               oninput="filterAddrsT4(this.value); toggleClearBtn('clearAddrT4',this.value)" onfocus="filterAddrsT4(this.value)" onblur="closeAddrDDT4()" autocomplete="off" style="padding-left:40px;padding-right:36px">
         <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+        <button type="button" id="clearAddrT4" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearAddrT4()"><i class="fas fa-times"></i></button>
         <div id="addrDropdownT4" class="addr-dropdown"></div>
       </div>
       <div id="t4CloseArea">
@@ -595,8 +599,9 @@ tbody tr:hover td { background:#fafbfe; }
       <div style="padding:20px">
         <div style="position:relative;margin-bottom:16px">
           <input type="text" id="addrInputFin" class="f-input" placeholder="Pesquisar obra finalizada..."
-                 oninput="filterAddrsF(this.value)" onfocus="filterAddrsF(this.value)" onblur="closeAddrDDF()" autocomplete="off" style="padding-left:40px">
+                 oninput="filterAddrsF(this.value); toggleClearBtn('clearAddrFin',this.value)" onfocus="filterAddrsF(this.value)" onblur="closeAddrDDF()" autocomplete="off" style="padding-left:40px;padding-right:36px">
           <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+          <button type="button" id="clearAddrFin" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearAddrFin()"><i class="fas fa-times"></i></button>
           <div id="addrDropdownFin" class="addr-dropdown"></div>
         </div>
         <div id="t4DetailBody">
@@ -715,20 +720,24 @@ async function loadData() {
     fillAddresses();
     renderTab1();
     renderTab2();
-    setBadge('ok','Atualizado '+new Date().toLocaleTimeString('pt-BR'));
+    setBadge('ok', updTimeLabel());
   } catch(e) {
     if (e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed') || e.message.includes('conexão'))) {
       setBadge('err','Erro ao carregar');
       document.getElementById('t1body').innerHTML=errBox(e.message);
       document.getElementById('t2body').innerHTML=errBox(e.message);
     } else {
-      setBadge('ok','Atualizado '+new Date().toLocaleTimeString('pt-BR'));
+      setBadge('ok', updTimeLabel());
       T1_NEEDS_CHARTS = true;
       console.error('Render error (non-fatal):', e);
     }
   }
 }
 
+function updTimeLabel() {
+  const t = new Date().toLocaleTimeString('pt-BR');
+  return window.innerWidth <= 480 ? t : ('Atualizado ' + t);
+}
 function setBadge(state,msg) {
   const el=document.getElementById('updateBadge');
   el.className='update-badge'+(state==='ok'?' ok':state==='err'?' err':'');
@@ -788,8 +797,16 @@ function renderAddrOpts(list) {
     ?list.map(a=>`<div class="addr-opt${a===SEL_ADDR?' active':''}" onmousedown="pickAddr('${esc(a)}')" ><i class="fas fa-map-marker-alt" style="font-size:11px;opacity:.6"></i>${a}</div>`).join('')
     :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
 }
-function pickAddr(a) { SEL_ADDR=a; document.getElementById('addrInput').value=a; document.getElementById('addrDropdown').classList.remove('open'); renderTab1(); }
+function pickAddr(a) { SEL_ADDR=a; document.getElementById('addrInput').value=a; toggleClearBtn('clearAddr1',a); document.getElementById('addrDropdown').classList.remove('open'); renderTab1(); }
 function closeAddrDD() { setTimeout(()=>document.getElementById('addrDropdown').classList.remove('open'),160); }
+function toggleClearBtn(btnId,val) { const b=document.getElementById(btnId); if(b) b.style.display = val ? 'flex' : 'none'; }
+function clearAddr1() {
+  document.getElementById('addrInput').value='';
+  toggleClearBtn('clearAddr1','');
+  SEL_ADDR='';
+  document.getElementById('addrDropdown').classList.remove('open');
+  renderTab1();
+}
 
 // ── AUTOCOMPLETE TAB 4 CLOSE ───────────────────────────────
 let SEL_ADDR_T4='';
@@ -812,8 +829,15 @@ function filterAddrsT4(q) {
     :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
   dd.classList.add('open');
 }
-function pickAddrT4(a) { SEL_ADDR_T4=a; document.getElementById('addrInputT4').value=a; document.getElementById('addrDropdownT4').classList.remove('open'); renderCloseForm(); }
+function pickAddrT4(a) { SEL_ADDR_T4=a; document.getElementById('addrInputT4').value=a; toggleClearBtn('clearAddrT4',a); document.getElementById('addrDropdownT4').classList.remove('open'); renderCloseForm(); }
 function closeAddrDDT4() { setTimeout(()=>document.getElementById('addrDropdownT4').classList.remove('open'),160); }
+function clearAddrT4() {
+  document.getElementById('addrInputT4').value='';
+  toggleClearBtn('clearAddrT4','');
+  SEL_ADDR_T4='';
+  document.getElementById('addrDropdownT4').classList.remove('open');
+  renderCloseForm();
+}
 
 // ── AUTOCOMPLETE TAB 4 FINALIZED ──────────────────────────
 let SEL_FIN_ADDR='';
@@ -831,8 +855,15 @@ function filterAddrsF(q) {
     :'<div class="addr-opt-empty">Nenhuma obra finalizada encontrada</div>';
   dd.classList.add('open');
 }
-function pickAddrF(a) { SEL_FIN_ADDR=a; document.getElementById('addrInputFin').value=a; document.getElementById('addrDropdownFin').classList.remove('open'); renderFinObraDetail(); }
+function pickAddrF(a) { SEL_FIN_ADDR=a; document.getElementById('addrInputFin').value=a; toggleClearBtn('clearAddrFin',a); document.getElementById('addrDropdownFin').classList.remove('open'); renderFinObraDetail(); }
 function closeAddrDDF() { setTimeout(()=>document.getElementById('addrDropdownFin').classList.remove('open'),160); }
+function clearAddrFin() {
+  document.getElementById('addrInputFin').value='';
+  toggleClearBtn('clearAddrFin','');
+  SEL_FIN_ADDR='';
+  document.getElementById('addrDropdownFin').classList.remove('open');
+  renderFinObraDetail();
+}
 
 // PROCESSING
 function parseAmt(v) {
@@ -1527,7 +1558,7 @@ async function submitCloseObra() {
   try {
     await apiWrite({action:'closeObra',addr:SEL_ADDR_T4,dtFinal,fotosAfter});
     showT4Msg('ok','Obra encerrada com sucesso!');
-    SEL_ADDR_T4=''; document.getElementById('addrInputT4').value='';
+    SEL_ADDR_T4=''; document.getElementById('addrInputT4').value=''; toggleClearBtn('clearAddrT4','');
     await loadData(); renderCloseForm();
   } catch(e) {
     showT4Msg('err',e.message);
@@ -1576,8 +1607,14 @@ function filterAddrsMat(q) {
     :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
   dd.classList.add('open');
 }
-function pickAddrMat(a) { SEL_ADDR_MAT=a; document.getElementById('matAddrInput').value=a; document.getElementById('matAddrDropdown').classList.remove('open'); }
+function pickAddrMat(a) { SEL_ADDR_MAT=a; document.getElementById('matAddrInput').value=a; toggleClearBtn('clearAddrMat',a); document.getElementById('matAddrDropdown').classList.remove('open'); }
 function closeAddrDDMat() { setTimeout(()=>document.getElementById('matAddrDropdown').classList.remove('open'),160); }
+function clearAddrMat() {
+  document.getElementById('matAddrInput').value='';
+  toggleClearBtn('clearAddrMat','');
+  SEL_ADDR_MAT='';
+  document.getElementById('matAddrDropdown').classList.remove('open');
+}
 
 function filterAddrsSub(q) {
   const lq=(q||'').toLowerCase();
@@ -1588,8 +1625,14 @@ function filterAddrsSub(q) {
     :'<div class="addr-opt-empty">Nenhum endereço encontrado</div>';
   dd.classList.add('open');
 }
-function pickAddrSub(a) { SEL_ADDR_SUB=a; document.getElementById('subAddrInput').value=a; document.getElementById('subAddrDropdown').classList.remove('open'); }
+function pickAddrSub(a) { SEL_ADDR_SUB=a; document.getElementById('subAddrInput').value=a; toggleClearBtn('clearAddrSub',a); document.getElementById('subAddrDropdown').classList.remove('open'); }
 function closeAddrDDSub() { setTimeout(()=>document.getElementById('subAddrDropdown').classList.remove('open'),160); }
+function clearAddrSub() {
+  document.getElementById('subAddrInput').value='';
+  toggleClearBtn('clearAddrSub','');
+  SEL_ADDR_SUB='';
+  document.getElementById('subAddrDropdown').classList.remove('open');
+}
 
 // ── FILE SELECTED PREVIEW ──────────────────────────────────
 function showSelectedFile(input, statusId) {
@@ -1671,6 +1714,7 @@ async function submitMaterial() {
     document.getElementById('matIsExtra').value='Não';
     document.getElementById('matEmpresa').value='';
     document.getElementById('matAddrInput').value='';
+    toggleClearBtn('clearAddrMat','');
     document.getElementById('matFileInput').value='';
     document.getElementById('matFileStatus').innerHTML='';
     SEL_ADDR_MAT=''; _matCompURL='';
@@ -1708,6 +1752,7 @@ async function submitSubcontrato() {
     document.getElementById('subTipo').value='';
     document.getElementById('subStatus').value='';
     document.getElementById('subAddrInput').value='';
+    toggleClearBtn('clearAddrSub','');
     document.getElementById('subFileInput').value='';
     document.getElementById('subFileStatus').innerHTML='';
     SEL_ADDR_SUB=''; _subInvURL='';
@@ -1756,7 +1801,7 @@ function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
     fillAddresses();
     renderTab1();
     renderTab2();
-    setBadge('ok', 'Atualizado ' + new Date().toLocaleTimeString('pt-BR'));
+    setBadge('ok', updTimeLabel());
   } catch(e) {
     // Stay on login screen silently
   }
