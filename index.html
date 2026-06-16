@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>NJR Bathrooms | Dashboard</title>
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" href="/icon-192.png">
@@ -18,13 +18,15 @@
 <style>
 :root { --navy:#0d2137; --navy2:#1a3a5c; --orange:#e8820c; --orng2:#f59c2a; --bg:#f0f4f8; }
 * { box-sizing:border-box; }
-body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:#1a2b3c; margin:0; }
+body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:#1a2b3c; margin:0; overflow-x:hidden; }
+html { overflow-x:hidden; }
 
 /* LOGIN */
 #loginScreen { min-height:100vh; background:linear-gradient(135deg,#061522 0%,var(--navy2) 50%,#061522 100%); display:flex; align-items:center; justify-content:center; padding:24px; }
 .login-wrap  { width:100%; max-width:420px; }
 .login-card  { background:rgba(255,255,255,.07); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:48px 40px; text-align:center; }
-.login-icon  { width:80px; height:80px; background:var(--orange); border-radius:20px; display:inline-flex; align-items:center; justify-content:center; font-size:34px; color:#fff; margin-bottom:24px; box-shadow:0 8px 32px rgba(232,130,12,.45); }
+.login-icon  { width:80px; height:80px; background:#fff; border-radius:20px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:24px; box-shadow:0 8px 32px rgba(0,0,0,.35); overflow:hidden; padding:10px; }
+.login-icon img { width:100%; height:100%; object-fit:contain; }
 .login-card h1 { color:#fff; font-size:26px; font-weight:800; margin:0 0 6px; }
 .login-card p  { color:rgba(255,255,255,.5); font-size:14px; margin:0 0 36px; }
 .login-input   { width:100%; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:14px 18px; font-size:15px; color:#fff; transition:border-color .25s; margin-bottom:12px; }
@@ -38,17 +40,36 @@ body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; backg
 
 /* MAIN APP */
 #mainApp { display:none; }
-.app-header { background:var(--navy); height:64px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; }
-.brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
-.brand-icon { width:38px; height:38px; background:var(--orange); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#fff; flex-shrink:0; }
-.brand-name { color:#fff; font-size:18px; font-weight:800; line-height:1; }
-.brand-sub  { color:rgba(255,255,255,.45); font-size:11px; display:block; margin-top:2px; }
-.header-right { display:flex; align-items:center; gap:14px; }
-.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:6px; }
+.app-header { background:var(--navy); height:64px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:10px; }
+.brand { display:flex; align-items:center; gap:12px; text-decoration:none; min-width:0; flex-shrink:1; }
+.brand-icon { width:38px; height:38px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:4px; }
+.brand-icon img { width:100%; height:100%; object-fit:contain; }
+.brand-text { min-width:0; overflow:hidden; }
+.brand-name { color:#fff; font-size:18px; font-weight:800; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-sub  { color:rgba(255,255,255,.45); font-size:11px; display:block; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.header-right { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
 .update-badge.ok  { color:#2ecc71; border-color:rgba(46,204,113,.3); background:rgba(46,204,113,.08); }
 .update-badge.err { color:#e74c3c; border-color:rgba(231,76,60,.3); }
-.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:7px 16px; color:rgba(255,255,255,.8); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:7px 16px; color:rgba(255,255,255,.8); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; flex-shrink:0; white-space:nowrap; }
 .logout-btn:hover { background:rgba(255,255,255,.15); }
+
+@media (max-width:480px) {
+  .app-header { padding:0 12px; gap:6px; }
+  .brand { gap:8px; }
+  .brand-icon { width:30px; height:30px; border-radius:8px; padding:3px; }
+  .brand-name { font-size:14px; }
+  .brand-sub { font-size:9px; }
+  .header-right { gap:6px; }
+  .update-badge { padding:4px 8px; font-size:10px; max-width:96px; gap:4px; }
+  .logout-btn { padding:6px 10px; font-size:11px; }
+  .logout-btn .btn-label { display:none; }
+}
+@media (max-width:360px) {
+  .brand-sub { display:none; }
+  .update-badge { max-width:34px; padding:5px; justify-content:center; }
+  .update-badge .badge-label { display:none; }
+}
 
 /* TABS */
 .tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; }
@@ -238,7 +259,7 @@ tbody tr:hover td { background:#fafbfe; }
 <div id="loginScreen">
   <div class="login-wrap">
     <div class="login-card">
-      <div class="login-icon"><i class="fas fa-shower"></i></div>
+      <div class="login-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
       <h1>NJR Bathrooms</h1>
       <p>Dashboard de Controle de Obras</p>
       <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="current-password">
@@ -253,17 +274,17 @@ tbody tr:hover td { background:#fafbfe; }
 <div id="mainApp">
   <div class="app-header">
     <div class="brand">
-      <div class="brand-icon"><i class="fas fa-shower"></i></div>
-      <div>
+      <div class="brand-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
+      <div class="brand-text">
         <div class="brand-name">NJR Bathrooms</div>
         <span class="brand-sub">Dashboard de Obras</span>
       </div>
     </div>
     <div class="header-right">
       <div class="update-badge" id="updateBadge">
-        <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Carregando...
+        <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>
       </div>
-      <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i>Sair</button>
+      <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i><span class="btn-label">Sair</span></button>
     </div>
   </div>
 
@@ -711,8 +732,8 @@ async function loadData() {
 function setBadge(state,msg) {
   const el=document.getElementById('updateBadge');
   el.className='update-badge'+(state==='ok'?' ok':state==='err'?' err':'');
-  if (state==='loading') { el.innerHTML='<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Carregando...'; }
-  else { el.innerHTML=`<i class="fas ${state==='ok'?'fa-check-circle':'fa-exclamation-triangle'}"></i> ${msg}`; }
+  if (state==='loading') { el.innerHTML='<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>'; }
+  else { el.innerHTML=`<i class="fas ${state==='ok'?'fa-check-circle':'fa-exclamation-triangle'}"></i> <span class="badge-label">${msg}</span>`; }
 }
 function errBox(msg) {
   return `<div class="empty-box"><i class="fas fa-exclamation-triangle" style="color:#e74c3c;opacity:1"></i>
