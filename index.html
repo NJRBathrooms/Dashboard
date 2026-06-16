@@ -70,7 +70,8 @@ html { overflow-x:hidden; }
 }
 
 /* TABS */
-.tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; position:relative; }
+.tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; position:relative; scroll-behavior:smooth; }
+.tab-nav.no-smooth-scroll { scroll-behavior:auto; }
 .tab-btn { background:none; border:none; padding:16px 18px; font-size:13px; font-weight:600; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; gap:8px; transition:color .2s; white-space:nowrap; flex-shrink:0; }
 .tab-btn.active { color:var(--navy); }
 .tab-indicator { position:absolute; bottom:0; left:0; width:0; height:3px; background:var(--orange); border-radius:2px 2px 0 0; pointer-events:none; transition:left .22s ease, width .22s ease; }
@@ -764,12 +765,25 @@ function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 function activateTab(n) {
   [1,2,3,4,5].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
 }
+// Where the tab-nav should scroll to so button `n` is centered (clamped to valid range)
+function navScrollLeftFor(n) {
+  const nav=document.querySelector('.tab-nav'), btn=getBtnEl(n);
+  if (!nav || !btn) return 0;
+  const target = btn.offsetLeft - (nav.clientWidth - btn.offsetWidth)/2;
+  return Math.max(0, Math.min(target, nav.scrollWidth - nav.clientWidth));
+}
+// Moves the orange indicator under button `n` AND scrolls the tab-nav so
+// it's visible/centered — this is what makes the header "follow" the screen.
 function positionTabIndicator(n, animate) {
-  const btn=getBtnEl(n), ind=document.getElementById('tabIndicator');
+  const btn=getBtnEl(n), ind=document.getElementById('tabIndicator'), nav=document.querySelector('.tab-nav');
   if (!btn || !ind) return;
   ind.style.transition = animate ? 'left .22s ease, width .22s ease' : 'none';
   ind.style.left = btn.offsetLeft+'px';
   ind.style.width = btn.offsetWidth+'px';
+  if (nav) {
+    nav.classList.toggle('no-smooth-scroll', !animate);
+    nav.scrollLeft = navScrollLeftFor(n);
+  }
 }
 
 // Side-effects that must run once tab `n` is fully active (shared by
@@ -838,11 +852,12 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
   let startX=0, startY=0, startTarget=null;
   let phase='idle'; // idle | pending | dragging | edge
   let dir=0, curN=0, targetN=0, viewW=0;
-  let curEl=null, targetEl=null, viewport=null;
-  let curBtnRect=null, targetBtnRect=null;
+  let curEl=null, targetEl=null, viewport=null, navEl=null;
+  let curBtnRect=null, targetBtnRect=null, curNavScroll=0, targetNavScroll=0;
 
   function beginDrag() {
     viewport = document.getElementById('pageViewport');
+    navEl = document.querySelector('.tab-nav');
     curN = CURRENT_TAB;
     targetN = curN+dir;
     if (targetN<1 || targetN>5) { phase='edge'; return; }
@@ -851,6 +866,8 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
     curBtnRect={left:curBtn.offsetLeft,width:curBtn.offsetWidth};
     targetBtnRect={left:targetBtn.offsetLeft,width:targetBtn.offsetWidth};
+    curNavScroll=navScrollLeftFor(curN); targetNavScroll=navScrollLeftFor(targetN);
+    if (navEl) navEl.classList.add('no-smooth-scroll');
     viewport.style.height = curEl.offsetHeight+'px';
     targetEl.style.position='absolute'; targetEl.style.top='0'; targetEl.style.left='0'; targetEl.style.width='100%';
     targetEl.style.transition='none'; curEl.style.transition='none';
@@ -867,6 +884,7 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     ind.style.transition='none';
     ind.style.left=(curBtnRect.left + (targetBtnRect.left-curBtnRect.left)*progress)+'px';
     ind.style.width=(curBtnRect.width + (targetBtnRect.width-curBtnRect.width)*progress)+'px';
+    if (navEl) navEl.scrollLeft = curNavScroll + (targetNavScroll-curNavScroll)*progress;
   }
 
   function endDrag(dx) {
