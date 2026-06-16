@@ -1694,7 +1694,10 @@ async function uploadFiles(fileInputId, statusId, setUrls, addr, subfolder) {
       const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
       if (res.status===401) { doLogout(); return false; }
-      const data=await res.json();
+      const text=await res.text();
+      let data;
+      try { data=JSON.parse(text); }
+      catch(e) { throw new Error(`Servidor demorou para responder (HTTP ${res.status}). Tente enviar novamente ou uma foto por vez.`); }
       if (data.error) throw new Error(data.error);
       urls.push(data.fileUrl||folderUrl);
     } catch(e) { setUploadStatus(statusId,'err',`Erro ao enviar "${file.name}": ${e.message}`); return false; }
