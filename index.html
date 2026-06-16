@@ -70,15 +70,15 @@ html { overflow-x:hidden; }
 }
 
 /* TABS */
-.tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; }
-.tab-btn { background:none; border:none; border-bottom:3px solid transparent; padding:16px 18px; font-size:13px; font-weight:600; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; gap:8px; transition:color .2s,border-color .2s; white-space:nowrap; flex-shrink:0; }
-.tab-btn.active { color:var(--navy); border-bottom-color:var(--orange); }
+.tab-nav { background:#fff; border-bottom:1px solid #e4ecf4; padding:0 28px; display:flex; gap:4px; overflow-x:auto; position:relative; }
+.tab-btn { background:none; border:none; padding:16px 18px; font-size:13px; font-weight:600; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; gap:8px; transition:color .2s; white-space:nowrap; flex-shrink:0; }
+.tab-btn.active { color:var(--navy); }
+.tab-indicator { position:absolute; bottom:0; left:0; width:0; height:3px; background:var(--orange); border-radius:2px 2px 0 0; pointer-events:none; transition:left .22s ease, width .22s ease; }
+#pageViewport { position:relative; overflow:hidden; }
 .tab-btn:hover:not(.active) { color:var(--navy2); }
 
 /* PAGE */
-.page { padding:24px; max-width:1440px; margin:0 auto; transition:opacity .18s ease, transform .18s ease; }
-.page.page-shift-l { opacity:0; transform:translateX(-26px); }
-.page.page-shift-r { opacity:0; transform:translateX(26px); }
+.page { padding:24px; max-width:1440px; margin:0 auto; will-change:transform; }
 
 /* TOOLBAR */
 .toolbar { background:#fff; border-radius:16px; padding:18px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
@@ -296,7 +296,10 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra</button>
     <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-clipboard-list"></i> Registros</button>
     <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
+    <div id="tabIndicator" class="tab-indicator"></div>
   </div>
+
+  <div id="pageViewport" style="position:relative;overflow:hidden">
 
   <!-- TAB 1 -->
   <div id="t1page" class="page">
@@ -616,6 +619,8 @@ tbody tr:hover td { background:#fafbfe; }
     </div>
 
   </div>
+
+  </div>
 </div>
 
 <script>
@@ -753,68 +758,179 @@ function errBox(msg) {
 
 // TABS
 let CURRENT_TAB = 1;
-function showTab(n) {
-  const prev = CURRENT_TAB;
-  [1,2,3,4,5].forEach(i=>document.getElementById('t'+i+'btn').classList.toggle('active',n===i));
+function getPageEl(n) { return document.getElementById('t'+n+'page'); }
+function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 
-  if (n === prev) return;
-  const oldEl = document.getElementById('t'+prev+'page');
-  const newEl = document.getElementById('t'+n+'page');
-  const dir = n > prev ? 1 : -1; // 1 = forward, -1 = backward
-  CURRENT_TAB = n;
-
-  const finishSwitch = () => {
-    if (prev===1) {
-      // Leaving "Controle de Obras" — reset search back to default (after it's hidden, no visible flash)
-      SEL_ADDR='';
-      const addrInputEl=document.getElementById('addrInput');
-      if (addrInputEl) addrInputEl.value='';
-      ['donut','budget','bar'].forEach(k=>{ if(T1CH[k]){T1CH[k].destroy();T1CH[k]=null;} });
-      T1_NEEDS_CHARTS=false;
-      renderTab1();
-    }
-    if (oldEl) { oldEl.style.display='none'; oldEl.classList.remove('page-shift-l','page-shift-r'); }
-    if (newEl) {
-      newEl.classList.add(dir===1?'page-shift-r':'page-shift-l');
-      newEl.style.display='block';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>newEl.classList.remove('page-shift-l','page-shift-r')));
-    }
-    if (n===1 && T1_NEEDS_CHARTS && SEL_ADDR) {
-      T1_NEEDS_CHARTS=false;
-      try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
-    }
-    if (n===4) fillAddressesReg();
-  };
-
-  if (oldEl) {
-    oldEl.classList.add(dir===1?'page-shift-l':'page-shift-r');
-    setTimeout(finishSwitch,190);
-  } else {
-    finishSwitch();
-  }
+function activateTab(n) {
+  [1,2,3,4,5].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
+}
+function positionTabIndicator(n, animate) {
+  const btn=getBtnEl(n), ind=document.getElementById('tabIndicator');
+  if (!btn || !ind) return;
+  ind.style.transition = animate ? 'left .22s ease, width .22s ease' : 'none';
+  ind.style.left = btn.offsetLeft+'px';
+  ind.style.width = btn.offsetWidth+'px';
 }
 
-// ── SWIPE GESTURE TAB SWITCHING ────────────────────────────
-// Lets the user swipe left/right anywhere on the page to move between tabs,
-// instead of only being able to tap the tab bar at the top.
+// Side-effects that must run once tab `n` is fully active (shared by
+// tap-to-switch and swipe-to-switch).
+function finalizeTabSwitch(prev, n) {
+  if (prev===1 && n!==1) {
+    // Leaving "Controle de Obras" — reset search back to default
+    SEL_ADDR='';
+    const addrInputEl=document.getElementById('addrInput');
+    if (addrInputEl) addrInputEl.value='';
+    ['donut','budget','bar'].forEach(k=>{ if(T1CH[k]){T1CH[k].destroy();T1CH[k]=null;} });
+    T1_NEEDS_CHARTS=false;
+    renderTab1();
+  }
+  if (n===1 && T1_NEEDS_CHARTS && SEL_ADDR) {
+    T1_NEEDS_CHARTS=false;
+    try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
+  }
+  if (n===4) fillAddressesReg();
+}
+
+// Tap-triggered tab switch — slides the full distance with an eased
+// transition (same visual language as a completed swipe).
+function showTab(n) {
+  const prev = CURRENT_TAB;
+  if (n === prev) return;
+  const viewport = document.getElementById('pageViewport');
+  const curEl = getPageEl(prev), targetEl = getPageEl(n);
+  const dir = n > prev ? 1 : -1; // 1 = forward, -1 = backward
+  const viewW = viewport.offsetWidth || window.innerWidth;
+  CURRENT_TAB = n;
+  activateTab(n);
+  positionTabIndicator(n, true);
+
+  viewport.style.height = curEl.offsetHeight+'px';
+  targetEl.style.position='absolute'; targetEl.style.top='0'; targetEl.style.left='0'; targetEl.style.width='100%';
+  targetEl.style.transition='none'; curEl.style.transition='none';
+  targetEl.style.transform=`translateX(${dir*viewW}px)`;
+  targetEl.style.display='block';
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const dur='transform .28s cubic-bezier(.22,.61,.36,1)';
+    curEl.style.transition=dur; targetEl.style.transition=dur;
+    curEl.style.transform=`translateX(${-dir*viewW}px)`;
+    targetEl.style.transform='translateX(0px)';
+  }));
+
+  setTimeout(()=>{
+    curEl.style.display='none'; curEl.style.transition=''; curEl.style.transform='';
+    targetEl.style.transition=''; targetEl.style.transform='';
+    targetEl.style.position=''; targetEl.style.top=''; targetEl.style.left=''; targetEl.style.width='';
+    viewport.style.height='';
+    finalizeTabSwitch(prev, n);
+  }, 300);
+}
+positionTabIndicator(1, false); // initial position, no animation on first paint
+window.addEventListener('resize', ()=>positionTabIndicator(CURRENT_TAB, false));
+window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); // re-measure once fonts/icons settle
+
+// ── SWIPE GESTURE: real-time drag-follow + release-to-snap ────────
+// Mirrors the Instagram-style tab swipe: the page (and the tab indicator
+// above it) tracks the finger 1:1 while dragging, then either completes
+// the transition or springs back depending on how far you dragged.
 (function() {
-  let startX=0, startY=0, startTarget=null;
   const EXCLUDE='.table-responsive, .addr-dropdown, canvas, input, textarea, select, .photo-upload-zone, .tab-nav';
+  let startX=0, startY=0, startTarget=null;
+  let phase='idle'; // idle | pending | dragging | edge
+  let dir=0, curN=0, targetN=0, viewW=0;
+  let curEl=null, targetEl=null, viewport=null;
+  let curBtnRect=null, targetBtnRect=null;
+
+  function beginDrag() {
+    viewport = document.getElementById('pageViewport');
+    curN = CURRENT_TAB;
+    targetN = curN+dir;
+    if (targetN<1 || targetN>5) { phase='edge'; return; }
+    curEl = getPageEl(curN); targetEl = getPageEl(targetN);
+    viewW = viewport.offsetWidth || window.innerWidth;
+    const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
+    curBtnRect={left:curBtn.offsetLeft,width:curBtn.offsetWidth};
+    targetBtnRect={left:targetBtn.offsetLeft,width:targetBtn.offsetWidth};
+    viewport.style.height = curEl.offsetHeight+'px';
+    targetEl.style.position='absolute'; targetEl.style.top='0'; targetEl.style.left='0'; targetEl.style.width='100%';
+    targetEl.style.transition='none'; curEl.style.transition='none';
+    targetEl.style.transform=`translateX(${dir*viewW}px)`;
+    targetEl.style.display='block';
+    phase='dragging';
+  }
+
+  function updateDrag(dx) {
+    curEl.style.transform=`translateX(${dx}px)`;
+    targetEl.style.transform=`translateX(${dx + dir*viewW}px)`;
+    const progress=Math.min(1, Math.abs(dx)/viewW);
+    const ind=document.getElementById('tabIndicator');
+    ind.style.transition='none';
+    ind.style.left=(curBtnRect.left + (targetBtnRect.left-curBtnRect.left)*progress)+'px';
+    ind.style.width=(curBtnRect.width + (targetBtnRect.width-curBtnRect.width)*progress)+'px';
+  }
+
+  function endDrag(dx) {
+    const commit = Math.abs(dx) >= viewW*0.28;
+    const dur='transform .25s cubic-bezier(.22,.61,.36,1)';
+    curEl.style.transition=dur; targetEl.style.transition=dur;
+    if (commit) {
+      CURRENT_TAB = targetN;
+      activateTab(targetN);
+      positionTabIndicator(targetN, true);
+      curEl.style.transform=`translateX(${dir*-1*viewW}px)`;
+      targetEl.style.transform='translateX(0px)';
+    } else {
+      positionTabIndicator(curN, true);
+      curEl.style.transform='translateX(0px)';
+      targetEl.style.transform=`translateX(${dir*viewW}px)`;
+    }
+    setTimeout(()=>{
+      curEl.style.transition=''; curEl.style.transform='';
+      targetEl.style.transition=''; targetEl.style.transform='';
+      targetEl.style.position=''; targetEl.style.top=''; targetEl.style.left=''; targetEl.style.width='';
+      viewport.style.height='';
+      if (commit) { curEl.style.display='none'; finalizeTabSwitch(curN, targetN); }
+      else { targetEl.style.display='none'; }
+    }, 260);
+  }
+
   document.addEventListener('touchstart', function(e) {
-    if (e.touches.length!==1) { startTarget=null; return; }
+    if (e.touches.length!==1) { startTarget=null; phase='idle'; return; }
+    const t=e.target;
+    if (t.closest && t.closest(EXCLUDE)) { startTarget=null; phase='idle'; return; }
     startX=e.touches[0].clientX; startY=e.touches[0].clientY;
-    startTarget=e.target;
+    startTarget=t; phase='pending';
   }, {passive:true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!startTarget || e.touches.length!==1) return;
+    const dx=e.touches[0].clientX-startX;
+    const dy=e.touches[0].clientY-startY;
+    if (phase==='pending') {
+      if (Math.abs(dx)<10 || Math.abs(dx)<Math.abs(dy)*1.2) {
+        if (Math.abs(dy)>10) { startTarget=null; phase='idle'; } // vertical scroll — let it through
+        return;
+      }
+      dir = dx<0 ? 1 : -1;
+      beginDrag();
+      if (phase!=='dragging') return;
+    }
+    if (phase==='dragging') {
+      if (e.cancelable) e.preventDefault();
+      updateDrag(dx);
+    }
+  }, {passive:false});
+
   document.addEventListener('touchend', function(e) {
-    const target=startTarget; startTarget=null;
-    if (!target) return;
-    if (target.closest && target.closest(EXCLUDE)) return;
+    const wasPhase=phase; startTarget=null; phase='idle';
+    if (wasPhase!=='dragging') return;
     const dx=e.changedTouches[0].clientX-startX;
-    const dy=e.changedTouches[0].clientY-startY;
-    if (Math.abs(dx)<70 || Math.abs(dx)<Math.abs(dy)*1.4) return;
-    let n=CURRENT_TAB+(dx<0?1:-1);
-    if (n<1) n=1; if (n>5) n=5;
-    if (n!==CURRENT_TAB) showTab(n);
+    endDrag(dx);
+  }, {passive:true});
+
+  document.addEventListener('touchcancel', function() {
+    if (phase==='dragging') endDrag(0);
+    startTarget=null; phase='idle';
   }, {passive:true});
 })();
 
