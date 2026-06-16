@@ -832,13 +832,13 @@ function processAll() {
   });
   PROC.materials=DB.materials.map(r=>({
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
-    desc:r['Descrição dos Itens']||'', amount:parseAmt(r['Valor Total Pago ($)']),
-    company:r['Selecione a empresa']||'',
+    dataCom:r['Data da Compra']||'', desc:r['Descrição dos Itens']||'', amount:parseAmt(r['Valor Total Pago ($)']),
+    company:r['Selecione a empresa']||'', comprovante:r['Anexar Comprovante/NF']||'',
     isExtra:String(r['É um custo extra para o cliente pagar?']||'').toLowerCase()==='sim',
   }));
   PROC.subs=DB.subcontractors.map(r=>({
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
-    type:r['Tipo de serviço']||'', desc:r['Descrição do serviço']||'',
+    dataCon:r['Data de conclusão']||'', type:r['Tipo de serviço']||'', desc:r['Descrição do serviço']||'',
     company:r['Empresa Subcontratada']||'', amount:parseAmt(r['Valor do serviço']),
     status:r['Status pagamento']||'',
   }));
@@ -1076,7 +1076,7 @@ function obraDetailHTML(addr, ids) {
 
   const table=`
     <div class="data-table mb-4">
-      <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Panorama por Funcionário</div>
+      <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Mão de obra detalhada</div>
       <div class="table-responsive">
         <table>
           <thead><tr><th>Funcionário</th><th>Horas</th><th>Taxa/h</th><th>Custo M.O.</th><th>Reembolso</th><th>Total</th></tr></thead>
@@ -1106,7 +1106,69 @@ function obraDetailHTML(addr, ids) {
       <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-extra"><div class="m-label">Extra Cliente</div><div class="m-value">${$$(d.totX)}</div><div class="m-sub">${pct(d.totX,d.grand)}% do total</div></div></div>
     </div>`;
 
-  return obraInfoHtml + resultadoHtml + metricCards + charts + table;
+  // ── NEW TABLES: Materiais / Subcontratados / Material Extra ──
+  const matNormais = d.mt.filter(r=>!r.isExtra);
+  const matExtra    = d.mt.filter(r=>r.isExtra);
+  const subsList    = d.sb;
+
+  const materialRowsHtml = (list) => list.length
+    ? list.map(r=>`<tr>
+        <td>${fmtDt(r.dataCom)||'—'}</td>
+        <td>${r.desc||'—'}</td>
+        <td>${$$(r.amount)}</td>
+        <td>${r.comprovante?`<a href="${r.comprovante}" target="_blank" style="color:var(--orange)"><i class="fas fa-paperclip me-1"></i>Ver</a>`:'—'}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="4" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
+
+  const materialTable=`
+    <div class="data-table mb-4">
+      <div class="table-head"><i class="fas fa-boxes me-2" style="color:var(--orange)"></i>Material Utilizado na Obra</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th></tr></thead>
+          <tbody>
+            ${materialRowsHtml(matNormais)}
+            ${matNormais.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:var(--orange)">${$$(matNormais.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  const subsTable=`
+    <div class="data-table mb-4">
+      <div class="table-head"><i class="fas fa-handshake me-2" style="color:var(--orange)"></i>Subcontratados na Obra</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Data de Conclusão</th><th>Tipo de Serviço</th><th>Descrição do Serviço</th><th>Empresa Subcontratada</th><th>Valor do Serviço</th></tr></thead>
+          <tbody>
+            ${subsList.length ? subsList.map(r=>`<tr>
+              <td>${fmtDt(r.dataCon)||'—'}</td>
+              <td>${r.type||'—'}</td>
+              <td>${r.desc||'—'}</td>
+              <td>${r.company||'—'}</td>
+              <td>${$$(r.amount)}</td>
+            </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`}
+            ${subsList.length?`<tr class="tr-total"><td colspan="4">TOTAL</td><td style="color:var(--orange)">${$$(subsList.reduce((s,r)=>s+r.amount,0))}</td></tr>`:''}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  const materialExtraTable=`
+    <div class="data-table mb-4">
+      <div class="table-head"><i class="fas fa-exclamation-circle me-2" style="color:#16a085"></i>Material Extra para o Cliente Pagar</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th></tr></thead>
+          <tbody>
+            ${materialRowsHtml(matExtra)}
+            ${matExtra.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:#16a085">${$$(matExtra.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  return obraInfoHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
 }
 
 // ── RENDER CHARTS ─────────────────────────────────────────
