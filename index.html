@@ -442,14 +442,14 @@ tbody tr:hover td { background:#fafbfe; }
           </div>
         </div>
         <div class="col-12">
-          <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional, pode selecionar várias fotos)</small></label>
+          <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional — pode tirar/selecionar várias fotos, uma de cada vez)</small></label>
           <div class="photo-upload-zone">
             <input type="file" id="matFileInput" accept="image/*,.pdf" multiple style="display:none"
-              onchange="showSelectedFile(this,'matFileStatus')">
+              onchange="handleFilesSelected(this,'mat')">
             <div class="upload-row">
               <button type="button" class="upload-btn-main" id="matUploadBtn"
                 onclick="document.getElementById('matFileInput').click()">
-                <i class="fas fa-paperclip"></i> Selecionar Arquivo(s)
+                <i class="fas fa-paperclip"></i> Adicionar Arquivo(s)
               </button>
             </div>
             <div id="matFileStatus"></div>
@@ -542,14 +542,14 @@ tbody tr:hover td { background:#fafbfe; }
           </select>
         </div>
         <div class="col-12">
-          <label class="f-label">Anexar invoice <small style="text-transform:none;color:#7b8ea4">(opcional, pode selecionar várias fotos)</small></label>
+          <label class="f-label">Anexar invoice <small style="text-transform:none;color:#7b8ea4">(opcional — pode tirar/selecionar várias fotos, uma de cada vez)</small></label>
           <div class="photo-upload-zone">
             <input type="file" id="subFileInput" accept="image/*,.pdf" multiple style="display:none"
-              onchange="showSelectedFile(this,'subFileStatus')">
+              onchange="handleFilesSelected(this,'sub')">
             <div class="upload-row">
               <button type="button" class="upload-btn-main" id="subUploadBtn"
                 onclick="document.getElementById('subFileInput').click()">
-                <i class="fas fa-paperclip"></i> Selecionar Arquivo(s)
+                <i class="fas fa-paperclip"></i> Adicionar Arquivo(s)
               </button>
             </div>
             <div id="subFileStatus"></div>
@@ -772,6 +772,30 @@ function showTab(n) {
   if (n===4) fillAddressesReg();
   CURRENT_TAB = n;
 }
+
+// ── SWIPE GESTURE TAB SWITCHING ────────────────────────────
+// Lets the user swipe left/right anywhere on the page to move between tabs,
+// instead of only being able to tap the tab bar at the top.
+(function() {
+  let startX=0, startY=0, startTarget=null;
+  const EXCLUDE='.table-responsive, .addr-dropdown, canvas, input, textarea, select, .photo-upload-zone';
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length!==1) { startTarget=null; return; }
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+    startTarget=e.target;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e) {
+    const target=startTarget; startTarget=null;
+    if (!target) return;
+    if (target.closest && target.closest(EXCLUDE)) return;
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    if (Math.abs(dx)<70 || Math.abs(dx)<Math.abs(dy)*1.4) return;
+    let n=CURRENT_TAB+(dx<0?1:-1);
+    if (n<1) n=1; if (n>5) n=5;
+    if (n!==CURRENT_TAB) showTab(n);
+  }, {passive:true});
+})();
 
 // ── AUTOCOMPLETE TAB 1 ─────────────────────────────────────
 let ALL_ADDRS=[], SEL_ADDR='';
@@ -1643,23 +1667,42 @@ function clearAddrSub() {
 }
 
 // ── FILE SELECTED PREVIEW ──────────────────────────────────
-function showSelectedFile(input, statusId) {
+// ── ACCUMULATED FILE SELECTION (supports adding photos one at a time,
+// e.g. multiple separate camera captures, instead of just one) ─────
+let matFiles=[], subFiles=[];
+
+function handleFilesSelected(input, key) {
+  const newFiles=Array.from(input.files);
+  if (key==='mat') matFiles=matFiles.concat(newFiles);
+  else subFiles=subFiles.concat(newFiles);
+  input.value=''; // reset so the same input can be used again (e.g. take another photo)
+  renderFilePreview(key);
+}
+
+function removeFile(key, index) {
+  if (key==='mat') matFiles.splice(index,1);
+  else subFiles.splice(index,1);
+  renderFilePreview(key);
+}
+
+function renderFilePreview(key) {
+  const files = key==='mat' ? matFiles : subFiles;
+  const statusId = key==='mat' ? 'matFileStatus' : 'subFileStatus';
   const el=document.getElementById(statusId); if(!el)return;
-  const files=Array.from(input.files);
-  if (files.length) {
-    const totalKB=(files.reduce((s,f)=>s+f.size,0)/1024).toFixed(0);
-    const names=files.map(f=>f.name).join(', ');
-    const plural=files.length!==1;
-    el.innerHTML=`<div class="upload-status-bar usb-loading"><i class="fas fa-file"></i> ${files.length} arquivo${plural?'s':''} selecionado${plural?'s':''} (${totalKB} KB) — será${plural?'ão':''} enviado${plural?'s':''} ao salvar<br><small style="opacity:.85">${names}</small></div>`;
-  } else {
-    el.innerHTML='';
-  }
+  if (!files.length) { el.innerHTML=''; return; }
+  const totalKB=(files.reduce((s,f)=>s+f.size,0)/1024).toFixed(0);
+  const plural=files.length!==1;
+  const items=files.map((f,i)=>`
+    <span style="display:inline-flex;align-items:center;gap:5px;background:#eef3f9;border-radius:6px;padding:4px 8px;margin:3px 4px 0 0;font-size:12px;color:var(--navy)">
+      <i class="fas fa-file" style="color:#7b8ea4"></i> ${f.name}
+      <button type="button" onclick="removeFile('${key}',${i})" title="Remover" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:13px;padding:0;line-height:1"><i class="fas fa-times-circle"></i></button>
+    </span>`).join('');
+  el.innerHTML=`<div class="upload-status-bar usb-loading" style="flex-wrap:wrap"><i class="fas fa-paperclip"></i> ${files.length} arquivo${plural?'s':''} (${totalKB} KB) — será${plural?'ão':''} enviado${plural?'s':''} ao salvar</div>
+    <div style="margin-top:4px">${items}</div>`;
 }
 
 // ── MULTI FILE UPLOAD HELPER ──────────────────────────────
-async function uploadFiles(fileInputId, statusId, setUrls, addr, subfolder) {
-  const input=document.getElementById(fileInputId);
-  const files=Array.from(input.files);
+async function uploadFiles(files, statusId, setUrls, addr, subfolder) {
   if (!files.length) return true;
   if (!addr) { setUploadStatus(statusId,'err','Selecione o endereço antes de enviar o(s) arquivo(s).'); return false; }
   setUploadStatus(statusId,'loading','Preparando pasta no Drive...');
@@ -1744,7 +1787,7 @@ async function submitMaterial() {
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _matCompURL='';
-    const fileOk=await uploadFiles('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
+    const fileOk=await uploadFiles(matFiles,'matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
     await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount:String(amountNum),comprovante:_matCompURL,obs,empresa});
     showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
@@ -1754,7 +1797,7 @@ async function submitMaterial() {
     document.getElementById('matAddrInput').value='';
     toggleClearBtn('clearAddrMat','');
     document.getElementById('matFileInput').value='';
-    document.getElementById('matFileStatus').innerHTML='';
+    matFiles=[]; renderFilePreview('mat');
     SEL_ADDR_MAT=''; _matCompURL='';
     await loadData();
   } catch(e) { showRegMsg('mat','err',e.message); }
@@ -1782,7 +1825,7 @@ async function submitSubcontrato() {
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _subInvURL='';
-    const fileOk=await uploadFiles('subFileInput','subFileStatus',u=>_subInvURL=u,addr,'Invoices');
+    const fileOk=await uploadFiles(subFiles,'subFileStatus',u=>_subInvURL=u,addr,'Invoices');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Subcontrato'; return; }
     await apiWrite({action:'addSubcontrato',addr,dataCon,tipo,desc,empresa,contato,amount:String(subAmountNum),status,invoice:_subInvURL});
     showRegMsg('sub','ok','Subcontrato registrado com sucesso!');
@@ -1792,7 +1835,7 @@ async function submitSubcontrato() {
     document.getElementById('subAddrInput').value='';
     toggleClearBtn('clearAddrSub','');
     document.getElementById('subFileInput').value='';
-    document.getElementById('subFileStatus').innerHTML='';
+    subFiles=[]; renderFilePreview('sub');
     SEL_ADDR_SUB=''; _subInvURL='';
     await loadData();
   } catch(e) { showRegMsg('sub','err',e.message); }
