@@ -442,14 +442,14 @@ tbody tr:hover td { background:#fafbfe; }
           </div>
         </div>
         <div class="col-12">
-          <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional, pode selecionar várias fotos)</small></label>
           <div class="photo-upload-zone">
-            <input type="file" id="matFileInput" accept="image/*,.pdf" style="display:none"
+            <input type="file" id="matFileInput" accept="image/*,.pdf" multiple style="display:none"
               onchange="showSelectedFile(this,'matFileStatus')">
             <div class="upload-row">
               <button type="button" class="upload-btn-main" id="matUploadBtn"
                 onclick="document.getElementById('matFileInput').click()">
-                <i class="fas fa-paperclip"></i> Selecionar Arquivo
+                <i class="fas fa-paperclip"></i> Selecionar Arquivo(s)
               </button>
             </div>
             <div id="matFileStatus"></div>
@@ -542,14 +542,14 @@ tbody tr:hover td { background:#fafbfe; }
           </select>
         </div>
         <div class="col-12">
-          <label class="f-label">Anexar invoice <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <label class="f-label">Anexar invoice <small style="text-transform:none;color:#7b8ea4">(opcional, pode selecionar várias fotos)</small></label>
           <div class="photo-upload-zone">
-            <input type="file" id="subFileInput" accept="image/*,.pdf" style="display:none"
+            <input type="file" id="subFileInput" accept="image/*,.pdf" multiple style="display:none"
               onchange="showSelectedFile(this,'subFileStatus')">
             <div class="upload-row">
               <button type="button" class="upload-btn-main" id="subUploadBtn"
                 onclick="document.getElementById('subFileInput').click()">
-                <i class="fas fa-paperclip"></i> Selecionar Arquivo
+                <i class="fas fa-paperclip"></i> Selecionar Arquivo(s)
               </button>
             </div>
             <div id="subFileStatus"></div>
@@ -910,7 +910,7 @@ function processAll() {
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
     dataCon:r['Data de conclusão']||'', type:r['Tipo de serviço']||'', desc:r['Descrição do serviço']||'',
     company:r['Empresa Subcontratada']||'', amount:parseAmt(r['Valor do serviço']),
-    status:r['Status pagamento']||'',
+    status:r['Status pagamento']||'', invoice:r['Anexar invoice']||'',
   }));
   PROC.obras=(DB.obras||[]).map(r=>({
     addr:normAddr(r['Endereço']), cliente:r['Nome do Cliente']||'', contato:r['Contato']||'',
@@ -1181,12 +1181,19 @@ function obraDetailHTML(addr, ids) {
   const matExtra    = d.mt.filter(r=>r.isExtra);
   const subsList    = d.sb;
 
+  const renderLinkList = (str) => {
+    const urls=(str||'').split(',').map(s=>s.trim()).filter(Boolean);
+    if (!urls.length) return '—';
+    if (urls.length===1) return `<a href="${urls[0]}" target="_blank" style="color:var(--orange)"><i class="fas fa-paperclip me-1"></i>Ver</a>`;
+    return urls.map((u,i)=>`<a href="${u}" target="_blank" style="color:var(--orange);margin-right:8px;white-space:nowrap"><i class="fas fa-paperclip me-1"></i>${i+1}</a>`).join('');
+  };
+
   const materialRowsHtml = (list) => list.length
     ? list.map(r=>`<tr>
         <td>${fmtDt(r.dataCom)||'—'}</td>
         <td>${r.desc||'—'}</td>
         <td>${$$(r.amount)}</td>
-        <td>${r.comprovante?`<a href="${r.comprovante}" target="_blank" style="color:var(--orange)"><i class="fas fa-paperclip me-1"></i>Ver</a>`:'—'}</td>
+        <td>${renderLinkList(r.comprovante)}</td>
       </tr>`).join('')
     : `<tr><td colspan="4" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
 
@@ -1209,7 +1216,7 @@ function obraDetailHTML(addr, ids) {
       <div class="table-head"><i class="fas fa-handshake me-2" style="color:var(--orange)"></i>Subcontratados na Obra</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data de Conclusão</th><th>Tipo de Serviço</th><th>Descrição do Serviço</th><th>Empresa Subcontratada</th><th>Valor do Serviço</th></tr></thead>
+          <thead><tr><th>Data de Conclusão</th><th>Tipo de Serviço</th><th>Descrição do Serviço</th><th>Empresa Subcontratada</th><th>Valor do Serviço</th><th>Comprovante</th></tr></thead>
           <tbody>
             ${subsList.length ? subsList.map(r=>`<tr>
               <td>${fmtDt(r.dataCon)||'—'}</td>
@@ -1217,8 +1224,9 @@ function obraDetailHTML(addr, ids) {
               <td>${r.desc||'—'}</td>
               <td>${r.company||'—'}</td>
               <td>${$$(r.amount)}</td>
-            </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`}
-            ${subsList.length?`<tr class="tr-total"><td colspan="4">TOTAL</td><td style="color:var(--orange)">${$$(subsList.reduce((s,r)=>s+r.amount,0))}</td></tr>`:''}
+              <td>${renderLinkList(r.invoice)}</td>
+            </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`}
+            ${subsList.length?`<tr class="tr-total"><td colspan="4">TOTAL</td><td style="color:var(--orange)">${$$(subsList.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
           </tbody>
         </table>
       </div>
@@ -1637,20 +1645,23 @@ function clearAddrSub() {
 // ── FILE SELECTED PREVIEW ──────────────────────────────────
 function showSelectedFile(input, statusId) {
   const el=document.getElementById(statusId); if(!el)return;
-  if (input.files.length) {
-    const f=input.files[0];
-    el.innerHTML=`<div class="upload-status-bar usb-loading"><i class="fas fa-file"></i> ${f.name} (${(f.size/1024).toFixed(0)} KB) — será enviado ao salvar</div>`;
+  const files=Array.from(input.files);
+  if (files.length) {
+    const totalKB=(files.reduce((s,f)=>s+f.size,0)/1024).toFixed(0);
+    const names=files.map(f=>f.name).join(', ');
+    const plural=files.length!==1;
+    el.innerHTML=`<div class="upload-status-bar usb-loading"><i class="fas fa-file"></i> ${files.length} arquivo${plural?'s':''} selecionado${plural?'s':''} (${totalKB} KB) — será${plural?'ão':''} enviado${plural?'s':''} ao salvar<br><small style="opacity:.85">${names}</small></div>`;
   } else {
     el.innerHTML='';
   }
 }
 
-// ── SINGLE FILE UPLOAD HELPER ─────────────────────────────
-async function uploadSingleFile(fileInputId, statusId, setUrl, addr, subfolder) {
+// ── MULTI FILE UPLOAD HELPER ──────────────────────────────
+async function uploadFiles(fileInputId, statusId, setUrls, addr, subfolder) {
   const input=document.getElementById(fileInputId);
-  if (!input.files.length) return true;
-  if (!addr) { setUploadStatus(statusId,'err','Selecione o endereço antes de enviar o arquivo.'); return false; }
-  const file=input.files[0];
+  const files=Array.from(input.files);
+  if (!files.length) return true;
+  if (!addr) { setUploadStatus(statusId,'err','Selecione o endereço antes de enviar o(s) arquivo(s).'); return false; }
   setUploadStatus(statusId,'loading','Preparando pasta no Drive...');
   const cacheKey=addr+'|'+subfolder;
   let folderId, folderUrl;
@@ -1663,27 +1674,35 @@ async function uploadSingleFile(fileInputId, statusId, setUrl, addr, subfolder) 
       _folderCache[cacheKey]={id:folderId,url:folderUrl};
     }
   } catch(e) { setUploadStatus(statusId,'err','Erro ao criar pasta: '+e.message); return false; }
-  setUploadStatus(statusId,'loading','Enviando arquivo...');
-  try {
-    let base64, mimeType, fileName;
-    if (file.type.startsWith('image/')) {
-      const comp=await compressImage(file);
-      base64=comp.base64; mimeType=comp.mimeType; fileName=comp.fileName;
-    } else {
-      const ab=await file.arrayBuffer();
-      const bytes=new Uint8Array(ab);
-      let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
-      base64=btoa(bin); mimeType=file.type||'application/octet-stream'; fileName=file.name;
-    }
-    const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
-    if (res.status===401) { doLogout(); return false; }
-    const data=await res.json();
-    if (data.error) throw new Error(data.error);
-    setUrl(data.fileUrl||folderUrl);
-    setUploadStatus(statusId,'ok','Arquivo enviado: '+fileName);
-    return true;
-  } catch(e) { setUploadStatus(statusId,'err','Erro ao enviar: '+e.message); return false; }
+
+  const urls=[];
+  for (let i=0; i<files.length; i++) {
+    const file=files[i];
+    const pct=Math.round(i/files.length*100);
+    setUploadStatus(statusId,'loading',`Enviando arquivo ${i+1} de ${files.length}...`,pct);
+    try {
+      let base64, mimeType, fileName;
+      if (file.type.startsWith('image/')) {
+        const comp=await compressImage(file);
+        base64=comp.base64; mimeType=comp.mimeType; fileName=comp.fileName;
+      } else {
+        const ab=await file.arrayBuffer();
+        const bytes=new Uint8Array(ab);
+        let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+        base64=btoa(bin); mimeType=file.type||'application/octet-stream'; fileName=file.name;
+      }
+      const res=await fetch('/api/write',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'uploadFile',folderId,fileBase64:base64,fileName,mimeType})});
+      if (res.status===401) { doLogout(); return false; }
+      const data=await res.json();
+      if (data.error) throw new Error(data.error);
+      urls.push(data.fileUrl||folderUrl);
+    } catch(e) { setUploadStatus(statusId,'err',`Erro ao enviar "${file.name}": ${e.message}`); return false; }
+  }
+  setUrls(urls.join(', '));
+  const plural=urls.length!==1;
+  setUploadStatus(statusId,'ok',`${urls.length} arquivo${plural?'s':''} enviado${plural?'s':''} com sucesso!`);
+  return true;
 }
 
 // ── TAB 4: REGISTROS — MATERIAIS ──────────────────────────
@@ -1706,7 +1725,7 @@ async function submitMaterial() {
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _matCompURL='';
-    const fileOk=await uploadSingleFile('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
+    const fileOk=await uploadFiles('matFileInput','matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
     await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount:String(amountNum),comprovante:_matCompURL,obs,empresa});
     showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
@@ -1744,7 +1763,7 @@ async function submitSubcontrato() {
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     _subInvURL='';
-    const fileOk=await uploadSingleFile('subFileInput','subFileStatus',u=>_subInvURL=u,addr,'Invoices');
+    const fileOk=await uploadFiles('subFileInput','subFileStatus',u=>_subInvURL=u,addr,'Invoices');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Subcontrato'; return; }
     await apiWrite({action:'addSubcontrato',addr,dataCon,tipo,desc,empresa,contato,amount:String(subAmountNum),status,invoice:_subInvURL});
     showRegMsg('sub','ok','Subcontrato registrado com sucesso!');
