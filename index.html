@@ -294,7 +294,7 @@ tbody tr:hover td { background:#fafbfe; }
   <div class="tab-nav">
     <button class="tab-btn active" id="t1btn" onclick="showTab(1)"><i class="fas fa-building"></i> Controle de Obras</button>
     <button class="tab-btn" id="t2btn" onclick="showTab(2)"><i class="fas fa-user-clock"></i> Controle de Horas</button>
-    <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra</button>
+    <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra / Cliente</button>
     <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-clipboard-list"></i> Registros</button>
     <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
     <div id="tabIndicator" class="tab-indicator"></div>
@@ -342,11 +342,19 @@ tbody tr:hover td { background:#fafbfe; }
         </div>
         <div class="col-md-6">
           <label class="f-label">Nome do Cliente <span class="f-req">*</span></label>
-          <input type="text" id="f3Cliente" class="f-input" placeholder="Nome completo">
+          <div style="position:relative">
+            <input type="text" id="f3Cliente" class="f-input" placeholder="Pesquisar cliente cadastrado..."
+                   oninput="filterClientes(this.value); toggleClearBtn('clearF3Cliente',this.value)"
+                   onfocus="filterClientes(this.value)" onblur="closeClienteDD()" autocomplete="off"
+                   style="padding-left:40px;padding-right:36px">
+            <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
+            <button type="button" id="clearF3Cliente" class="addr-clear-btn" onmousedown="event.preventDefault()" onclick="clearClienteF3()"><i class="fas fa-times"></i></button>
+            <div id="f3ClienteDropdown" class="addr-dropdown"></div>
+          </div>
         </div>
         <div class="col-md-6">
           <label class="f-label">Contato do Cliente <span class="f-req">*</span></label>
-          <input type="text" id="f3Contato" class="f-input" placeholder="Telefone ou e-mail">
+          <input type="text" id="f3Contato" class="f-input" placeholder="Preenchido ao selecionar cliente, ou digite">
         </div>
         <div class="col-12">
           <label class="f-label">Descrição do Escopo <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
@@ -404,6 +412,40 @@ tbody tr:hover td { background:#fafbfe; }
         </button>
       </div>
       <div id="f3Msg" style="display:none"></div>
+    </div>
+
+    <!-- Section 2: Incluir Novo Cliente -->
+    <div class="form-section">
+      <div class="section-title"><i class="fas fa-user-plus" style="color:var(--orange)"></i>Incluir Novo Cliente</div>
+      <p class="required-note"><span>*</span> Campos obrigatórios</p>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="f-label">Nome do Cliente <span class="f-req">*</span></label>
+          <input type="text" id="cliNome" class="f-input" placeholder="Nome completo">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Contato do Cliente <span class="f-req">*</span></label>
+          <input type="text" id="cliContato" class="f-input" placeholder="Telefone (ex: +1 415 000-0000)">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Empresa do Cliente <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <input type="text" id="cliEmpresa" class="f-input" placeholder="Nome da empresa">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Email do Cliente <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <input type="email" id="cliEmail" class="f-input" placeholder="email@exemplo.com">
+        </div>
+        <div class="col-12">
+          <label class="f-label">Observação <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <textarea id="cliObs" class="f-input" rows="3" placeholder="Informações adicionais sobre o cliente..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="submit-btn" id="cliBtn" onclick="submitCliente()">
+          <i class="fas fa-user-plus"></i> Cadastrar Cliente
+        </button>
+      </div>
+      <div id="cliMsg" style="display:none"></div>
     </div>
   </div>
 
@@ -688,8 +730,8 @@ async function doLogout() {
 document.getElementById('pwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 // DATA STORE
-let DB   = { labor:[],materials:[],subcontractors:[],obras:[],lastUpdated:null };
-let PROC = { labor:[],materials:[],subs:[],obras:[] };
+let DB   = { labor:[],materials:[],subcontractors:[],obras:[],clients:[],lastUpdated:null };
+let PROC = { labor:[],materials:[],subs:[],obras:[],clients:[] };
 let wkOff = 0;
 const T1CH = { donut:null, budget:null, bar:null };
 const T4CH = { donut:null, budget:null, bar:null };
@@ -697,6 +739,8 @@ let T1_NEEDS_CHARTS = false;
 
 // REGISTROS TAB STATE
 let SEL_ADDR_MAT = '', SEL_ADDR_SUB = '', ALL_ADDRS_REG = [];
+// CLIENTES STATE
+let ALL_CLIENTS = [], SEL_CLIENT_NAME = '';
 let _matCompURL = '', _subInvURL = '';
 
 // ── API HELPERS ────────────────────────────────────────────
@@ -802,6 +846,7 @@ function finalizeTabSwitch(prev, n) {
     T1_NEEDS_CHARTS=false;
     try { renderObraCharts(SEL_ADDR,{donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'},T1CH); } catch(e) { console.error(e); }
   }
+  if (n===3) fillClientesTab3();
   if (n===4) fillAddressesReg();
 }
 
@@ -1099,9 +1144,17 @@ function processAll() {
     finalizada:String(r['Finalizada']||'').toLowerCase()==='sim',
     dtFinal:r['Data Finalização']||'', fotosAfter:r['Link Fotos Depois']||'',
   }));
+  PROC.clients=(DB.clients||[]).map(r=>({
+    nome:String(r['Nome do Cliente']||'').trim(),
+    contato:String(r['Contato do Cliente']||'').trim(),
+    empresa:String(r['Empresa do Cliente']||'').trim(),
+    email:String(r['Email do Cliente']||'').trim(),
+    obs:String(r['Observação']||'').trim(),
+  })).filter(c=>c.nome);
   fillAddressesT4();
   fillFinAddresses();
   fillAddressesReg();
+  fillClientesTab3();
 }
 
 // ── TAB 1 RENDER ──────────────────────────────────────────
@@ -1536,6 +1589,7 @@ async function submitObra() {
     showF3Msg('ok','Obra cadastrada com sucesso!');
     ['f3Addr','f3Cliente','f3Contato','f3Escopo','f3Orcamento','f3DtInicio','f3DtFim','f3FotosBefore']
       .forEach(id=>document.getElementById(id).value='');
+    SEL_CLIENT_NAME=''; toggleClearBtn('clearF3Cliente','');
     await loadData();
   } catch(e) { showF3Msg('err',e.message); }
   finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus-circle"></i> Cadastrar Obra'; }
@@ -1785,6 +1839,42 @@ function fillAddressesReg() {
   ALL_ADDRS_REG=[...s].sort();
 }
 
+// ── CLIENTES AUTOCOMPLETE (Tab 3 — busca no campo Nome do Cliente) ──
+function fillClientesTab3() {
+  ALL_CLIENTS=[...PROC.clients].sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function filterClientes(q) {
+  const lq=(q||'').toLowerCase();
+  const list=lq?ALL_CLIENTS.filter(c=>c.nome.toLowerCase().includes(lq)||c.empresa.toLowerCase().includes(lq)):ALL_CLIENTS;
+  const dd=document.getElementById('f3ClienteDropdown');
+  if (!dd) return;
+  dd.innerHTML=list.length
+    ?list.map(c=>{
+        const label=c.empresa?`${c.nome} <span style="color:#7b8ea4;font-size:11px">(${c.empresa})</span>`:c.nome;
+        return `<div class="addr-opt${c.nome===SEL_CLIENT_NAME?' active':''}" onmousedown="pickCliente('${esc(c.nome)}')">${label}</div>`;
+      }).join('')
+    :'<div class="addr-opt-empty">Nenhum cliente encontrado — cadastre abaixo</div>';
+  dd.classList.add('open');
+}
+function pickCliente(nome) {
+  const cli=ALL_CLIENTS.find(c=>c.nome===nome);
+  SEL_CLIENT_NAME=nome;
+  document.getElementById('f3Cliente').value=nome;
+  toggleClearBtn('clearF3Cliente',nome);
+  document.getElementById('f3ClienteDropdown').classList.remove('open');
+  if (cli) {
+    document.getElementById('f3Contato').value=cli.contato;
+  }
+}
+function closeClienteDD() { setTimeout(()=>{ const dd=document.getElementById('f3ClienteDropdown'); if(dd) dd.classList.remove('open'); },160); }
+function clearClienteF3() {
+  SEL_CLIENT_NAME='';
+  document.getElementById('f3Cliente').value='';
+  document.getElementById('f3Contato').value='';
+  toggleClearBtn('clearF3Cliente','');
+  const dd=document.getElementById('f3ClienteDropdown'); if(dd) dd.classList.remove('open');
+}
+
 function filterAddrsMat(q) {
   const lq=(q||'').toLowerCase();
   const list=lq?ALL_ADDRS_REG.filter(a=>a.toLowerCase().includes(lq)):ALL_ADDRS_REG;
@@ -1999,6 +2089,35 @@ async function submitSubcontrato() {
 
 function showRegMsg(prefix,type,msg) {
   const el=document.getElementById(prefix+'Msg');
+  el.className='f-alert '+type;
+  el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  el.style.display='flex';
+  if(type==='ok') setTimeout(()=>el.style.display='none',5000);
+}
+
+// ── TAB 3: INCLUIR NOVO CLIENTE ───────────────────────────
+async function submitCliente() {
+  const nome    = document.getElementById('cliNome').value.trim();
+  const contato = document.getElementById('cliContato').value.trim();
+  const empresa = document.getElementById('cliEmpresa').value.trim();
+  const email   = document.getElementById('cliEmail').value.trim();
+  const obs     = document.getElementById('cliObs').value.trim();
+
+  if (!nome)    { showCliMsg('err','Nome do cliente é obrigatório.'); return; }
+  if (!contato) { showCliMsg('err','Contato do cliente é obrigatório.'); return; }
+
+  const btn=document.getElementById('cliBtn');
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
+  try {
+    await apiWrite({action:'addCliente', nome, contato, empresa, email, obs});
+    showCliMsg('ok',`Cliente "${nome}" cadastrado com sucesso!`);
+    ['cliNome','cliContato','cliEmpresa','cliEmail','cliObs'].forEach(id=>document.getElementById(id).value='');
+    await loadData(); // refresh so client appears immediately in the search dropdown
+  } catch(e) { showCliMsg('err',e.message); }
+  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Cadastrar Cliente'; }
+}
+function showCliMsg(type,msg) {
+  const el=document.getElementById('cliMsg');
   el.className='f-alert '+type;
   el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
   el.style.display='flex';
