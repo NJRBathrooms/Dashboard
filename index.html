@@ -2217,12 +2217,22 @@ function toInputDate(v) {
 
 // ── ROW EDIT / DELETE ─────────────────────────────────────
 
+function reRenderObra(addr) {
+  if (SEL_ADDR === addr) renderTab1();
+  if (SEL_FIN_ADDR === addr) renderFinObraDetail();
+}
+
 function confirmDeleteRow(type, rowNum, addr) {
   const label = type === 'material' ? 'este registro de material' : 'este subcontrato';
   if (!confirm('Tem certeza que deseja excluir ' + label + '?\nEssa ação não pode ser desfeita.')) return;
   const action = type === 'material' ? 'deleteMaterial' : 'deleteSubcontrato';
   apiWrite({ action, rowNum })
-    .then(() => loadData())
+    .then(() => {
+      if (type === 'material') PROC.materials = PROC.materials.filter(m => m._row !== rowNum);
+      else PROC.subs = PROC.subs.filter(s => s._row !== rowNum);
+      reRenderObra(addr);
+      loadData(); // background sync
+    })
     .catch(e => alert('Erro ao excluir: ' + e.message));
 }
 
@@ -2308,20 +2318,32 @@ async function saveRowEdit() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;display:inline-block"></div> Salvando...';
   try {
+    const addr = EDIT_ROW_STATE.addr;
     if (EDIT_ROW_STATE.type === 'material') {
       const raw = document.getElementById('em_amount').value.replace(',', '.');
-      await apiWrite({
+      const newAmount = raw ? parseFloat(raw) : null;
+      const params = {
         action:  'updateMaterial',
         rowNum:  EDIT_ROW_STATE.rowNum,
         dataCom: document.getElementById('em_dataCom').value,
         desc:    document.getElementById('em_desc').value.trim(),
-        amount:  raw ? String(parseFloat(raw)) : '',
+        amount:  newAmount != null ? String(newAmount) : '',
         isExtra: document.getElementById('em_isExtra').value,
         empresa: document.getElementById('em_empresa').value.trim(),
+      };
+      await apiWrite(params);
+      const idx = PROC.materials.findIndex(m => m._row === EDIT_ROW_STATE.rowNum);
+      if (idx >= 0) Object.assign(PROC.materials[idx], {
+        dataCom: params.dataCom || PROC.materials[idx].dataCom,
+        desc:    params.desc,
+        amount:  newAmount != null ? newAmount : PROC.materials[idx].amount,
+        isExtra: params.isExtra === 'Sim',
+        company: params.empresa,
       });
     } else {
       const raw = document.getElementById('es_amount').value.replace(',', '.');
-      await apiWrite({
+      const newAmount = raw ? parseFloat(raw) : null;
+      const params = {
         action:  'updateSubcontrato',
         rowNum:  EDIT_ROW_STATE.rowNum,
         dataCon: document.getElementById('es_dataCon').value,
@@ -2329,12 +2351,24 @@ async function saveRowEdit() {
         desc:    document.getElementById('es_desc').value.trim(),
         empresa: document.getElementById('es_empresa').value.trim(),
         contato: document.getElementById('es_contato').value.trim(),
-        amount:  raw ? String(parseFloat(raw)) : '',
+        amount:  newAmount != null ? String(newAmount) : '',
         status:  document.getElementById('es_status').value.trim(),
+      };
+      await apiWrite(params);
+      const idx = PROC.subs.findIndex(s => s._row === EDIT_ROW_STATE.rowNum);
+      if (idx >= 0) Object.assign(PROC.subs[idx], {
+        dataCon: params.dataCon || PROC.subs[idx].dataCon,
+        type:    params.tipo,
+        desc:    params.desc,
+        company: params.empresa,
+        contato: params.contato,
+        amount:  newAmount != null ? newAmount : PROC.subs[idx].amount,
+        status:  params.status,
       });
     }
     closeEditModal();
-    await loadData();
+    reRenderObra(addr);
+    loadData(); // background sync
   } catch(e) {
     alert('Erro ao salvar: ' + e.message);
   } finally {
@@ -2370,9 +2404,13 @@ async function saveOrcamento() {
   btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;display:inline-block"></div>';
   try {
     await apiWrite({ action: 'updateObra', addr: ORC_EDIT_ADDR, orcamento: String(val) });
+    const idx = PROC.obras.findIndex(o => o.addr === ORC_EDIT_ADDR);
+    if (idx >= 0) PROC.obras[idx].orcamento = val;
+    const addr = ORC_EDIT_ADDR;
     document.getElementById('orcModal').classList.remove('open');
     ORC_EDIT_ADDR = '';
-    await loadData();
+    reRenderObra(addr);
+    loadData(); // background sync
   } catch(e) {
     msgEl.className = 'f-alert err'; msgEl.textContent = 'Erro: ' + e.message; msgEl.style.display = 'flex';
   } finally {
