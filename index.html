@@ -284,7 +284,7 @@ tbody tr:hover td { background:#fafbfe; }
       <div class="login-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
       <h1>NJR Bathrooms</h1>
       <p>Dashboard de Controle de Obras</p>
-      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="current-password">
+      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="off">
       <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
       <div class="login-error" id="loginErr"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i><span id="loginErrMsg">Senha incorreta</span></div>
     </div>
@@ -2418,25 +2418,7 @@ async function saveOrcamento() {
   }
 }
 
-// ── AUTO-LOGIN CHECK ───────────────────────────────────────
-// If a valid session cookie already exists, skip the login screen
-(async function tryAutoLogin() {
-  try {
-    const res = await fetch('/api/data');
-    if (!res.ok) return; // no valid cookie — stay on login screen
-    DB = await res.json();
-    if (DB.error) return;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    processAll();
-    fillAddresses();
-    renderTab1();
-    renderTab2();
-    setBadge('ok', updTimeLabel());
-  } catch(e) {
-    // Stay on login screen silently
-  }
-})();
+// Password is always required — no auto-login from session cookie.
 </script>
 </body>
 </html>
