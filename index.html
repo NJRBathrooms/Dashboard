@@ -254,6 +254,25 @@ tbody tr:hover td { background:#fafbfe; }
 .upload-prog-fill { height:100%; background:var(--orange); transition:width .3s; border-radius:3px; }
 .drive-link-row { display:flex; align-items:center; gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed #dde7f1; }
 .drive-link-row-lbl { font-size:11px; color:#7b8ea4; white-space:nowrap; font-weight:600; }
+
+/* ROW ACTION BUTTONS */
+.row-act-btn { border:none; border-radius:6px; padding:5px 8px; font-size:11px; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:4px; }
+.row-act-btn.edit { background:#e8f4fd; color:#1565c0; }
+.row-act-btn.edit:hover { background:#1565c0; color:#fff; }
+.row-act-btn.del  { background:#fde8e8; color:#c0392b; margin-left:4px; }
+.row-act-btn.del:hover  { background:#c0392b; color:#fff; }
+.td-actions { white-space:nowrap; vertical-align:middle; }
+.orc-edit-btn { border:none; background:rgba(255,255,255,.2); border-radius:6px; padding:3px 7px; color:inherit; cursor:pointer; font-size:11px; margin-left:8px; opacity:.7; vertical-align:middle; }
+.orc-edit-btn:hover { opacity:1; background:rgba(255,255,255,.35); }
+
+/* MODALS */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:center; justify-content:center; padding:16px; }
+.modal-overlay.open { display:flex; }
+.modal-card { background:#fff; border-radius:16px; padding:28px; width:100%; max-width:520px; box-shadow:0 16px 48px rgba(0,0,0,.25); max-height:90vh; overflow-y:auto; }
+.modal-title { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid #f0f4f8; display:flex; align-items:center; gap:10px; }
+.modal-actions { display:flex; gap:10px; margin-top:20px; justify-content:flex-end; flex-wrap:wrap; }
+.modal-cancel-btn { background:#f0f4f8; border:none; border-radius:10px; padding:10px 20px; font-size:14px; font-weight:600; color:#7b8ea4; cursor:pointer; }
+.modal-cancel-btn:hover { background:#dde7f1; }
 </style>
 </head>
 <body>
@@ -664,6 +683,40 @@ tbody tr:hover td { background:#fafbfe; }
   </div>
 
   </div>
+
+  <!-- Edit Row Modal (material / subcontrato) -->
+  <div id="rowEditModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title" id="rowEditModalTitle"><i class="fas fa-pen"></i><span>Editar Registro</span></div>
+      <div id="rowEditModalBody"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeEditModal()">Cancelar</button>
+        <button class="submit-btn" id="rowEditSaveBtn" onclick="saveRowEdit()" style="margin-top:0">
+          <i class="fas fa-save"></i> Salvar Alterações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Orçamento Modal -->
+  <div id="orcModal" class="modal-overlay">
+    <div class="modal-card" style="max-width:380px">
+      <div class="modal-title"><i class="fas fa-dollar-sign" style="color:var(--orange)"></i>Editar Orçamento</div>
+      <label class="f-label">Novo Valor do Orçamento <span class="f-req">*</span></label>
+      <div class="f-input-prefix">
+        <span class="prefix">$</span>
+        <input type="text" id="orcModalInput" class="f-input" inputmode="decimal" placeholder="0.00">
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="document.getElementById('orcModal').classList.remove('open')">Cancelar</button>
+        <button class="submit-btn" id="orcModalSaveBtn" onclick="saveOrcamento()" style="margin-top:0">
+          <i class="fas fa-check"></i> Atualizar
+        </button>
+      </div>
+      <div id="orcModalMsg" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -742,6 +795,9 @@ let SEL_ADDR_MAT = '', SEL_ADDR_SUB = '', ALL_ADDRS_REG = [];
 // CLIENTES STATE
 let ALL_CLIENTS = [], SEL_CLIENT_NAME = '';
 let _matCompURL = '', _subInvURL = '';
+// EDIT MODAL STATE
+let EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
+let ORC_EDIT_ADDR = '';
 
 // ── API HELPERS ────────────────────────────────────────────
 async function apiWrite(params) {
@@ -1125,15 +1181,18 @@ function processAll() {
       isReimb, reimb:isReimb?amt:0, entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
   });
   PROC.materials=DB.materials.map(r=>({
+    _row:r['_row'],
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
     dataCom:r['Data da Compra']||'', desc:r['Descrição dos Itens']||'', amount:parseAmt(r['Valor Total Pago ($)']),
     company:r['Selecione a empresa']||'', comprovante:r['Anexar Comprovante/NF']||'',
     isExtra:String(r['É um custo extra para o cliente pagar?']||'').toLowerCase()==='sim',
   }));
   PROC.subs=DB.subcontractors.map(r=>({
+    _row:r['_row'],
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
     dataCon:r['Data de conclusão']||'', type:r['Tipo de serviço']||'', desc:r['Descrição do serviço']||'',
-    company:r['Empresa Subcontratada']||'', amount:parseAmt(r['Valor do serviço']),
+    company:r['Empresa Subcontratada']||'', contato:r['Contato do Subcontratado']||'',
+    amount:parseAmt(r['Valor do serviço']),
     status:r['Status pagamento']||'', invoice:r['Anexar invoice']||'',
   }));
   PROC.obras=(DB.obras||[]).map(r=>({
@@ -1310,7 +1369,7 @@ function obraDetailHTML(addr, ids) {
       <div class="col-md-4">
         <div class="res-metric rmc-receita h-100">
           <div class="rmc-lbl"><i class="fas fa-file-invoice-dollar me-1"></i>Receita Contratada</div>
-          <div class="rmc-val">${$$(obra.orcamento)}</div>
+          <div class="rmc-val">${$$(obra.orcamento)}<button class="orc-edit-btn" onclick="openEditOrcamento('${esc(addr)}')" title="Editar orçamento"><i class="fas fa-pen"></i></button></div>
           <div class="rmc-sub">Valor acordado com o cliente</div>
         </div>
       </div>
@@ -1426,18 +1485,22 @@ function obraDetailHTML(addr, ids) {
         <td>${r.desc||'—'}</td>
         <td>${$$(r.amount)}</td>
         <td>${renderLinkList(r.comprovante)}</td>
+        <td class="td-actions">
+          <button class="row-act-btn edit" onclick="openEditMaterial(${r._row},'${esc(addr)}')" title="Editar"><i class="fas fa-pen"></i></button>
+          <button class="row-act-btn del" onclick="confirmDeleteRow('material',${r._row},'${esc(addr)}')" title="Excluir"><i class="fas fa-trash"></i></button>
+        </td>
       </tr>`).join('')
-    : `<tr><td colspan="4" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
+    : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
 
   const materialTable=`
     <div class="data-table mb-4">
       <div class="table-head"><i class="fas fa-boxes me-2" style="color:var(--orange)"></i>Material Utilizado na Obra</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th></tr></thead>
+          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th><th>Ações</th></tr></thead>
           <tbody>
             ${materialRowsHtml(matNormais)}
-            ${matNormais.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:var(--orange)">${$$(matNormais.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
+            ${matNormais.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:var(--orange)">${$$(matNormais.reduce((s,r)=>s+r.amount,0))}</td><td colspan="2"></td></tr>`:''}
           </tbody>
         </table>
       </div>
@@ -1448,7 +1511,7 @@ function obraDetailHTML(addr, ids) {
       <div class="table-head"><i class="fas fa-handshake me-2" style="color:var(--orange)"></i>Subcontratados na Obra</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data de Conclusão</th><th>Tipo de Serviço</th><th>Descrição do Serviço</th><th>Empresa Subcontratada</th><th>Valor do Serviço</th><th>Comprovante</th></tr></thead>
+          <thead><tr><th>Data de Conclusão</th><th>Tipo de Serviço</th><th>Descrição do Serviço</th><th>Empresa Subcontratada</th><th>Valor do Serviço</th><th>Comprovante</th><th>Ações</th></tr></thead>
           <tbody>
             ${subsList.length ? subsList.map(r=>`<tr>
               <td>${fmtDt(r.dataCon)||'—'}</td>
@@ -1457,8 +1520,12 @@ function obraDetailHTML(addr, ids) {
               <td>${r.company||'—'}</td>
               <td>${$$(r.amount)}</td>
               <td>${renderLinkList(r.invoice)}</td>
-            </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`}
-            ${subsList.length?`<tr class="tr-total"><td colspan="4">TOTAL</td><td style="color:var(--orange)">${$$(subsList.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
+              <td class="td-actions">
+                <button class="row-act-btn edit" onclick="openEditSub(${r._row},'${esc(addr)}')" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="row-act-btn del" onclick="confirmDeleteRow('sub',${r._row},'${esc(addr)}')" title="Excluir"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`}
+            ${subsList.length?`<tr class="tr-total"><td colspan="4">TOTAL</td><td style="color:var(--orange)">${$$(subsList.reduce((s,r)=>s+r.amount,0))}</td><td colspan="2"></td></tr>`:''}
           </tbody>
         </table>
       </div>
@@ -1469,10 +1536,10 @@ function obraDetailHTML(addr, ids) {
       <div class="table-head"><i class="fas fa-exclamation-circle me-2" style="color:#16a085"></i>Material Extra para o Cliente Pagar</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th></tr></thead>
+          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th><th>Ações</th></tr></thead>
           <tbody>
             ${materialRowsHtml(matExtra)}
-            ${matExtra.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:#16a085">${$$(matExtra.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>`:''}
+            ${matExtra.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:#16a085">${$$(matExtra.reduce((s,r)=>s+r.amount,0))}</td><td colspan="2"></td></tr>`:''}
           </tbody>
         </table>
       </div>
@@ -2141,6 +2208,171 @@ function wkNum(d) {
   return Math.ceil((((D-y0)/86400000)+1)/7);
 }
 function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── ROW EDIT / DELETE ─────────────────────────────────────
+
+function confirmDeleteRow(type, rowNum, addr) {
+  const label = type === 'material' ? 'este registro de material' : 'este subcontrato';
+  if (!confirm('Tem certeza que deseja excluir ' + label + '?\nEssa ação não pode ser desfeita.')) return;
+  const action = type === 'material' ? 'deleteMaterial' : 'deleteSubcontrato';
+  apiWrite({ action, rowNum })
+    .then(() => loadData())
+    .catch(e => alert('Erro ao excluir: ' + e.message));
+}
+
+function openEditMaterial(rowNum, addr) {
+  const r = PROC.materials.find(m => m._row === rowNum);
+  if (!r) { alert('Registro não encontrado. Atualize a página.'); return; }
+  EDIT_ROW_STATE = { type: 'material', rowNum, addr };
+  document.getElementById('rowEditModalTitle').innerHTML = '<i class="fas fa-boxes" style="color:var(--orange)"></i><span>Editar Material</span>';
+  document.getElementById('rowEditModalBody').innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="f-label">Data da Compra</label>
+        <input type="date" id="em_dataCom" class="f-input" value="${r.dataCom||''}">
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">É custo extra do cliente?</label>
+        <select id="em_isExtra" class="f-input">
+          <option value="Não"${!r.isExtra?' selected':''}>Não</option>
+          <option value="Sim"${r.isExtra?' selected':''}>Sim</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="f-label">Descrição dos Itens</label>
+        <textarea id="em_desc" class="f-input" rows="3">${r.desc||''}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Valor Total Pago ($)</label>
+        <div class="f-input-prefix"><span class="prefix">$</span>
+          <input type="text" id="em_amount" class="f-input" inputmode="decimal" value="${r.amount||''}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Empresa</label>
+        <input type="text" id="em_empresa" class="f-input" value="${r.company||''}">
+      </div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
+
+function openEditSub(rowNum, addr) {
+  const r = PROC.subs.find(s => s._row === rowNum);
+  if (!r) { alert('Registro não encontrado. Atualize a página.'); return; }
+  EDIT_ROW_STATE = { type: 'sub', rowNum, addr };
+  document.getElementById('rowEditModalTitle').innerHTML = '<i class="fas fa-handshake" style="color:var(--orange)"></i><span>Editar Subcontrato</span>';
+  document.getElementById('rowEditModalBody').innerHTML = `
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="f-label">Data de Conclusão</label>
+        <input type="date" id="es_dataCon" class="f-input" value="${r.dataCon||''}">
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Tipo de Serviço</label>
+        <input type="text" id="es_tipo" class="f-input" value="${r.type||''}">
+      </div>
+      <div class="col-12">
+        <label class="f-label">Descrição do Serviço</label>
+        <textarea id="es_desc" class="f-input" rows="3">${r.desc||''}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Empresa Subcontratada</label>
+        <input type="text" id="es_empresa" class="f-input" value="${r.company||''}">
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Contato do Subcontratado</label>
+        <input type="text" id="es_contato" class="f-input" value="${r.contato||''}">
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Valor do Serviço ($)</label>
+        <div class="f-input-prefix"><span class="prefix">$</span>
+          <input type="text" id="es_amount" class="f-input" inputmode="decimal" value="${r.amount||''}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="f-label">Status Pagamento</label>
+        <input type="text" id="es_status" class="f-input" value="${r.status||''}">
+      </div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
+
+async function saveRowEdit() {
+  const btn = document.getElementById('rowEditSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;display:inline-block"></div> Salvando...';
+  try {
+    if (EDIT_ROW_STATE.type === 'material') {
+      const raw = document.getElementById('em_amount').value.replace(',', '.');
+      await apiWrite({
+        action:  'updateMaterial',
+        rowNum:  EDIT_ROW_STATE.rowNum,
+        dataCom: document.getElementById('em_dataCom').value,
+        desc:    document.getElementById('em_desc').value.trim(),
+        amount:  raw ? String(parseFloat(raw)) : '',
+        isExtra: document.getElementById('em_isExtra').value,
+        empresa: document.getElementById('em_empresa').value.trim(),
+      });
+    } else {
+      const raw = document.getElementById('es_amount').value.replace(',', '.');
+      await apiWrite({
+        action:  'updateSubcontrato',
+        rowNum:  EDIT_ROW_STATE.rowNum,
+        dataCon: document.getElementById('es_dataCon').value,
+        tipo:    document.getElementById('es_tipo').value.trim(),
+        desc:    document.getElementById('es_desc').value.trim(),
+        empresa: document.getElementById('es_empresa').value.trim(),
+        contato: document.getElementById('es_contato').value.trim(),
+        amount:  raw ? String(parseFloat(raw)) : '',
+        status:  document.getElementById('es_status').value.trim(),
+      });
+    }
+    closeEditModal();
+    await loadData();
+  } catch(e) {
+    alert('Erro ao salvar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
+  }
+}
+
+function closeEditModal() {
+  document.getElementById('rowEditModal').classList.remove('open');
+  EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
+}
+
+// ── ORÇAMENTO EDIT ─────────────────────────────────────────
+
+function openEditOrcamento(addr) {
+  ORC_EDIT_ADDR = addr;
+  const obra = PROC.obras.find(o => o.addr === addr);
+  document.getElementById('orcModalInput').value = obra ? obra.orcamento : '';
+  document.getElementById('orcModalMsg').style.display = 'none';
+  document.getElementById('orcModal').classList.add('open');
+}
+
+async function saveOrcamento() {
+  const raw = document.getElementById('orcModalInput').value.replace(',', '.');
+  const val = parseFloat(raw);
+  const msgEl = document.getElementById('orcModalMsg');
+  if (!raw || isNaN(val) || val <= 0) {
+    msgEl.className = 'f-alert err'; msgEl.textContent = 'Informe um valor válido.'; msgEl.style.display = 'flex';
+    return;
+  }
+  const btn = document.getElementById('orcModalSaveBtn');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;display:inline-block"></div>';
+  try {
+    await apiWrite({ action: 'updateObra', addr: ORC_EDIT_ADDR, orcamento: String(val) });
+    document.getElementById('orcModal').classList.remove('open');
+    ORC_EDIT_ADDR = '';
+    await loadData();
+  } catch(e) {
+    msgEl.className = 'f-alert err'; msgEl.textContent = 'Erro: ' + e.message; msgEl.style.display = 'flex';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Atualizar';
+  }
+}
 
 // ── AUTO-LOGIN CHECK ───────────────────────────────────────
 // If a valid session cookie already exists, skip the login screen
