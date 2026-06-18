@@ -2208,6 +2208,12 @@ function wkNum(d) {
   return Math.ceil((((D-y0)/86400000)+1)/7);
 }
 function esc(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function toInputDate(v) {
+  if (!v) return '';
+  const d = new Date(String(v).replace(/\//g, '-'));
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0]; // yyyy-MM-dd required by <input type="date">
+}
 
 // ── ROW EDIT / DELETE ─────────────────────────────────────
 
@@ -2229,7 +2235,7 @@ function openEditMaterial(rowNum, addr) {
     <div class="row g-3">
       <div class="col-md-6">
         <label class="f-label">Data da Compra</label>
-        <input type="date" id="em_dataCom" class="f-input" value="${r.dataCom||''}">
+        <input type="date" id="em_dataCom" class="f-input" value="${toInputDate(r.dataCom)}">
       </div>
       <div class="col-md-6">
         <label class="f-label">É custo extra do cliente?</label>
@@ -2265,7 +2271,7 @@ function openEditSub(rowNum, addr) {
     <div class="row g-3">
       <div class="col-md-6">
         <label class="f-label">Data de Conclusão</label>
-        <input type="date" id="es_dataCon" class="f-input" value="${r.dataCon||''}">
+        <input type="date" id="es_dataCon" class="f-input" value="${toInputDate(r.dataCon)}">
       </div>
       <div class="col-md-6">
         <label class="f-label">Tipo de Serviço</label>
