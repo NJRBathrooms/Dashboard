@@ -1,8 +1,12 @@
 {
   "version": 2,
   "functions": {
-    "api/write.js": { "maxDuration": 60 }
+    "api/write.js": { "maxDuration": 60 },
+    "api/emp-write.js": { "maxDuration": 60 }
   },
+  "rewrites": [
+    { "source": "/funcionarios", "destination": "/employees.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
