@@ -1,6 +1,6 @@
 {
   "name": "Controle de Horas - NJR",
-  "short_name": "NJR Horas",
+  "short_name": "NJR Controle",
   "start_url": "/funcionarios",
   "display": "standalone",
   "background_color": "#0d2137",
