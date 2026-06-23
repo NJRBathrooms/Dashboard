@@ -1,4 +1,21 @@
 const { verifyToken, getCookieValue, readBody } = require('./_auth');
+const A = require('./_actions');
+const { getOrCreateFolder, uploadFile } = require('./_drive');
+
+const HANDLERS = {
+  addObra: A.addObra,
+  closeObra: A.closeObra,
+  updateObra: A.updateObra,
+  addMaterial: A.addMaterial,
+  updateMaterial: A.updateMaterial,
+  deleteMaterial: A.deleteMaterial,
+  addSubcontrato: A.addSubcontrato,
+  updateSubcontrato: A.updateSubcontrato,
+  deleteSubcontrato: A.deleteSubcontrato,
+  addCliente: A.addCliente,
+  getOrCreateFolder,
+  uploadFile,
+};
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -10,28 +27,11 @@ module.exports = async function handler(req, res) {
 
   const body = await readBody(req);
   const { action, ...params } = body;
-  const appsUrl = process.env.APPS_SCRIPT_URL;
+  const fn = HANDLERS[action];
+  if (!fn) return res.status(400).json({ error: 'Ação desconhecida: ' + action });
 
   try {
-    let data;
-
-    if (action === 'uploadFile') {
-      // Forward as POST to Apps Script doPost
-      const formBody = new URLSearchParams({ action: 'uploadFile', ...params });
-      const response = await fetch(appsUrl, {
-        method: 'POST',
-        body: formBody,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-      data = await response.json();
-    } else {
-      // Forward as GET to Apps Script doGet (addObra, closeObra, getOrCreateFolder, etc.)
-      const qs = new URLSearchParams({ action, ...params });
-      const response = await fetch(`${appsUrl}?${qs}`);
-      const text = await response.text();
-      data = JSON.parse(text);
-    }
-
+    const data = await fn(params);
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: 'Erro: ' + err.message });
