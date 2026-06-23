@@ -1,0 +1,12 @@
+{
+  "name": "njr-bathrooms",
+  "version": "2.0.0",
+  "private": true,
+  "description": "NJR Bathrooms dashboard + employee app — backend via Google Sheets/Drive API (sem Apps Script)",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "googleapis": ">=120 <200"
+  }
+}
