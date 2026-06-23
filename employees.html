@@ -9,7 +9,7 @@
 <link rel="manifest" href="/manifest-emp.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NJR Horas">
+<meta name="apple-mobile-web-app-title" content="NJR Controle de Horas">
 <meta name="theme-color" content="#0d2137">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -38,24 +38,24 @@ html { overflow-x:hidden; }
 
 /* MAIN APP */
 #mainApp { display:none; }
-.app-header { background:var(--navy); height:84px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:10px; }
-.brand { display:flex; align-items:center; gap:14px; text-decoration:none; min-width:0; flex-shrink:1; }
-.brand-icon { width:54px; height:54px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:5px; }
+.app-header { background:var(--navy); height:126px; padding:0 36px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:14px; }
+.brand { display:flex; align-items:center; gap:20px; text-decoration:none; min-width:0; flex-shrink:1; }
+.brand-icon { width:78px; height:78px; background:#fff; border-radius:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:7px; }
 .brand-icon img { width:100%; height:100%; object-fit:contain; }
 .brand-text { min-width:0; overflow:hidden; }
-.brand-name { color:#fff; font-size:19px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.brand-sub  { color:rgba(255,255,255,.45); font-size:12px; display:block; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-name { color:#fff; font-size:28px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-sub  { color:rgba(255,255,255,.45); font-size:16px; display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .header-right { display:flex; align-items:center; gap:14px; flex-shrink:0; }
-.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:7px 16px; color:rgba(255,255,255,.8); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; flex-shrink:0; white-space:nowrap; }
+.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:9px 18px; color:rgba(255,255,255,.8); font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; flex-shrink:0; white-space:nowrap; }
 .logout-btn:hover { background:rgba(255,255,255,.15); }
 
 @media (max-width:480px) {
-  .app-header { height:76px; padding:0 14px; gap:8px; }
-  .brand { gap:10px; }
-  .brand-icon { width:46px; height:46px; border-radius:10px; padding:4px; }
-  .brand-name { font-size:16px; }
-  .brand-sub { font-size:10px; }
-  .logout-btn { padding:7px 12px; font-size:12px; }
+  .app-header { height:114px; padding:0 18px; gap:10px; }
+  .brand { gap:14px; }
+  .brand-icon { width:68px; height:68px; border-radius:14px; padding:6px; }
+  .brand-name { font-size:22px; }
+  .brand-sub { font-size:13px; }
+  .logout-btn { padding:8px 13px; font-size:13px; }
   .login-card { padding:36px 24px; }
 }
 @media (max-width:340px) { .brand-sub { display:none; } }
@@ -82,13 +82,6 @@ html { overflow-x:hidden; }
 .f-input { width:100%; border:2px solid #dde7f1; border-radius:10px; padding:11px 14px; font-size:14px; color:var(--navy); background:#fff; transition:border-color .2s; font-family:inherit; }
 .f-input:focus { outline:none; border-color:var(--orange); }
 .f-input:disabled { background:#f8fafd; color:#7b8ea4; cursor:default; }
-
-/* Native time input styling */
-input[type="time"].f-input { -webkit-appearance:none; appearance:none; }
-input[type="time"].f-input::-webkit-datetime-edit { color:var(--navy); }
-input[type="time"].f-input::-webkit-datetime-edit-fields-wrapper { padding:0; }
-input[type="time"].f-input::-webkit-calendar-picker-indicator { opacity:.5; cursor:pointer; }
-
 .f-input-prefix { position:relative; }
 .f-input-prefix .prefix { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:14px; font-weight:700; color:#7b8ea4; pointer-events:none; }
 .f-input-prefix .f-input { padding-left:30px; }
@@ -187,7 +180,7 @@ tbody tr:hover td { background:#fafbfe; }
       <div class="login-icon"><img src="/icon-192.png" alt="NJR"></div>
       <h1>Controle de Horas</h1>
       <p>Área do Funcionário — NJR Bathrooms</p>
-      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="current-password">
+      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="off">
       <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
       <div class="login-error" id="loginErr"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i><span id="loginErrMsg">Senha incorreta</span></div>
     </div>
@@ -201,7 +194,7 @@ tbody tr:hover td { background:#fafbfe; }
     <div class="brand">
       <div class="brand-icon"><img src="/icon-192.png" alt="NJR"></div>
       <div class="brand-text">
-        <div class="brand-name">NJR Horas</div>
+        <div class="brand-name">NJR Controle de Horas</div>
         <span class="brand-sub" id="empNameHeader">Funcionário</span>
       </div>
     </div>
@@ -243,18 +236,20 @@ tbody tr:hover td { background:#fafbfe; }
           <input type="text" id="empNameField" class="f-input" disabled>
         </div>
 
-        <!-- Hora de entrada / saída — type="time" → native iOS drum-roll picker -->
+        <!-- Hora de entrada / saída — texto com auto-formatação 24h -->
         <div class="row g-3 mb-1">
           <div class="col-6">
             <label class="f-label">Hora de Entrada <span class="f-req">*</span></label>
-            <input type="time" id="entryTime" class="f-input">
+            <input type="text" id="entryTime" class="f-input" placeholder="08:00"
+                   inputmode="numeric" maxlength="5" oninput="fmtTime(this)" onblur="normTime(this)">
           </div>
           <div class="col-6">
             <label class="f-label">Hora de Saída <span class="f-req">*</span></label>
-            <input type="time" id="exitTime" class="f-input">
+            <input type="text" id="exitTime" class="f-input" placeholder="17:00"
+                   inputmode="numeric" maxlength="5" oninput="fmtTime(this)" onblur="normTime(this)">
           </div>
         </div>
-        <p class="f-hint mb-3"><i class="fas fa-info-circle"></i> Formato 24h. Exemplo: 18:45</p>
+        <p class="f-hint mb-3"><i class="fas fa-info-circle"></i> Formato 24h — digite 4 números (ex: 1845 vira 18:45)</p>
 
         <!-- Comprou materiais -->
         <div class="mb-3">
@@ -296,7 +291,6 @@ tbody tr:hover td { background:#fafbfe; }
                   <i class="fas fa-images"></i> Galeria
                 </button>
               </div>
-              <!-- camera: one at a time (iOS native camera); gallery: multiple -->
               <input type="file" id="cameraInput"  accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(this)">
               <input type="file" id="galleryInput" accept="image/*" multiple           style="display:none" onchange="handlePhotoSelect(this)">
               <div class="photo-thumbs" id="photoThumbs"></div>
@@ -349,13 +343,18 @@ tbody tr:hover td { background:#fafbfe; }
 
 <script>
 // ══════════════════════════════════════════════════════════
+// INIT — limpa cookie ao abrir/recarregar (sempre pede senha)
+// ══════════════════════════════════════════════════════════
+fetch('/api/emp-logout', {method:'POST'}).catch(()=>{});
+
+// ══════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════
 let EMP_NAME      = '';
 let ALL_ADDRS     = [];
 let MY_LABOR      = [];
 let wkOff         = 0;
-let selectedPhotos = []; // [{ base64, mimeType, name, preview }]
+let selectedPhotos = [];
 let receiptUrls   = '';
 let SEL_ADDR      = '';
 let DATA_LOADING  = false;
@@ -365,6 +364,22 @@ const RATES = {
   'João La Pastina':23,'João':23,'Edelson de Oliveira':29,'Edelson':29,
   'Nilmar Rebellatto':25,'Nilmar':25,
 };
+
+// ══════════════════════════════════════════════════════════
+// TIME INPUT — auto-format 24h, sempre sem AM/PM
+// ══════════════════════════════════════════════════════════
+function fmtTime(inp) {
+  let d = inp.value.replace(/\D/g,'').slice(0,4);
+  if (d.length > 2) inp.value = d.slice(0,2) + ':' + d.slice(2);
+  else inp.value = d;
+}
+function normTime(inp) {
+  let d = inp.value.replace(/\D/g,'').slice(0,4);
+  if (!d) { inp.value = ''; return; }
+  let h = Math.min(23, parseInt(d.slice(0,2) || 0));
+  let m = Math.min(59, parseInt(d.slice(2,4) || 0));
+  inp.value = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
 
 // ══════════════════════════════════════════════════════════
 // AUTH
@@ -418,7 +433,7 @@ document.getElementById('pwdInput').addEventListener('keydown', e => { if (e.key
 // ══════════════════════════════════════════════════════════
 async function loadData() {
   DATA_LOADING = true;
-  if (CURRENT_TAB === 2) renderTab2(); // show spinner immediately
+  if (CURRENT_TAB === 2) renderTab2();
   try {
     const res = await fetch('/api/emp-data');
     if (res.status === 401) { doLogout(); return; }
@@ -459,6 +474,7 @@ function positionTabIndicator(n, animate) {
   }
 }
 
+// Transição estilo Instagram: slide horizontal suave ao clicar nas abas
 function showTab(n) {
   const prev = CURRENT_TAB;
   if (n === prev) return;
@@ -470,95 +486,106 @@ function showTab(n) {
   [1,2].forEach(i => getBtnEl(i).classList.toggle('active', n===i));
   positionTabIndicator(n, true);
   viewport.style.height = curEl.offsetHeight + 'px';
-  targetEl.style.position='absolute'; targetEl.style.top='0'; targetEl.style.left='0'; targetEl.style.width='100%';
-  targetEl.style.transition='none'; curEl.style.transition='none';
-  targetEl.style.transform = 'translateX(' + (dir*viewW) + 'px)';
+  targetEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;transition:none;transform:translateX('+(dir*viewW)+'px)';
+  curEl.style.transition = 'none';
   targetEl.style.display = 'block';
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const dur = 'transform .28s cubic-bezier(.22,.61,.36,1)';
-    curEl.style.transition=dur; targetEl.style.transition=dur;
+    const dur = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
+    curEl.style.transition = dur;
+    targetEl.style.transition = dur;
     curEl.style.transform = 'translateX(' + (-dir*viewW) + 'px)';
-    targetEl.style.transform = 'translateX(0px)';
+    targetEl.style.transform = 'translateX(0)';
   }));
   setTimeout(()=>{
-    curEl.style.display='none'; curEl.style.transition=''; curEl.style.transform='';
-    targetEl.style.transition=''; targetEl.style.transform='';
-    targetEl.style.position=''; targetEl.style.top=''; targetEl.style.left=''; targetEl.style.width='';
-    viewport.style.height='';
+    curEl.style.cssText = 'display:none';
+    targetEl.style.cssText = '';
+    viewport.style.height = '';
     if (n===2) renderTab2();
-  }, 300);
+  }, 260);
 }
 
 positionTabIndicator(1, false);
 window.addEventListener('resize', ()=>positionTabIndicator(CURRENT_TAB, false));
 window.addEventListener('load',   ()=>positionTabIndicator(CURRENT_TAB, false));
 
-// ── SWIPE GESTURE ───────────────────────────────────────────
-// Ponto 6 fix: .table-responsive added to EXCLUDE so horizontal
-// table scrolling doesn't accidentally trigger tab changes.
+// ── SWIPE GESTURE — transição Instagram com rastreamento de velocidade ──
 (function() {
   const EXCLUDE = '.addr-dropdown, input, textarea, select, .photo-zone, .table-responsive, .data-table';
-  let startX=0, startY=0, phase='idle', dir=0, curN=0, targetN=0, viewW=0, curEl=null, targetEl=null, viewport=null;
+  let startX=0, startY=0, phase='idle', dir=0, curN=0, targetN=0, viewW=0;
+  let curEl=null, targetEl=null, viewport=null;
+  let vel=0, lastX=0, lastT=0;
 
   function onTouchStart(e) {
     if (e.target.closest(EXCLUDE)) return;
-    startX=e.touches[0].clientX; startY=e.touches[0].clientY; phase='pending'; dir=0;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+    phase='pending'; dir=0; vel=0;
+    lastX=startX; lastT=performance.now();
   }
+
   function onTouchMove(e) {
-    if (phase==='idle') return;
+    if (phase==='idle'||phase==='edge') return;
     const dx=e.touches[0].clientX-startX, dy=e.touches[0].clientY-startY;
     if (phase==='pending') {
       if (Math.abs(dy)>Math.abs(dx)+5) { phase='idle'; return; }
       if (Math.abs(dx)<8) return;
-      dir = dx<0 ? 1 : -1;
+      dir=dx<0?1:-1;
       curN=CURRENT_TAB; targetN=curN+dir;
       if (targetN<1||targetN>2) { phase='edge'; return; }
       viewport=document.getElementById('pageViewport');
       curEl=getPageEl(curN); targetEl=getPageEl(targetN);
       viewW=viewport.offsetWidth||window.innerWidth;
       viewport.style.height=curEl.offsetHeight+'px';
-      targetEl.style.position='absolute'; targetEl.style.top='0'; targetEl.style.left='0'; targetEl.style.width='100%';
-      targetEl.style.transition='none'; curEl.style.transition='none';
-      targetEl.style.transform='translateX('+(dir*viewW)+'px)'; targetEl.style.display='block';
+      targetEl.style.cssText='position:absolute;top:0;left:0;width:100%;transition:none;transform:translateX('+(dir*viewW)+'px)';
+      curEl.style.transition='none';
+      targetEl.style.display='block';
       phase='dragging';
     }
     if (phase==='dragging') {
       e.preventDefault();
+      // rastreia velocidade (px/ms)
+      const now=performance.now(), dt=now-lastT;
+      if (dt>0) vel=(e.touches[0].clientX-lastX)/dt;
+      lastX=e.touches[0].clientX; lastT=now;
       const pct=Math.max(-1,Math.min(1,dx/viewW));
       curEl.style.transform='translateX('+(pct*viewW)+'px)';
       targetEl.style.transform='translateX('+((pct-dir)*viewW)+'px)';
     }
   }
+
   function onTouchEnd(e) {
     if (phase!=='dragging') { phase='idle'; return; }
     const dx=e.changedTouches[0].clientX-startX;
-    const commit=Math.abs(dx)>viewW*0.3;
-    const dur='transform .28s cubic-bezier(.22,.61,.36,1)';
+    // confirma se arrastou >25% OU velocidade suficiente na direção correta
+    const fastFlick=Math.abs(vel)>0.4&&Math.sign(vel)!==Math.sign(dir);
+    const commit=Math.abs(dx)>viewW*0.25||fastFlick;
+    const commitDur='transform .25s cubic-bezier(.25,.46,.45,.94)';
+    const snapDur='transform .2s cubic-bezier(.4,0,.6,1)';
     if (commit) {
       CURRENT_TAB=targetN;
       [1,2].forEach(i=>getBtnEl(i).classList.toggle('active',CURRENT_TAB===i));
       positionTabIndicator(CURRENT_TAB,true);
-      curEl.style.transition=dur; targetEl.style.transition=dur;
+      curEl.style.transition=commitDur; targetEl.style.transition=commitDur;
       curEl.style.transform='translateX('+(-dir*viewW)+'px)';
-      targetEl.style.transform='translateX(0px)';
+      targetEl.style.transform='translateX(0)';
       setTimeout(()=>{
-        curEl.style.display='none'; curEl.style.transition=''; curEl.style.transform='';
-        targetEl.style.transition=''; targetEl.style.transform='';
-        targetEl.style.position=''; targetEl.style.top=''; targetEl.style.left=''; targetEl.style.width='';
+        curEl.style.cssText='display:none';
+        targetEl.style.cssText='';
         viewport.style.height='';
         if (CURRENT_TAB===2) renderTab2();
-      },300);
+      },260);
     } else {
-      curEl.style.transition=dur; targetEl.style.transition=dur;
-      curEl.style.transform=''; targetEl.style.transform='translateX('+(dir*viewW)+'px)';
+      curEl.style.transition=snapDur; targetEl.style.transition=snapDur;
+      curEl.style.transform='';
+      targetEl.style.transform='translateX('+(dir*viewW)+'px)';
       setTimeout(()=>{
-        targetEl.style.display='none'; curEl.style.transition=''; targetEl.style.transition='';
-        targetEl.style.position=''; targetEl.style.top=''; targetEl.style.left=''; targetEl.style.width='';
+        targetEl.style.display='none';
+        curEl.style.cssText=''; targetEl.style.cssText='';
         viewport.style.height='';
-      },300);
+      },220);
     }
     phase='idle';
   }
+
   document.addEventListener('touchstart', onTouchStart, {passive:true});
   document.addEventListener('touchmove',  onTouchMove,  {passive:false});
   document.addEventListener('touchend',   onTouchEnd,   {passive:true});
@@ -611,8 +638,7 @@ function toggleMaterialBlock() {
 }
 
 // ══════════════════════════════════════════════════════════
-// IMAGE COMPRESSION — runs client-side, max 1200px JPEG 75%
-// Reduces 5MB camera photo to ~150-300KB before upload.
+// IMAGE COMPRESSION — Canvas, max 1200px, JPEG 75%
 // ══════════════════════════════════════════════════════════
 function compressImage(file) {
   return new Promise(resolve => {
@@ -643,7 +669,7 @@ function compressImage(file) {
 }
 
 // ══════════════════════════════════════════════════════════
-// PHOTO HANDLING — supports multiple photos
+// PHOTO HANDLING
 // ══════════════════════════════════════════════════════════
 function triggerCamera()  { document.getElementById('cameraInput').click(); }
 function triggerGallery() { document.getElementById('galleryInput').click(); }
@@ -653,7 +679,6 @@ async function handlePhotoSelect(input) {
   if (!files.length) return;
   const statusEl=document.getElementById('photoStatus');
   statusEl.innerHTML=`<div class="photo-status loading"><div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Processando ${files.length} foto${files.length>1?'s':''}...</div>`;
-  // Disable buttons during processing
   document.getElementById('cameraBtn').disabled=true;
   document.getElementById('galleryBtn').disabled=true;
   try {
@@ -670,9 +695,7 @@ async function handlePhotoSelect(input) {
 function renderPhotoThumbs() {
   const thumbsEl=document.getElementById('photoThumbs');
   const statusEl=document.getElementById('photoStatus');
-  if (!selectedPhotos.length) {
-    thumbsEl.innerHTML=''; statusEl.innerHTML=''; return;
-  }
+  if (!selectedPhotos.length) { thumbsEl.innerHTML=''; statusEl.innerHTML=''; return; }
   thumbsEl.innerHTML=selectedPhotos.map((p,i)=>
     `<div class="photo-thumb-wrap">
       <img src="${p.preview}" class="photo-thumb" alt="foto ${i+1}">
@@ -683,37 +706,22 @@ function renderPhotoThumbs() {
   statusEl.innerHTML=`<div class="photo-status ok"><i class="fas fa-check-circle"></i> ${n} foto${n>1?'s':''} pronta${n>1?'s':''} para envio</div>`;
 }
 
-function removePhoto(idx) {
-  selectedPhotos.splice(idx,1);
-  renderPhotoThumbs();
-}
+function removePhoto(idx) { selectedPhotos.splice(idx,1); renderPhotoThumbs(); }
 
-// Upload all photos in parallel — returns comma-separated URLs
 async function uploadAllPhotos(addr) {
   if (!selectedPhotos.length) return '';
   const statusEl=document.getElementById('photoStatus');
   const n=selectedPhotos.length;
   statusEl.innerHTML=`<div class="photo-status loading"><div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Enviando ${n} foto${n>1?'s':''}...</div>`;
-
-  // Create folder once
   const folderRes=await empWrite({action:'getOrCreateFolder',addr,subfolder:'Recibos'});
   if (folderRes.error) throw new Error(folderRes.error);
   const folderId=folderRes.id;
-
-  // Upload all in parallel
   const ts=Date.now();
   const results=await Promise.all(selectedPhotos.map((p,i)=>
-    empWrite({
-      action:'uploadFile', folderId,
-      fileBase64: p.base64,
-      fileName: `recibo_${ts}_${i+1}_${p.name}`,
-      mimeType: p.mimeType
-    })
+    empWrite({ action:'uploadFile', folderId, fileBase64:p.base64, fileName:`recibo_${ts}_${i+1}_${p.name}`, mimeType:p.mimeType })
   ));
-
   const errs=results.filter(r=>r.error);
   if (errs.length) throw new Error(errs[0].error);
-
   statusEl.innerHTML=`<div class="photo-status ok"><i class="fas fa-check-circle"></i> ${results.length} foto${results.length>1?'s':''} enviada${results.length>1?'s':''}</div>`;
   return results.map(r=>r.fileUrl||'').filter(Boolean).join(', ');
 }
@@ -729,8 +737,8 @@ async function submitForm() {
 
   const errors=[];
   if (!addr)  errors.push('Endereço da obra é obrigatório.');
-  if (!entry) errors.push('Hora de entrada é obrigatória.');
-  if (!exit)  errors.push('Hora de saída é obrigatória.');
+  if (!entry||!/^\d{2}:\d{2}$/.test(entry)) errors.push('Hora de entrada inválida (use HH:MM).');
+  if (!exit ||!/^\d{2}:\d{2}$/.test(exit))  errors.push('Hora de saída inválida (use HH:MM).');
   if (bought==='Sim') {
     if (!document.getElementById('totalSpent').value.trim()) errors.push('Valor total gasto é obrigatório.');
     if (!document.getElementById('whoPaid').value)           errors.push('Selecione quem pagou os materiais.');
@@ -744,15 +752,11 @@ async function submitForm() {
   hideAlert();
 
   try {
-    if (bought==='Sim' && selectedPhotos.length) {
-      receiptUrls=await uploadAllPhotos(addr);
-    }
+    if (bought==='Sim' && selectedPhotos.length) receiptUrls=await uploadAllPhotos(addr);
 
     const result=await empWrite({
-      action: 'addLabor',
-      addr,
-      entryTime: entry,
-      exitTime:  exit,
+      action: 'addLabor', addr,
+      entryTime: entry, exitTime: exit,
       boughtMaterials: bought,
       totalSpent:  bought==='Sim' ? document.getElementById('totalSpent').value.trim() : '',
       whoPaid:     bought==='Sim' ? document.getElementById('whoPaid').value : '',
@@ -761,10 +765,9 @@ async function submitForm() {
       obs:         document.getElementById('obs').value.trim()
     });
     if (result.error) throw new Error(result.error);
-
     showToast('Registro enviado com sucesso!');
-    resetForm(); // Ponto 4 fix: clear all fields including address
-    loadData();  // Refresh data in background
+    resetForm();
+    loadData();
   } catch(e) {
     showAlert('err', 'Erro ao enviar: ' + e.message);
   } finally {
@@ -821,12 +824,9 @@ function getWeekBounds(offset) {
   const sat=new Date(sun); sat.setDate(sun.getDate()+6); sat.setHours(23,59,59,999);
   return { sun, sat };
 }
-
 function changeWeek(d) { wkOff+=d; renderTab2(); }
-
 function fmtDate(d) { return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}); }
 function fmtDateFull(d) { return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-
 const DOW_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
 function parseDate(v) {
@@ -862,7 +862,6 @@ function renderTab2() {
   document.getElementById('wkRange').textContent = 'Dom '+fmtDate(sun)+' – Sáb '+fmtDate(sat);
   document.getElementById('wkSub').textContent   = wkOff===0 ? 'Semana atual' : 'Semana '+fmtDateFull(sun);
 
-  // Show spinner while data is being fetched (Ponto 1 fix)
   if (DATA_LOADING) {
     document.getElementById('payCard').innerHTML='';
     document.getElementById('weekTable').innerHTML=
