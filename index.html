@@ -40,33 +40,23 @@ html { overflow-x:hidden; }
 
 /* MAIN APP */
 #mainApp { display:none; }
-.app-header { background:var(--navy); height:126px; padding:0 36px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; gap:14px; }
-.brand { display:flex; align-items:center; gap:20px; text-decoration:none; min-width:0; flex-shrink:1; }
-.brand-icon { width:78px; height:78px; background:#fff; border-radius:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:7px; }
+.app-header { background:var(--navy); padding:14px 20px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 20px rgba(0,0,0,.25); position:sticky; top:0; z-index:100; }
+.brand-icon { width:64px; height:64px; background:#fff; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; padding:6px; }
 .brand-icon img { width:100%; height:100%; object-fit:contain; }
-.brand-text { min-width:0; overflow:hidden; }
-.brand-name { color:#fff; font-size:28px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.brand-sub  { color:rgba(255,255,255,.45); font-size:16px; display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.header-right { display:flex; align-items:center; gap:14px; flex-shrink:0; }
-.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:5px 12px; color:rgba(255,255,255,.5); font-size:12px; display:flex; align-items:center; gap:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; min-width:0; flex-shrink:1; box-sizing:border-box; }
+.brand-body { flex:1; min-width:0; }
+.brand-name { color:#fff; font-size:22px; font-weight:800; line-height:1.2; }
+.brand-sub  { color:rgba(255,255,255,.5); font-size:13px; display:block; margin-top:2px; }
+.brand-footer { display:flex; align-items:center; gap:8px; margin-top:5px; }
+.update-badge { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:4px 10px; color:rgba(255,255,255,.5); font-size:11px; display:flex; align-items:center; gap:5px; white-space:nowrap; flex:1; min-width:0; overflow:hidden; }
 .update-badge.ok  { color:#2ecc71; border-color:rgba(46,204,113,.3); background:rgba(46,204,113,.08); }
 .update-badge.err { color:#e74c3c; border-color:rgba(231,76,60,.3); }
-.logout-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:9px 18px; color:rgba(255,255,255,.8); font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; flex-shrink:0; white-space:nowrap; }
-.logout-btn:hover { background:rgba(255,255,255,.15); }
+.logout-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:6px 14px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0; }
+.logout-btn:hover { background:rgba(255,255,255,.2); }
 
 @media (max-width:480px) {
-  .app-header { height:114px; padding:0 18px; gap:10px; }
-  .brand { gap:14px; }
-  .brand-icon { width:68px; height:68px; border-radius:14px; padding:6px; }
-  .brand-name { font-size:22px; }
-  .brand-sub { font-size:13px; }
-  .header-right { gap:8px; }
-  .update-badge { padding:5px 10px; font-size:11px; max-width:90px; gap:5px; }
-  .logout-btn { padding:8px 13px; font-size:13px; }
-  .logout-btn .btn-label { display:none; }
-}
-@media (max-width:340px) {
-  .brand-sub { display:none; }
+  .app-header { padding:12px 16px; gap:12px; }
+  .brand-icon { width:54px; height:54px; border-radius:12px; }
+  .brand-name { font-size:19px; }
 }
 
 /* TABS */
@@ -295,18 +285,16 @@ tbody tr:hover td { background:#fafbfe; }
 <!-- APP -->
 <div id="mainApp">
   <div class="app-header">
-    <div class="brand">
-      <div class="brand-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
-      <div class="brand-text">
-        <div class="brand-name">NJR Bathrooms</div>
-        <span class="brand-sub">Dashboard de Obras</span>
+    <div class="brand-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
+    <div class="brand-body">
+      <div class="brand-name">NJR Bathrooms</div>
+      <span class="brand-sub">Dashboard de Obras</span>
+      <div class="brand-footer">
+        <div class="update-badge" id="updateBadge">
+          <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>
+        </div>
+        <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i>Sair</button>
       </div>
-    </div>
-    <div class="header-right">
-      <div class="update-badge" id="updateBadge">
-        <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>
-      </div>
-      <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i><span class="btn-label">Sair</span></button>
     </div>
   </div>
 
