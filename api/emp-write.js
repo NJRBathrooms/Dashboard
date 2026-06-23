@@ -1,4 +1,6 @@
 const { verifyEmpToken, getCookieValue, readBody } = require('./_emp-auth');
+const { addLabor } = require('./_actions');
+const { getOrCreateFolder, uploadFile } = require('./_drive');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -10,37 +12,19 @@ module.exports = async function handler(req, res) {
 
   const body = await readBody(req);
   const { action, ...params } = body;
-  const appsUrl = process.env.APPS_SCRIPT_URL;
 
   try {
     let data;
-
     if (action === 'uploadFile') {
-      // Forward photo upload as POST to Apps Script doPost
-      const formBody = new URLSearchParams({ action: 'uploadFile', ...params });
-      const response = await fetch(appsUrl, {
-        method: 'POST',
-        body: formBody,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-      data = await response.json();
+      data = await uploadFile(params);
     } else if (action === 'getOrCreateFolder') {
-      // GET request to Apps Script
-      const qs = new URLSearchParams({ action: 'getOrCreateFolder', ...params });
-      const response = await fetch(`${appsUrl}?${qs}`);
-      const text = await response.text();
-      data = JSON.parse(text);
+      data = await getOrCreateFolder(params);
     } else if (action === 'addLabor') {
-      // Inject employee name from JWT — never trust the body for this
-      const safeParams = { ...params, emp: empName };
-      const qs = new URLSearchParams({ action: 'addLabor', ...safeParams });
-      const response = await fetch(`${appsUrl}?${qs}`);
-      const text = await response.text();
-      data = JSON.parse(text);
+      // Nome do funcionário vem SEMPRE do token, nunca do corpo da requisição
+      data = await addLabor({ ...params, emp: empName });
     } else {
       return res.status(400).json({ error: 'Ação desconhecida: ' + action });
     }
-
     return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: 'Erro: ' + err.message });
