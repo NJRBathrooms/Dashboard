@@ -770,6 +770,10 @@ async function doLogout() {
 
 document.getElementById('pwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+// Pré-aquece o cache do Apps Script (readAll) enquanto o usuário digita a senha,
+// para que o loadData() após o login retorne quase instantâneo em vez de pagar a leitura fria das abas.
+fetch('/api/emp-warmup').catch(() => {});
+
 // DATA STORE
 let DB   = { labor:[],materials:[],subcontractors:[],obras:[],clients:[],lastUpdated:null };
 let PROC = { labor:[],materials:[],subs:[],obras:[],clients:[] };
