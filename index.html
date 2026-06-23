@@ -764,6 +764,7 @@ async function doLogin() {
 }
 
 async function doLogout() {
+  try { localStorage.removeItem('njr_db_cache'); } catch(_) {}
   await fetch('/api/logout', { method: 'POST' }).catch(() => {});
   location.reload();
 }
@@ -805,8 +806,23 @@ async function apiWrite(params) {
 }
 
 // LOAD DATA
+const DB_CACHE_KEY = 'njr_db_cache';
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); }
+
 async function loadData() {
-  setBadge('loading');
+  // Pinta a tela instantaneamente com o último dado conhecido (cache local) e atualiza em 2º plano,
+  // para o app abrir na hora em vez de esperar a leitura da planilha (Apps Script é lento mesmo com cache).
+  let paintedFromCache = false;
+  try {
+    const cached = localStorage.getItem(DB_CACHE_KEY);
+    if (cached) {
+      DB = JSON.parse(cached);
+      renderAll();
+      paintedFromCache = true;
+    }
+  } catch(_) {}
+
+  setBadge('loading', paintedFromCache ? 'Atualizando...' : 'Carregando...');
   try {
     const res = await fetch('/api/data');
     if (res.status === 401) {
@@ -816,10 +832,8 @@ async function loadData() {
     }
     DB = await res.json();
     if (DB.error) throw new Error(DB.error);
-    processAll();
-    fillAddresses();
-    renderTab1();
-    renderTab2();
+    try { localStorage.setItem(DB_CACHE_KEY, JSON.stringify(DB)); } catch(_) {}
+    renderAll();
     setBadge('ok', updTimeLabel());
   } catch(e) {
     if (e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed') || e.message.includes('conexão'))) {
@@ -840,7 +854,7 @@ function updTimeLabel() {
 function setBadge(state,msg) {
   const el=document.getElementById('updateBadge');
   el.className='update-badge'+(state==='ok'?' ok':state==='err'?' err':'');
-  if (state==='loading') { el.innerHTML='<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>'; }
+  if (state==='loading') { el.innerHTML=`<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">${msg||'Carregando...'}</span>`; }
   else { el.innerHTML=`<i class="fas ${state==='ok'?'fa-check-circle':'fa-exclamation-triangle'}"></i> <span class="badge-label">${msg}</span>`; }
 }
 function errBox(msg) {
