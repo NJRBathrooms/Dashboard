@@ -1,4 +1,5 @@
 const { verifyEmpToken, getCookieValue } = require('./_emp-auth');
+const { readEmpData } = require('./_google');
 
 module.exports = async function handler(req, res) {
   const token = getCookieValue(req.headers.cookie, 'njr_emp_token');
@@ -7,17 +8,14 @@ module.exports = async function handler(req, res) {
   if (!empName) return res.status(401).json({ error: 'Não autorizado.' });
 
   try {
-    const url = process.env.APPS_SCRIPT_URL + '?t=' + Date.now();
-    const response = await fetch(url);
-    const text = await response.text();
-    const data = JSON.parse(text);
+    const data = await readEmpData();
 
-    // Filter labor to only this employee's records
+    // Só os registros deste funcionário
     const myLabor = (data.labor || []).filter(r =>
       String(r['Nome do funcionário'] || '').trim() === empName
     );
 
-    // Collect all obra addresses (Cadastro de Obras + labor entries for legacy obras)
+    // Endereços de obras (Cadastro de Obras + obras legadas presentes no labor)
     const addrSet = new Set();
     (data.obras || []).forEach(o => {
       const a = String(o['Endereço'] || '').trim();
