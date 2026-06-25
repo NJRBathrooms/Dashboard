@@ -126,10 +126,13 @@ html { overflow-x:hidden; }
 .photo-status.err { background:#f8d7da; color:#721c24; }
 
 /* PAYMENT CARD (Tab 2) */
-.week-block { margin-bottom:28px; }
-.week-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; padding:0 4px; }
-.week-head-label { font-size:18px; font-weight:800; color:var(--navy); }
-.week-head-range { font-size:13px; font-weight:600; color:#7b8ea4; white-space:nowrap; }
+.week-bar { background:#fff; border-radius:16px; padding:18px 24px; box-shadow:0 2px 12px rgba(0,0,0,.05); display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:20px; }
+.wk-nav { width:40px; height:40px; border-radius:10px; border:2px solid #dde7f1; background:#fff; color:var(--navy); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.wk-nav:hover:not(:disabled) { border-color:var(--orange); color:var(--orange); }
+.wk-nav:disabled { opacity:.3; cursor:not-allowed; }
+.wk-display { text-align:center; min-width:200px; }
+.wk-range { font-size:18px; font-weight:800; color:var(--navy); }
+.wk-sub   { font-size:12px; color:#7b8ea4; margin-top:3px; }
 .pay-card { background:linear-gradient(135deg,var(--navy),var(--navy2)); border-radius:16px; padding:24px; color:#fff; margin-bottom:20px; box-shadow:0 4px 20px rgba(13,33,55,.3); }
 .pay-card-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:rgba(255,255,255,.5); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
 .pay-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
@@ -311,9 +314,17 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
     </div>
 
-    <!-- TAB 2 — MINHA SEMANA (semana atual + semana anterior) -->
+    <!-- TAB 2 — MINHA SEMANA (navega só entre semana atual e anterior) -->
     <div class="page" id="t2page" style="display:none">
-      <div id="weekList"></div>
+      <div class="week-bar">
+        <button class="wk-nav" id="wkPrev" onclick="changeWeek(-1)"><i class="fas fa-chevron-left"></i></button>
+        <div class="wk-display">
+          <div class="wk-range" id="wkRange">—</div>
+          <div class="wk-sub" id="wkSub"></div>
+        </div>
+        <button class="wk-nav" id="wkNext" onclick="changeWeek(1)"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div id="weekContent"></div>
     </div>
 
   </div><!-- /pageViewport -->
@@ -336,6 +347,7 @@ fetch('/api/emp-warmup').catch(()=>{}); // pré-aquece Apps Script enquanto usu�
 let EMP_NAME      = '';
 let ALL_ADDRS     = [];
 let MY_LABOR      = [];
+let wkOff         = 0; // 0 = semana atual, -1 = semana anterior (únicos permitidos)
 let selectedPhotos = [];
 let receiptUrls   = '';
 let SEL_ADDR      = '';
@@ -851,14 +863,9 @@ function fmtHrs(h) {
   return mi ? hi+'h '+mi+'min' : hi+'h';
 }
 
-// Monta o HTML de um bloco de semana (cabeçalho + demonstrativo + tabela) para um offset.
-function buildWeekBlock(offset, label) {
+// Monta o HTML do conteúdo de uma semana (demonstrativo + tabela) para um offset.
+function buildWeekBlock(offset) {
   const { sun, sat } = getWeekBounds(offset);
-  const header = `
-    <div class="week-head">
-      <div class="week-head-label">${label}</div>
-      <div class="week-head-range">Dom ${fmtDate(sun)} – Sáb ${fmtDate(sat)}</div>
-    </div>`;
 
   const rows = MY_LABOR.filter(r => {
     const ts = parseDate(r['Carimbo de data/hora']);
@@ -882,7 +889,7 @@ function buildWeekBlock(offset, label) {
   });
 
   if (!processed.length) {
-    return header + `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
+    return `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
   }
 
   const rate = getRate(EMP_NAME), laborPay = totalHrs * rate, gasoline = daySet.size * 10, total = laborPay + totalReim + gasoline;
@@ -922,19 +929,31 @@ function buildWeekBlock(offset, label) {
       </div>
     </div>`;
 
-  return header + payCard + table;
+  return payCard + table;
+}
+
+// Navega só entre semana atual (0) e anterior (-1)
+function changeWeek(d) {
+  const next = wkOff + d;
+  if (next < -1 || next > 0) return;
+  wkOff = next;
+  renderTab2();
 }
 
 function renderTab2() {
-  const list = document.getElementById('weekList');
+  const { sun, sat } = getWeekBounds(wkOff);
+  document.getElementById('wkRange').textContent = 'Dom ' + fmtDate(sun) + ' – Sáb ' + fmtDate(sat);
+  document.getElementById('wkSub').textContent   = wkOff === 0 ? 'Semana atual' : 'Semana anterior';
+  // setas: trava nos limites (sem semana futura nem além da anterior)
+  document.getElementById('wkPrev').disabled = wkOff <= -1;
+  document.getElementById('wkNext').disabled = wkOff >= 0;
+
+  const content = document.getElementById('weekContent');
   if (DATA_LOADING) {
-    list.innerHTML = `<div class="loading-box"><div class="spinner"></div> Carregando registros...</div>`;
+    content.innerHTML = `<div class="loading-box"><div class="spinner"></div> Carregando registros...</div>`;
     return;
   }
-  // Só semana atual (offset 0) e semana anterior (offset -1)
-  list.innerHTML =
-    `<div class="week-block">${buildWeekBlock(0, 'Semana Atual')}</div>` +
-    `<div class="week-block">${buildWeekBlock(-1, 'Semana Anterior')}</div>`;
+  content.innerHTML = buildWeekBlock(wkOff);
 }
 
 // ══════════════════════════════════════════════════════════
