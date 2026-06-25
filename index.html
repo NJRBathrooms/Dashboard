@@ -1396,8 +1396,16 @@ function renderGerencial() {
 
 // ── VISÃO DETALHADA: seletor → card + tabela de todas as semanas ──
 let DET_EMP='';
-function selectDetEmp(v) { DET_EMP=v; renderDetalhada(); }
+let DET_WK=0; // semana exibida na visão detalhada (0 = atual)
+function selectDetEmp(v) { DET_EMP=v; DET_WK=0; renderDetalhada(); }
 function backDetEmp() { DET_EMP=''; renderDetalhada(); }
+function detMoveWeek(d) { DET_WK+=d; renderDetalhada(); }
+function weekRelLabel(off) {
+  if (off===0) return 'Semana atual';
+  if (off===-1) return 'Semana passada';
+  if (off===1) return 'Próxima semana';
+  return off<0 ? Math.abs(off)+' semanas atrás' : off+' semanas à frente';
+}
 function renderDetalhada() {
   const wrap=document.getElementById('detSelectWrap');
   const body=document.getElementById('detBody');
@@ -1418,31 +1426,25 @@ function renderDetalhada() {
   }
 
   wrap.style.display='none';
-  const rows=PROC.labor.filter(r=>r.emp===DET_EMP&&r.ts);
-  // agrupa por semana (domingo de início)
-  const weeks=new Map();
-  rows.forEach(r=>{ const k=weekStartOf(r.ts).getTime(); if(!weeks.has(k))weeks.set(k,[]); weeks.get(k).push(r); });
-  const keys=[...weeks.keys()].sort((a,b)=>b-a); // mais recente primeiro
-  const curWk=weekStartOf(new Date()).getTime();
-  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const {sun,sat}=getWeekBounds(DET_WK);
+  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const wkRows=PROC.labor.filter(r=>r.emp===DET_EMP&&r.ts&&r.ts>=sun&&r.ts<=sat);
+  const content = wkRows.length
+    ? payCardHTML(DET_EMP, computeStats(wkRows, DET_EMP)) + dayTableHTML(wkRows)
+    : `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
 
-  let html=`<button class="back-btn" onclick="backDetEmp()"><i class="fas fa-arrow-left"></i> Voltar</button>
-    <div class="det-emp-name" style="color:${getColor(DET_EMP)}">${DET_EMP}</div>`;
-  if (!keys.length) {
-    html+=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros para este funcionário</strong></div>`;
-  } else {
-    keys.forEach(k=>{
-      const wkRows=weeks.get(k);
-      const sun=new Date(k); const sat=new Date(sun); sat.setDate(sat.getDate()+6);
-      const tag = k===curWk ? ' <span class="day-badge">atual</span>' : '';
-      html+=`<div class="det-week-block">
-        <div class="det-week-head"><i class="fas fa-calendar-week"></i> Dom ${fmt(sun)} – Sáb ${fmt(sat)}${tag}</div>
-        ${payCardHTML(DET_EMP, computeStats(wkRows, DET_EMP))}
-        ${dayTableHTML(wkRows)}
-      </div>`;
-    });
-  }
-  body.innerHTML=html;
+  body.innerHTML=`
+    <button class="back-btn" onclick="backDetEmp()"><i class="fas fa-arrow-left"></i> Voltar</button>
+    <div class="det-emp-name" style="color:${getColor(DET_EMP)}">${DET_EMP}</div>
+    <div class="week-bar">
+      <button class="wk-nav" onclick="detMoveWeek(-1)"><i class="fas fa-chevron-left"></i></button>
+      <div class="wk-display">
+        <div class="wk-range">${fmt(sun)} — ${fmt(sat)}</div>
+        <div class="wk-sub">${weekRelLabel(DET_WK)}</div>
+      </div>
+      <button class="wk-nav" onclick="detMoveWeek(1)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    ${content}`;
 }
 
 // ── OBRA DETAIL HTML (reusable for Tab 1 and Tab 4 finalized) ──
