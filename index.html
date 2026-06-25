@@ -176,8 +176,39 @@ tbody tr:hover td { background:#fafbfe; }
 .wk-nav { width:40px; height:40px; border-radius:10px; border:2px solid #dde7f1; background:#fff; color:var(--navy); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
 .wk-nav:hover { border-color:var(--orange); color:var(--orange); }
 .wk-display { text-align:center; min-width:200px; }
-.wk-range { font-size:19px; font-weight:800; color:var(--navy); }
+.wk-range { font-size:19px; font-weight:800; color:var(--navy); white-space:nowrap; }
 .wk-sub   { font-size:12px; color:#7b8ea4; margin-top:3px; }
+
+/* SUB-ABAS (Controle de Horas) */
+.subtab-nav { display:flex; gap:8px; background:#eef3f8; border-radius:12px; padding:5px; margin-bottom:20px; }
+.subtab-btn { flex:1; border:none; background:none; padding:11px 14px; border-radius:9px; font-size:13px; font-weight:700; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .18s; white-space:nowrap; }
+.subtab-btn.active { background:#fff; color:var(--navy); box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.subtab-btn:hover:not(.active) { color:var(--navy2); }
+
+/* PAY CARD (mesmo card do app de funcionário) */
+.pay-card { background:linear-gradient(135deg,var(--navy),var(--navy2)); border-radius:16px; padding:24px; color:#fff; height:100%; box-shadow:0 4px 20px rgba(13,33,55,.3); }
+.pay-card-title { font-size:13px; font-weight:700; letter-spacing:.4px; color:rgba(255,255,255,.55); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.pay-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
+.pay-row:last-of-type { border-bottom:none; }
+.pay-row-lbl { color:rgba(255,255,255,.7); }
+.pay-row-val { font-weight:700; color:#fff; }
+.pay-divider { border:none; border-top:1px solid rgba(255,255,255,.2); margin:12px 0; }
+.pay-total-row { display:flex; justify-content:space-between; align-items:center; padding-top:12px; }
+.pay-total-lbl { font-size:15px; font-weight:700; color:rgba(255,255,255,.85); }
+.pay-total-val { font-size:24px; font-weight:900; color:var(--orange); }
+.day-badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(232,130,12,.1); color:var(--orange); }
+
+/* VISÃO DETALHADA */
+.det-select-card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); max-width:480px; margin:0 auto 8px; }
+.det-sel-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#7b8ea4; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.det-select { width:100%; padding:13px 14px; border:2px solid #dde7f1; border-radius:10px; font-size:15px; color:var(--navy); background:#fff; cursor:pointer; }
+.det-select:focus { outline:none; border-color:var(--orange); }
+.back-btn { background:#fff; border:2px solid #dde7f1; border-radius:10px; padding:9px 16px; font-size:13px; font-weight:700; color:var(--navy); cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all .2s; margin-bottom:16px; }
+.back-btn:hover { border-color:var(--orange); color:var(--orange); }
+.det-emp-name { font-size:24px; font-weight:900; margin-bottom:18px; }
+.det-week-block { margin-bottom:28px; }
+.det-week-head { font-size:16px; font-weight:800; color:var(--navy); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.det-week-head i { color:var(--orange); }
 
 /* EMP HOUR CARDS */
 .emp-card { background:#fff; border-radius:16px; padding:20px 22px; box-shadow:0 2px 12px rgba(0,0,0,.05); border-top:4px solid transparent; height:100%; }
@@ -326,15 +357,29 @@ tbody tr:hover td { background:#fafbfe; }
 
   <!-- TAB 2 -->
   <div id="t2page" class="page" style="display:none">
-    <div class="week-bar">
-      <button class="wk-nav" onclick="moveWeek(-1)"><i class="fas fa-chevron-left"></i></button>
-      <div class="wk-display">
-        <div class="wk-range" id="wkRange">—</div>
-        <div class="wk-sub" id="wkSub">Dom → Sáb</div>
-      </div>
-      <button class="wk-nav" onclick="moveWeek(1)"><i class="fas fa-chevron-right"></i></button>
+    <div class="subtab-nav">
+      <button class="subtab-btn active" id="st2gerBtn" onclick="showHorasSub('ger')"><i class="fas fa-table-cells-large"></i> Visão Gerencial</button>
+      <button class="subtab-btn" id="st2detBtn" onclick="showHorasSub('det')"><i class="fas fa-user-magnifying-glass"></i> Visão Detalhada</button>
     </div>
-    <div id="t2body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+
+    <!-- SUB-ABA: Visão Gerencial -->
+    <div id="st2ger">
+      <div class="week-bar">
+        <button class="wk-nav" onclick="moveWeek(-1)"><i class="fas fa-chevron-left"></i></button>
+        <div class="wk-display">
+          <div class="wk-range" id="wkRange">—</div>
+          <div class="wk-sub" id="wkSub">Dom → Sáb</div>
+        </div>
+        <button class="wk-nav" onclick="moveWeek(1)"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div id="gerBody"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+    </div>
+
+    <!-- SUB-ABA: Visão Detalhada -->
+    <div id="st2det" style="display:none">
+      <div id="detSelectWrap"></div>
+      <div id="detBody"></div>
+    </div>
   </div>
 
   <!-- TAB 3 — Incluir Obra -->
@@ -839,7 +884,7 @@ async function loadData() {
     if (e.message && (e.message.includes('fetch') || e.message.includes('network') || e.message.includes('Failed') || e.message.includes('conexão'))) {
       setBadge('err','Erro ao carregar');
       document.getElementById('t1body').innerHTML=errBox(e.message);
-      document.getElementById('t2body').innerHTML=errBox(e.message);
+      document.getElementById('gerBody').innerHTML=errBox(e.message);
     } else {
       setBadge('ok', updTimeLabel());
       T1_NEEDS_CHARTS = true;
@@ -1261,7 +1306,7 @@ function renderTab1() {
 }
 
 // ── TAB 2 RENDER ──────────────────────────────────────────
-function moveWeek(d) { wkOff+=d; renderTab2(); }
+function moveWeek(d) { wkOff+=d; renderGerencial(); }
 function getWeekBounds(off) {
   const now=new Date(); const dow=now.getDay();
   const sun=new Date(now); sun.setDate(now.getDate()-dow+(off*7));
@@ -1269,63 +1314,135 @@ function getWeekBounds(off) {
   const sat=new Date(sun); sat.setDate(sun.getDate()+6); sat.setHours(23,59,59,999);
   return {sun,sat};
 }
-function renderTab2() {
+function weekStartOf(d) { const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
+const DOW_NAMES=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+// Calcula o demonstrativo (mesmo do app de funcionário) a partir de registros PROC.labor
+function computeStats(rows, emp) {
+  let totalHrs=0, totalReim=0; const days=new Set();
+  rows.forEach(r=>{ totalHrs+=r.hrs; totalReim+=r.reimb; if(r.ts)days.add(r.ts.toDateString()); });
+  const rate=getRate(emp), laborPay=totalHrs*rate, gasoline=days.size*10;
+  return { totalHrs, totalReim, days:days.size, rate, laborPay, gasoline, total:laborPay+totalReim+gasoline };
+}
+
+// HTML do card de pagamento (igual ao do app NJR Controle de Horas)
+function payCardHTML(emp, s) {
+  return `
+    <div class="pay-card">
+      <div class="pay-card-title"><i class="fas fa-user" style="color:${getColor(emp)}"></i> ${emp}</div>
+      <div class="pay-row"><span class="pay-row-lbl">Horas trabalhadas</span><span class="pay-row-val">${fhm(s.totalHrs)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fhm(s.totalHrs)} × $${s.rate}/h)</span><span class="pay-row-val">${$$(s.laborPay)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Reembolso de materiais</span><span class="pay-row-val">${$$(s.totalReim)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Adicional gasolina (${s.days} dia${s.days!==1?'s':''} × $10)</span><span class="pay-row-val">${$$(s.gasoline)}</span></div>
+      <hr class="pay-divider">
+      <div class="pay-total-row"><span class="pay-total-lbl">Total a receber</span><span class="pay-total-val">${$$(s.total)}</span></div>
+    </div>`;
+}
+
+// Tabela com os dias da semana detalhados
+function dayTableHTML(rows) {
+  const sorted=[...rows].filter(r=>r.ts).sort((a,b)=>a.ts-b.ts);
+  const trs=sorted.map(r=>`<tr>
+    <td>${r.ts.toLocaleDateString('pt-BR')}</td>
+    <td><span class="day-badge">${DOW_NAMES[r.ts.getDay()]}</span></td>
+    <td style="font-size:12px">${esc(r.addr||'—')}</td>
+    <td>${ft(r.entryRaw)}</td><td>${ft(r.exitRaw)}</td>
+    <td><strong>${fhm(r.hrs)}</strong></td>
+    <td>${r.reimb>0?'<span style="color:#27ae60;font-weight:700">'+$$(r.reimb)+'</span>':'—'}</td>
+  </tr>`).join('');
+  return `
+    <div class="data-table" style="margin-top:14px">
+      <div class="table-head"><i class="fas fa-list me-2" style="color:var(--orange)"></i>Detalhamento diário</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Data</th><th>Dia</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Reembolso</th></tr></thead>
+          <tbody>${trs}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── Sub-aba ativa ─────────────────────────────────────────
+let HORAS_SUB='ger';
+function showHorasSub(which) {
+  HORAS_SUB=which;
+  document.getElementById('st2gerBtn').classList.toggle('active', which==='ger');
+  document.getElementById('st2detBtn').classList.toggle('active', which==='det');
+  document.getElementById('st2ger').style.display = which==='ger' ? '' : 'none';
+  document.getElementById('st2det').style.display = which==='det' ? '' : 'none';
+  renderTab2();
+}
+function renderTab2() { if (HORAS_SUB==='ger') renderGerencial(); else renderDetalhada(); }
+
+// ── VISÃO GERENCIAL: um card por funcionário (semana selecionada) ──
+function renderGerencial() {
   const {sun,sat}=getWeekBounds(wkOff);
   const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
   document.getElementById('wkRange').textContent=fmt(sun)+' — '+fmt(sat);
   document.getElementById('wkSub').textContent='Semana '+(wkOff===0?'atual':wkOff<0?Math.abs(wkOff)+' atrás':wkOff+' à frente');
+  const body=document.getElementById('gerBody');
   const rows=PROC.labor.filter(r=>r.ts&&r.ts>=sun&&r.ts<=sat);
-  const empMap={};
-  rows.forEach(r=>{
-    if (!r.emp) return;
-    if (!empMap[r.emp]) empMap[r.emp]={hrs:0,days:new Set()};
-    empMap[r.emp].hrs+=r.hrs; if(r.ts)empMap[r.emp].days.add(r.ts.toDateString());
-  });
-  const emps=Object.entries(empMap).sort((a,b)=>b[1].hrs-a[1].hrs);
-  const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const dayRows={};
-  rows.forEach(r=>{
-    if(!r.ts)return;
-    const dk=r.ts.toDateString();
-    if(!dayRows[dk])dayRows[dk]={date:r.ts,entries:[]};
-    dayRows[dk].entries.push(r);
-  });
-  const body=document.getElementById('t2body');
+  const byEmp={};
+  rows.forEach(r=>{ if(!r.emp)return; (byEmp[r.emp]=byEmp[r.emp]||[]).push(r); });
+  const emps=Object.keys(byEmp).sort();
   if (!emps.length) {
     body.innerHTML=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros nesta semana</strong></div>`;
     return;
   }
-  body.innerHTML=`
-    <div class="row g-3 mb-4">
-      ${emps.map(([n,e])=>`
-        <div class="col-6 col-sm-4 col-lg-3 col-xl-2">
-          <div class="emp-card" style="border-top-color:${getColor(n)}">
-            <div class="ec-firstname" style="color:${getColor(n)}">${n.split(' ')[0]}</div>
-            <div class="ec-fullname">${n}</div>
-            <div class="ec-hours" style="color:${getColor(n)}">${fhm(e.hrs)}</div>
-            <div class="ec-days">${e.days.size} dia${e.days.size!==1?'s':''}</div>
-          </div>
-        </div>`).join('')}
-    </div>
-    <div class="data-table">
-      <div class="table-head"><i class="fas fa-calendar-alt me-2" style="color:var(--orange)"></i>Detalhamento Diário</div>
-      <div class="table-responsive">
-        <table>
-          <thead><tr><th>Data</th><th>Dia</th><th>Funcionário</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th></tr></thead>
-          <tbody>
-            ${Object.values(dayRows).sort((a,b)=>a.date-b.date).flatMap(({date,entries})=>
-              entries.map((r,i)=>`<tr>
-                ${i===0?`<td rowspan="${entries.length}">${date.toLocaleDateString('pt-BR')}</td><td rowspan="${entries.length}">${dayNames[date.getDay()]}</td>`:''}
-                <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(r.emp)}"></div>${r.emp}</div></td>
-                <td style="font-size:12px">${r.addr}</td>
-                <td>${ft(r.entryRaw)}</td><td>${ft(r.exitRaw)}</td>
-                <td><strong>${fhm(r.hrs)}</strong></td>
-              </tr>`)
-            ).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
+  body.innerHTML=`<div class="row g-3">${emps.map(emp=>
+    `<div class="col-12 col-lg-6 col-xl-4">${payCardHTML(emp, computeStats(byEmp[emp], emp))}</div>`
+  ).join('')}</div>`;
+}
+
+// ── VISÃO DETALHADA: seletor → card + tabela de todas as semanas ──
+let DET_EMP='';
+function selectDetEmp(v) { DET_EMP=v; renderDetalhada(); }
+function backDetEmp() { DET_EMP=''; renderDetalhada(); }
+function renderDetalhada() {
+  const wrap=document.getElementById('detSelectWrap');
+  const body=document.getElementById('detBody');
+  const emps=[...new Set(PROC.labor.map(r=>r.emp).filter(Boolean))].sort();
+
+  if (!DET_EMP) {
+    wrap.style.display='';
+    wrap.innerHTML=`
+      <div class="det-select-card">
+        <label class="det-sel-label"><i class="fas fa-user"></i> Selecione o funcionário</label>
+        <select class="det-select" onchange="selectDetEmp(this.value)">
+          <option value="">— Escolha um funcionário —</option>
+          ${emps.map(e=>`<option value="${esc(e)}">${e}</option>`).join('')}
+        </select>
+      </div>`;
+    body.innerHTML='';
+    return;
+  }
+
+  wrap.style.display='none';
+  const rows=PROC.labor.filter(r=>r.emp===DET_EMP&&r.ts);
+  // agrupa por semana (domingo de início)
+  const weeks=new Map();
+  rows.forEach(r=>{ const k=weekStartOf(r.ts).getTime(); if(!weeks.has(k))weeks.set(k,[]); weeks.get(k).push(r); });
+  const keys=[...weeks.keys()].sort((a,b)=>b-a); // mais recente primeiro
+  const curWk=weekStartOf(new Date()).getTime();
+  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+
+  let html=`<button class="back-btn" onclick="backDetEmp()"><i class="fas fa-arrow-left"></i> Voltar</button>
+    <div class="det-emp-name" style="color:${getColor(DET_EMP)}">${DET_EMP}</div>`;
+  if (!keys.length) {
+    html+=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros para este funcionário</strong></div>`;
+  } else {
+    keys.forEach(k=>{
+      const wkRows=weeks.get(k);
+      const sun=new Date(k); const sat=new Date(sun); sat.setDate(sat.getDate()+6);
+      const tag = k===curWk ? ' <span class="day-badge">atual</span>' : '';
+      html+=`<div class="det-week-block">
+        <div class="det-week-head"><i class="fas fa-calendar-week"></i> Dom ${fmt(sun)} – Sáb ${fmt(sat)}${tag}</div>
+        ${payCardHTML(DET_EMP, computeStats(wkRows, DET_EMP))}
+        ${dayTableHTML(wkRows)}
+      </div>`;
+    });
+  }
+  body.innerHTML=html;
 }
 
 // ── OBRA DETAIL HTML (reusable for Tab 1 and Tab 4 finalized) ──
