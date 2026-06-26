@@ -305,7 +305,7 @@ async function addLabor(params) {
     <em>Em caso de dúvidas, entre em contato com Felipe (Admin).</em>
   </p>
 </div>`;
-      await G.sendEmail(to, '🔧 Solicitação de Material — ' + emp, html, true);
+      await G.sendEmail(to, 'Material necessário amanhã — Nilmar Rebellatto', html, true);
     } catch (_) {}
   }
 
