@@ -34,14 +34,16 @@ function sheetsApi() { return _sheets || (_sheets = google.sheets({ version: 'v4
 function driveApi()  { return _drive  || (_drive  = google.drive({ version: 'v3', auth: getAuth() })); }
 function gmailApi()  { return _gmail  || (_gmail  = google.gmail({ version: 'v1', auth: getAuth() })); }
 
-// Envia e-mail simples (texto) como o dono da conta, via Gmail API (escopo gmail.send).
-async function sendEmail(to, subject, body) {
+// Envia e-mail como o dono da conta, via Gmail API (escopo gmail.send).
+// Passe html=true para enviar corpo em HTML (negrito/emojis renderizam).
+async function sendEmail(to, subject, body, html) {
   const subjectEnc = '=?UTF-8?B?' + Buffer.from(String(subject), 'utf8').toString('base64') + '?=';
+  const ctype = html ? 'text/html' : 'text/plain';
   const msg = [
     `To: ${to}`,
     `Subject: ${subjectEnc}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
+    `Content-Type: ${ctype}; charset="UTF-8"`,
     'Content-Transfer-Encoding: 8bit',
     '',
     String(body),
@@ -49,6 +51,16 @@ async function sendEmail(to, subject, body) {
   const raw = Buffer.from(msg, 'utf8').toString('base64')
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   await gmailApi().users.messages.send({ userId: 'me', requestBody: { raw } });
+}
+
+// Data/hora atual amigável (dd/MM/yyyy HH:mm) no fuso da planilha
+function nowFriendly(tz) {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz || DEFAULT_TZ, day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const g = t => (p.find(x => x.type === t) || {}).value;
+  return `${g('day')}/${g('month')}/${g('year')} ${g('hour')}:${g('minute')}`;
 }
 
 // ── DATAS (serial do Sheets → string, replicando o Apps Script) ──
@@ -297,7 +309,7 @@ function normStr(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g
 
 module.exports = {
   SPREADSHEET_ID,
-  sheetsApi, driveApi, gmailApi, sendEmail,
+  sheetsApi, driveApi, gmailApi, sendEmail, nowFriendly,
   readAll, readEmpData, readEmpCredentials, readWorkbook, findValues, rowsToObjects,
   loadSheetIndex, findSheetEntry, nowInTz, colLetter, buildRow,
   appendRow, updateCell, updateRowCells, deleteRow, readColumn, normStr, q,
