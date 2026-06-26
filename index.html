@@ -1225,10 +1225,12 @@ function processAll() {
     const paid=String(r['Quem pagou?']||'').toLowerCase();
     const bought=String(r['Comprou materiais hoje?']||'').toLowerCase()==='sim';
     const isReimb=bought&&(paid.includes('employee')||paid.includes('funcionário')||paid.includes('funcionario'));
+    // Material comprado e pago pela NJR (Nilmar) → entra como custo de material da obra
+    const isNjrPaid=bought&&(paid.includes('njr')||paid.includes('nilmar')||paid.includes('bathrooms'));
     const amt=parseAmt(r['Valor total gasto']);
     return { ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
       emp:String(r['Nome do funcionário']||'').trim(), hrs,rate, laborCost:hrs*rate,
-      isReimb, reimb:isReimb?amt:0, entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
+      isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
   });
   PROC.materials=DB.materials.map(r=>({
     _row:r['_row'],
@@ -1280,11 +1282,13 @@ function calcAddr(addr) {
   });
   const totL=Object.values(empMap).reduce((s,e)=>s+e.lc,0);
   const totR=Object.values(empMap).reduce((s,e)=>s+e.reimb,0);
-  const totM=mt.filter(r=>!r.isExtra).reduce((s,r)=>s+r.amount,0);
+  // Material comprado pelo funcionário e pago pela NJR (Nilmar) conta como custo de material
+  const totNjrMat=lc.reduce((s,r)=>s+(r.njrMat||0),0);
+  const totM=mt.filter(r=>!r.isExtra).reduce((s,r)=>s+r.amount,0)+totNjrMat;
   const totS=sb.reduce((s,r)=>s+r.amount,0);
   const totX=mt.filter(r=>r.isExtra).reduce((s,r)=>s+r.amount,0);
   const grand=totL+totR+totM+totS;
-  return {lc,mt,sb,empMap,totL,totR,totM,totS,totX,grand};
+  return {lc,mt,sb,empMap,totL,totR,totM,totS,totX,totNjrMat,grand};
 }
 
 function renderTab1() {
