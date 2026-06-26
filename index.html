@@ -197,6 +197,8 @@ tbody tr:hover td { background:#fafbfe; }
 .pay-total-lbl { font-size:15px; font-weight:700; color:rgba(255,255,255,.85); }
 .pay-total-val { font-size:24px; font-weight:900; color:var(--orange); }
 .day-badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(232,130,12,.1); color:var(--orange); }
+.receipt-link { display:inline-flex; align-items:center; gap:3px; padding:3px 8px; margin:2px 2px 2px 0; border-radius:7px; font-size:12px; font-weight:700; background:rgba(41,128,185,.1); color:#2980b9; text-decoration:none; white-space:nowrap; }
+.receipt-link:hover { background:rgba(41,128,185,.2); }
 
 /* VISÃO DETALHADA */
 .det-select-card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); max-width:480px; margin:0 auto 8px; }
@@ -1217,6 +1219,16 @@ function getColor(n) {
   for (const k of Object.keys(CFG.COLORS)) { if (n&&n.includes(k.split(' ')[0])) return CFG.COLORS[k]; }
   return '#95a5a6';
 }
+// Extrai a(s) URL(s) de recibo da linha de labor (coluna que contém "foto"/"recibo")
+function laborReceipts(r) {
+  for (const k of Object.keys(r)) {
+    if (/foto|recibo/i.test(k)) {
+      const v=String(r[k]||'').trim();
+      if (v) return v.split(',').map(s=>s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
 function processAll() {
   PROC.labor=DB.labor.map(r=>{
     let hrs=parseHrs(r['Horas tabalhadas']||r['Horas trabalhadas']);
@@ -1230,7 +1242,8 @@ function processAll() {
     const amt=parseAmt(r['Valor total gasto']);
     return { ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
       emp:String(r['Nome do funcionário']||'').trim(), hrs,rate, laborCost:hrs*rate,
-      isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
+      isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, receipts:laborReceipts(r),
+      entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
   });
   PROC.materials=DB.materials.map(r=>({
     _row:r['_row'],
@@ -1276,9 +1289,10 @@ function calcAddr(addr) {
   const empMap={};
   lc.forEach(r=>{
     if (!r.emp) return;
-    if (!empMap[r.emp]) empMap[r.emp]={lc:0,hrs:0,reimb:0,days:new Set()};
+    if (!empMap[r.emp]) empMap[r.emp]={lc:0,hrs:0,reimb:0,days:new Set(),receipts:[]};
     empMap[r.emp].lc+=r.laborCost; empMap[r.emp].hrs+=r.hrs;
     empMap[r.emp].reimb+=r.reimb; if(r.ts)empMap[r.emp].days.add(r.ts.toDateString());
+    if (r.receipts&&r.receipts.length) empMap[r.emp].receipts.push(...r.receipts);
   });
   const totL=Object.values(empMap).reduce((s,e)=>s+e.lc,0);
   const totR=Object.values(empMap).reduce((s,e)=>s+e.reimb,0);
@@ -1568,17 +1582,18 @@ function obraDetailHTML(addr, ids) {
       <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Mão de obra detalhada</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Funcionário</th><th>Horas</th><th>Taxa/h</th><th>Custo M.O.</th><th>Reembolso</th><th>Total</th></tr></thead>
+          <thead><tr><th>Funcionário</th><th>Horas</th><th>Taxa/h</th><th>Custo M.O.</th><th>Reembolso</th><th>Total</th><th>Recibos</th></tr></thead>
           <tbody>
             ${emps.map(([n,e])=>`<tr>
               <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(n)}"></div>${n}</div></td>
               <td>${fhm(e.hrs)}</td><td>$${getRate(n)}/h</td><td>${$$(e.lc)}</td>
               <td>${e.reimb>0?$$(e.reimb):'—'}</td><td><strong>${$$(e.lc+e.reimb)}</strong></td>
+              <td>${(e.receipts&&e.receipts.length)?e.receipts.map((u,i)=>`<a href="${u}" target="_blank" class="receipt-link"><i class="fas fa-receipt"></i> ${i+1}</a>`).join(' '):'—'}</td>
             </tr>`).join('')}
             <tr class="tr-total">
               <td>TOTAL GERAL</td><td>${fhm(emps.reduce((s,[,e])=>s+e.hrs,0))}</td>
               <td>—</td><td>${$$(d.totL)}</td><td>${$$(d.totR)}</td>
-              <td style="color:var(--orange)">${$$(d.totL+d.totR)}</td>
+              <td style="color:var(--orange)">${$$(d.totL+d.totR)}</td><td>—</td>
             </tr>
           </tbody>
         </table>
