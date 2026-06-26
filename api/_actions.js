@@ -273,17 +273,39 @@ async function addLabor(params) {
   ]);
   await G.appendRow(sh.title, row);
 
-  // Aviso por e-mail ao dono quando o funcionário sinaliza material necessário p/ amanhã.
+  // Aviso por e-mail ao Nilmar quando o funcionário sinaliza material necessário p/ amanhã.
   // Não-fatal: se o e-mail falhar, o registro já foi gravado.
   if (params.materialNeeded && String(params.materialNeeded).trim()) {
     try {
-      const to = process.env.NOTIFY_EMAIL || 'adminnjrbathrooms@gmail.com';
-      await G.sendEmail(
-        to,
-        'Material necessário amanhã — ' + emp,
-        emp + ' reportou que precisa de material para amanhã na obra ' +
-        (params.addr || '') + ':\n\n' + params.materialNeeded
-      );
+      const to = process.env.NOTIFY_EMAIL || 'tenilmar@icloud.com';
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const addr = esc(params.addr);
+      const materiais = esc(params.materialNeeded).replace(/\n/g, '<br>');
+      const quando = G.nowFriendly();
+      const html = `
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#222;line-height:1.6;max-width:620px">
+  <p>Olá, Nilmar.</p>
+  <p>🔧 <strong>SOLICITAÇÃO DE MATERIAL PARA PRÓXIMO DIA DE TRABALHO</strong></p>
+  <p>Um membro da equipe registrou a necessidade de materiais para a obra de amanhã:</p>
+  <p>
+    👤 <strong>Funcionário:</strong> ${esc(emp)}<br>
+    📍 <strong>Endereço da Obra:</strong> ${addr}<br>
+    📦 <strong>Materiais Solicitados:</strong> ${materiais}<br>
+    🕐 <strong>Data/Hora da Solicitação:</strong> ${quando}
+  </p>
+  <p>✅ <strong>Próximos passos sugeridos:</strong></p>
+  <ol>
+    <li>Verificar estoque para os itens solicitados</li>
+    <li>Programar compra ou separação dos materiais</li>
+    <li>Confirmar disponibilidade com o funcionário antes do início da obra</li>
+  </ol>
+  <hr style="border:none;border-top:1px solid #ddd;margin:18px 0">
+  <p style="font-size:12px;color:#888;margin:0">
+    <em>Este e-mail foi enviado automaticamente pelo sistema de Registro Diário de Trabalho e Despesas da NJR Bathrooms.</em><br>
+    <em>Em caso de dúvidas, entre em contato com Felipe (Admin).</em>
+  </p>
+</div>`;
+      await G.sendEmail(to, '🔧 Solicitação de Material — ' + emp, html, true);
     } catch (_) {}
   }
 
