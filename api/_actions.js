@@ -312,8 +312,62 @@ async function addLabor(params) {
   return { ok: true };
 }
 
+// ── AJUSTES DE PAGAMENTO (bonificação / desconto por funcionário e semana) ──
+const AJUSTE_SHEET = 'Ajustes de Pagamento';
+const AJUSTE_HEADERS = ['Carimbo de data/hora', 'Nome do funcionário', 'Semana', 'Bonificação', 'Justificativa Bonificação', 'Desconto', 'Justificativa Desconto'];
+
+async function saveAjuste(params) {
+  const emp = (params.emp || '').trim();
+  const week = (params.week || '').trim();
+  if (!emp || !week) return { error: 'Funcionário e semana obrigatórios.' };
+
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === AJUSTE_SHEET);
+  if (!sh) {
+    await G.createSheet(AJUSTE_SHEET, AJUSTE_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === AJUSTE_SHEET);
+  }
+  if (!sh) return { error: 'Não foi possível criar a aba "Ajustes de Pagamento".' };
+
+  const headers = sh.headers;
+  const nomeIdx = headers.indexOf('Nome do funcionário');
+  const semIdx = headers.indexOf('Semana');
+  const nomeCol = await G.readColumn(sh.title, nomeIdx);
+  const semCol = await G.readColumn(sh.title, semIdx);
+  let rowNum = 0;
+  for (let i = 1; i < Math.max(nomeCol.length, semCol.length); i++) {
+    if (String(nomeCol[i] || '').trim() === emp && String(semCol[i] || '').trim() === week) { rowNum = i + 1; break; }
+  }
+
+  const bonif = (params.bonif !== '' && params.bonif != null) ? round2(params.bonif) : 0;
+  const desc  = (params.desc !== '' && params.desc != null) ? round2(params.desc) : 0;
+
+  if (rowNum) {
+    await G.updateRowCells(sh.title, rowNum, headers, [
+      { key: 'Carimbo de data/hora', val: G.nowInTz() },
+      { key: 'Bonificação', val: bonif },
+      { key: 'Justificativa Bonificação', val: params.justBonif || '' },
+      { key: 'Desconto', val: desc },
+      { key: 'Justificativa Desconto', val: params.justDesc || '' },
+    ]);
+  } else {
+    const row = G.buildRow(headers, [
+      { key: 'Carimbo de data/hora', val: G.nowInTz() },
+      { key: 'Nome do funcionário', val: emp },
+      { key: 'Semana', val: week, forceText: true },
+      { key: 'Bonificação', val: bonif },
+      { key: 'Justificativa Bonificação', val: params.justBonif || '' },
+      { key: 'Desconto', val: desc },
+      { key: 'Justificativa Desconto', val: params.justDesc || '' },
+    ]);
+    await G.appendRow(sh.title, row);
+  }
+  return { ok: true };
+}
+
 module.exports = {
-  addObra, closeObra, updateObra,
+  addObra, closeObra, updateObra, saveAjuste,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor,
