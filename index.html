@@ -199,6 +199,16 @@ tbody tr:hover td { background:#fafbfe; }
 .day-badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(232,130,12,.1); color:var(--orange); }
 .receipt-link { display:inline-flex; align-items:center; gap:3px; padding:3px 8px; margin:2px 2px 2px 0; border-radius:7px; font-size:12px; font-weight:700; background:rgba(41,128,185,.1); color:#2980b9; text-decoration:none; white-space:nowrap; }
 .receipt-link:hover { background:rgba(41,128,185,.2); }
+.adj-input { width:84px; text-align:right; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:6px; color:#fff; font-weight:700; font-size:14px; padding:3px 8px; }
+.adj-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.18); }
+.adj-just-input { width:180px; max-width:55vw; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:6px; color:#fff; font-size:13px; padding:3px 8px; }
+.adj-just-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.18); }
+.adj-just-input::placeholder { color:rgba(255,255,255,.4); }
+.adj-just-row .pay-row-lbl { color:rgba(255,255,255,.55); font-style:italic; font-size:13px; }
+.njr-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#1f2d3d; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 8px 28px rgba(0,0,0,.3); display:flex; align-items:center; gap:8px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:9999; }
+.njr-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.njr-toast i { color:#2ecc71; }
+.njr-toast.err i { color:#e74c3c; }
 
 /* VISÃO DETALHADA */
 .det-select-card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); max-width:480px; margin:0 auto 8px; }
@@ -824,7 +834,7 @@ fetch('/api/emp-warmup').catch(() => {});
 
 // DATA STORE
 let DB   = { labor:[],materials:[],subcontractors:[],obras:[],clients:[],lastUpdated:null };
-let PROC = { labor:[],materials:[],subs:[],obras:[],clients:[] };
+let PROC = { labor:[],materials:[],subs:[],obras:[],clients:[],ajustes:{} };
 let wkOff = 0;
 const T1CH = { donut:null, budget:null, bar:null };
 const T4CH = { donut:null, budget:null, bar:null };
@@ -1275,6 +1285,17 @@ function processAll() {
     email:String(r['Email do Cliente']||'').trim(),
     obs:String(r['Observação']||'').trim(),
   })).filter(c=>c.nome);
+  // Ajustes de pagamento (bonificação/desconto) keyed por funcionário + semana
+  PROC.ajustes={};
+  (DB.ajustes||[]).forEach(r=>{
+    const emp=String(r['Nome do funcionário']||'').trim();
+    const wk=String(r['Semana']||'').trim();
+    if (!emp||!wk) return;
+    PROC.ajustes[emp+'|'+wk]={
+      bonif:parseAmt(r['Bonificação']), justBonif:String(r['Justificativa Bonificação']||''),
+      desc:parseAmt(r['Desconto']), justDesc:String(r['Justificativa Desconto']||'')
+    };
+  });
   fillAddressesT4();
   fillFinAddresses();
   fillAddressesReg();
@@ -1335,6 +1356,17 @@ function getWeekBounds(off) {
 function weekStartOf(d) { const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
 const DOW_NAMES=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
+// Chave absoluta da semana (domingo) em ISO yyyy-MM-dd, usada para gravar/ler ajustes
+function weekKey(off) {
+  const d=getWeekBounds(off).sun, p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function getAjuste(emp, wkISO) {
+  return PROC.ajustes[emp+'|'+wkISO] || { bonif:0, justBonif:'', desc:0, justDesc:'' };
+}
+// Escape seguro para conteúdo/atributos HTML (justificativas digitadas pelo usuário)
+function escH(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 // Calcula o demonstrativo (mesmo do app de funcionário) a partir de registros PROC.labor
 function computeStats(rows, emp) {
   let totalHrs=0, totalReim=0; const days=new Set();
@@ -1343,8 +1375,33 @@ function computeStats(rows, emp) {
   return { totalHrs, totalReim, days:days.size, rate, laborPay, gasoline, total:laborPay+totalReim+gasoline };
 }
 
-// HTML do card de pagamento (igual ao do app NJR Controle de Horas)
-function payCardHTML(emp, s) {
+// HTML do card de pagamento. opts:{ adj, editable, cid }
+function payCardHTML(emp, s, opts) {
+  opts=opts||{};
+  const adj=opts.adj||{ bonif:0, justBonif:'', desc:0, justDesc:'' };
+  const editable=!!opts.editable;
+  const cid=opts.cid||'';
+  const finalTotal=s.total+(adj.bonif||0)-(adj.desc||0);
+
+  let adjRows;
+  if (editable) {
+    adjRows=`
+      <div class="pay-row"><span class="pay-row-lbl">Bonificação (Extras)</span>
+        <span class="pay-row-val">$&nbsp;<input class="adj-input" id="bonif_${cid}" value="${adj.bonif||0}" inputmode="decimal" oninput="onAdjInput('${cid}')" onchange="saveAdj('${cid}')"></span></div>
+      <div class="pay-row adj-just-row" id="bonifJustRow_${cid}" style="display:${adj.bonif?'flex':'none'}">
+        <span class="pay-row-lbl">Justificativa Bonificação</span>
+        <span class="pay-row-val"><input class="adj-just-input" id="bonifJust_${cid}" value="${escH(adj.justBonif||'')}" placeholder="Motivo da bonificação" onchange="saveAdj('${cid}')"></span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Descontos</span>
+        <span class="pay-row-val">-$&nbsp;<input class="adj-input" id="desc_${cid}" value="${adj.desc||0}" inputmode="decimal" oninput="onAdjInput('${cid}')" onchange="saveAdj('${cid}')"></span></div>
+      <div class="pay-row adj-just-row" id="descJustRow_${cid}" style="display:${adj.desc?'flex':'none'}">
+        <span class="pay-row-lbl">Justificativa Desconto</span>
+        <span class="pay-row-val"><input class="adj-just-input" id="descJust_${cid}" value="${escH(adj.justDesc||'')}" placeholder="Motivo do desconto" onchange="saveAdj('${cid}')"></span></div>`;
+  } else {
+    adjRows=`
+      <div class="pay-row"><span class="pay-row-lbl">Bonificação (Extras)</span><span class="pay-row-val">${$$(adj.bonif||0)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Descontos</span><span class="pay-row-val">${(adj.desc||0)>0?'-':''}${$$(adj.desc||0)}</span></div>`;
+  }
+
   return `
     <div class="pay-card">
       <div class="pay-card-title"><i class="fas fa-user" style="color:${getColor(emp)}"></i> ${emp}</div>
@@ -1352,9 +1409,45 @@ function payCardHTML(emp, s) {
       <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fhm(s.totalHrs)} × $${s.rate}/h)</span><span class="pay-row-val">${$$(s.laborPay)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Reembolso de materiais</span><span class="pay-row-val">${$$(s.totalReim)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Adicional gasolina (${s.days} dia${s.days!==1?'s':''} × $10)</span><span class="pay-row-val">${$$(s.gasoline)}</span></div>
+      ${adjRows}
       <hr class="pay-divider">
-      <div class="pay-total-row"><span class="pay-total-lbl">Total a receber</span><span class="pay-total-val">${$$(s.total)}</span></div>
+      <div class="pay-total-row"><span class="pay-total-lbl">Total a receber</span><span class="pay-total-val" id="total_${cid}" data-base="${s.total}">${$$(finalTotal)}</span></div>
     </div>`;
+}
+
+// Recalcula o total e mostra/esconde justificativas ao digitar (sem salvar)
+function onAdjInput(cid) {
+  const totalEl=document.getElementById('total_'+cid);
+  const base=parseFloat(totalEl.dataset.base)||0;
+  const bonif=parseAmt(document.getElementById('bonif_'+cid).value);
+  const desc=parseAmt(document.getElementById('desc_'+cid).value);
+  totalEl.textContent=$$(base+bonif-desc);
+  document.getElementById('bonifJustRow_'+cid).style.display = bonif!==0?'flex':'none';
+  document.getElementById('descJustRow_'+cid).style.display  = desc!==0?'flex':'none';
+}
+// Salva o ajuste na planilha (chamado no blur/alteração)
+const ADJ_CTX={};
+async function saveAdj(cid) {
+  const ctx=ADJ_CTX[cid]; if(!ctx) return;
+  const bonif=parseAmt(document.getElementById('bonif_'+cid).value);
+  const desc=parseAmt(document.getElementById('desc_'+cid).value);
+  const justBonif=(document.getElementById('bonifJust_'+cid)||{}).value||'';
+  const justDesc=(document.getElementById('descJust_'+cid)||{}).value||'';
+  PROC.ajustes[ctx.emp+'|'+ctx.week]={ bonif, justBonif, desc, justDesc }; // atualização otimista
+  try {
+    await apiWrite({ action:'saveAjuste', emp:ctx.emp, week:ctx.week, bonif:String(bonif), justBonif, desc:String(desc), justDesc });
+    showToast('Ajuste salvo');
+  } catch(e) { showToast('Erro ao salvar: '+e.message, true); }
+}
+// Toast simples
+let _toastT=null;
+function showToast(msg, err) {
+  let el=document.getElementById('njrToast');
+  if (!el) { el=document.createElement('div'); el.id='njrToast'; el.className='njr-toast'; document.body.appendChild(el); }
+  el.innerHTML=`<i class="fas ${err?'fa-exclamation-triangle':'fa-check-circle'}"></i> ${msg}`;
+  el.classList.toggle('err', !!err);
+  el.classList.add('show');
+  clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove('show'), 2200);
 }
 
 // Tabela com os dias da semana detalhados
@@ -1375,6 +1468,32 @@ function dayTableHTML(rows) {
         <table>
           <thead><tr><th>Data</th><th>Dia</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Reembolso</th></tr></thead>
           <tbody>${trs}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// Tabela "Bonificações e Descontos" (Visão Detalhada)
+function adjTableHTML(adj, sun, sat) {
+  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const range=fmt(sun)+' — '+fmt(sat);
+  const hasAdj=(adj.bonif||0)!==0 || (adj.desc||0)!==0;
+  const inner = hasAdj
+    ? `<tr>
+         <td>${range}</td>
+         <td><strong style="color:#27ae60">${$$(adj.bonif||0)}</strong></td>
+         <td style="font-size:12px">${escH(adj.justBonif||'—')}</td>
+         <td><strong style="color:#e74c3c">${(adj.desc||0)>0?'-':''}${$$(adj.desc||0)}</strong></td>
+         <td style="font-size:12px">${escH(adj.justDesc||'—')}</td>
+       </tr>`
+    : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:18px">Nenhuma bonificação ou desconto nesta semana</td></tr>`;
+  return `
+    <div class="data-table" style="margin-top:14px">
+      <div class="table-head"><i class="fas fa-coins me-2" style="color:var(--orange)"></i>Bonificações e Descontos</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Semana</th><th>Bonificação</th><th>Justificativa Bonificação</th><th>Desconto</th><th>Justificativa Desconto</th></tr></thead>
+          <tbody>${inner}</tbody>
         </table>
       </div>
     </div>`;
@@ -1407,9 +1526,12 @@ function renderGerencial() {
     body.innerHTML=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros nesta semana</strong></div>`;
     return;
   }
-  body.innerHTML=`<div class="row g-3">${emps.map(emp=>
-    `<div class="col-12 col-lg-6 col-xl-4">${payCardHTML(emp, computeStats(byEmp[emp], emp))}</div>`
-  ).join('')}</div>`;
+  const wk=weekKey(wkOff);
+  body.innerHTML=`<div class="row g-3">${emps.map((emp,i)=>{
+    const cid='g'+i;
+    ADJ_CTX[cid]={ emp, week:wk };
+    return `<div class="col-12 col-lg-6 col-xl-4">${payCardHTML(emp, computeStats(byEmp[emp], emp), { adj:getAjuste(emp,wk), editable:true, cid })}</div>`;
+  }).join('')}</div>`;
 }
 
 // ── VISÃO DETALHADA: seletor → card + tabela de todas as semanas ──
@@ -1446,10 +1568,12 @@ function renderDetalhada() {
   wrap.style.display='none';
   const {sun,sat}=getWeekBounds(DET_WK);
   const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const wk=weekKey(DET_WK);
+  const adj=getAjuste(DET_EMP, wk);
   const wkRows=PROC.labor.filter(r=>r.emp===DET_EMP&&r.ts&&r.ts>=sun&&r.ts<=sat);
   const content = wkRows.length
-    ? payCardHTML(DET_EMP, computeStats(wkRows, DET_EMP)) + dayTableHTML(wkRows)
-    : `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
+    ? payCardHTML(DET_EMP, computeStats(wkRows, DET_EMP), { adj }) + dayTableHTML(wkRows) + adjTableHTML(adj, sun, sat)
+    : `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>` + adjTableHTML(adj, sun, sat);
 
   body.innerHTML=`
     <button class="back-btn" onclick="backDetEmp()"><i class="fas fa-arrow-left"></i> Voltar</button>
