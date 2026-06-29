@@ -27,7 +27,18 @@ module.exports = async function handler(req, res) {
     });
     const allAddrs = [...addrSet].sort();
 
-    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs });
+    // Ajustes (bonificação/desconto) só deste funcionário
+    const myAdj = (data.ajustes || [])
+      .filter(r => String(r['Nome do funcionário'] || '').trim() === empName)
+      .map(r => ({
+        week: String(r['Semana'] || '').trim(),
+        bonif: Number(r['Bonificação']) || 0,
+        justBonif: String(r['Justificativa Bonificação'] || ''),
+        desc: Number(r['Desconto']) || 0,
+        justDesc: String(r['Justificativa Desconto'] || ''),
+      }));
+
+    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs, ajustes: myAdj });
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao buscar dados: ' + err.message });
   }
