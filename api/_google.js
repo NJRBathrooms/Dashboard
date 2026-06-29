@@ -177,14 +177,16 @@ async function createSheet(title, headers) {
   });
 }
 
-// Versão enxuta p/ o app de funcionário (só labor + obras)
+// Versão enxuta p/ o app de funcionário (labor + obras + ajustes)
 async function readEmpData() {
   const { byTitle } = await readWorkbook();
   const labor = findValues(byTitle, ['nome do funcionário', 'hora de entrada']);
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
+  const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   return {
     labor:       labor ? rowsToObjects(labor) : [],
     obras:       obras ? rowsToObjects(obras) : [],
+    ajustes:     ajus  ? rowsToObjects(ajus)  : [],
     lastUpdated: new Date().toISOString(),
   };
 }
