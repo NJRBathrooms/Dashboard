@@ -150,14 +150,31 @@ async function readAll() {
   const subs  = findValues(byTitle, ['empresa subcontratada', 'valor do serviço']);
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
   const cli   = findValues(byTitle, ['contato do cliente', 'email do cliente']);
+  const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   return {
     labor:          labor ? rowsToObjects(labor)     : [],
     materials:      mats  ? rowsToObjects(mats)      : [],
     subcontractors: subs  ? rowsToObjects(subs, 11)  : [],
     obras:          obras ? rowsToObjects(obras)     : [],
     clients:        cli   ? rowsToObjects(cli)       : [],
+    ajustes:        ajus  ? rowsToObjects(ajus)      : [],
     lastUpdated:    new Date().toISOString(),
   };
+}
+
+// Cria uma aba nova com a linha de cabeçalho (se ainda não existir).
+async function createSheet(title, headers) {
+  const sheets = sheetsApi();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${q(title)}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [headers] },
+  });
 }
 
 // Versão enxuta p/ o app de funcionário (só labor + obras)
@@ -311,6 +328,6 @@ module.exports = {
   SPREADSHEET_ID,
   sheetsApi, driveApi, gmailApi, sendEmail, nowFriendly,
   readAll, readEmpData, readEmpCredentials, readWorkbook, findValues, rowsToObjects,
-  loadSheetIndex, findSheetEntry, nowInTz, colLetter, buildRow,
+  loadSheetIndex, findSheetEntry, createSheet, nowInTz, colLetter, buildRow,
   appendRow, updateCell, updateRowCells, deleteRow, readColumn, normStr, q,
 };
