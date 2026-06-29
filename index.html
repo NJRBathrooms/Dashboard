@@ -205,6 +205,9 @@ tbody tr:hover td { background:#fafbfe; }
 .adj-just-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.18); }
 .adj-just-input::placeholder { color:rgba(255,255,255,.4); }
 .adj-just-row .pay-row-lbl { color:rgba(255,255,255,.55); font-style:italic; font-size:13px; }
+.adj-tag { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.adj-tag.bonus { background:rgba(39,174,96,.12); color:#27ae60; }
+.adj-tag.discount { background:rgba(231,76,60,.12); color:#e74c3c; }
 .njr-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#1f2d3d; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 8px 28px rgba(0,0,0,.3); display:flex; align-items:center; gap:8px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:9999; }
 .njr-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 .njr-toast i { color:#2ecc71; }
@@ -1481,18 +1484,23 @@ function adjTableHTML(adj, sun, sat) {
   const inner = hasAdj
     ? `<tr>
          <td>${range}</td>
+         <td><span class="adj-tag bonus">Bonificação</span></td>
          <td><strong style="color:#27ae60">${$$(adj.bonif||0)}</strong></td>
          <td style="font-size:12px">${escH(adj.justBonif||'—')}</td>
+       </tr>
+       <tr>
+         <td>${range}</td>
+         <td><span class="adj-tag discount">Desconto</span></td>
          <td><strong style="color:#e74c3c">${(adj.desc||0)>0?'-':''}${$$(adj.desc||0)}</strong></td>
          <td style="font-size:12px">${escH(adj.justDesc||'—')}</td>
        </tr>`
-    : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:18px">Nenhuma bonificação ou desconto nesta semana</td></tr>`;
+    : `<tr><td colspan="4" style="text-align:center;color:#7b8ea4;padding:18px">Nenhuma bonificação ou desconto nesta semana</td></tr>`;
   return `
     <div class="data-table" style="margin-top:14px">
       <div class="table-head"><i class="fas fa-coins me-2" style="color:var(--orange)"></i>Bonificações e Descontos</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Semana</th><th>Bonificação</th><th>Justificativa Bonificação</th><th>Desconto</th><th>Justificativa Desconto</th></tr></thead>
+          <thead><tr><th>Semana</th><th>Tipo</th><th>Valor</th><th>Justificativa</th></tr></thead>
           <tbody>${inner}</tbody>
         </table>
       </div>
