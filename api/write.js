@@ -13,6 +13,7 @@ const HANDLERS = {
   updateSubcontrato: A.updateSubcontrato,
   deleteSubcontrato: A.deleteSubcontrato,
   addCliente: A.addCliente,
+  saveAjuste: A.saveAjuste,
   getOrCreateFolder,
   uploadFile,
 };
