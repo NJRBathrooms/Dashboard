@@ -153,6 +153,9 @@ thead th { background:#f8fafd; padding:11px 18px; font-size:11px; font-weight:70
 tbody td { padding:13px 18px; border-bottom:1px solid #f4f7fb; font-size:13px; color:#2c3e50; vertical-align:middle; }
 tbody tr:last-child td { border-bottom:none; }
 tbody tr:hover td { background:#fafbfe; }
+.adj-tag { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.adj-tag.bonus { background:rgba(39,174,96,.12); color:#27ae60; }
+.adj-tag.discount { background:rgba(231,76,60,.12); color:#e74c3c; }
 .day-badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(232,130,12,.1); color:var(--orange); }
 
 /* STATES */
@@ -347,6 +350,7 @@ fetch('/api/emp-warmup').catch(()=>{}); // pré-aquece Apps Script enquanto usu�
 let EMP_NAME      = '';
 let ALL_ADDRS     = [];
 let MY_LABOR      = [];
+let MY_ADJ        = {}; // ajustes por semana ISO: { '2026-06-21': {bonif,justBonif,desc,justDesc} }
 let wkOff         = 0; // 0 = semana atual, -1 = semana anterior (únicos permitidos)
 let selectedPhotos = [];
 let receiptUrls   = '';
@@ -437,6 +441,10 @@ async function loadData() {
     if (data.error) throw new Error(data.error);
     ALL_ADDRS = data.allAddrs || [];
     MY_LABOR  = data.labor   || [];
+    MY_ADJ = {};
+    (data.ajustes || []).forEach(a => {
+      if (a.week) MY_ADJ[a.week] = { bonif:a.bonif||0, justBonif:a.justBonif||'', desc:a.desc||0, justDesc:a.justDesc||'' };
+    });
     if (!EMP_NAME && data.emp) {
       EMP_NAME = data.emp;
       document.getElementById('empNameHeader').textContent = EMP_NAME;
@@ -835,6 +843,42 @@ function fmtDate(d) { return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'
 function fmtDateFull(d) { return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
 const DOW_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
+// Chave da semana (domingo) em ISO yyyy-MM-dd, igual à do dashboard
+function weekKeyEmp(offset) {
+  const d=getWeekBounds(offset).sun, p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+// Tabela "Bonificações e Descontos" (bonificação e desconto em linhas separadas)
+function adjEmpTableHTML(adj, sun, sat) {
+  const f=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const range=f(sun)+' — '+f(sat);
+  const hasAdj=(adj.bonif||0)!==0 || (adj.desc||0)!==0;
+  const inner = hasAdj
+    ? `<tr>
+         <td>${range}</td>
+         <td><span class="adj-tag bonus">Bonificação</span></td>
+         <td><strong style="color:#27ae60">${$$(adj.bonif||0)}</strong></td>
+         <td>${escHtml(adj.justBonif||'—')}</td>
+       </tr>
+       <tr>
+         <td>${range}</td>
+         <td><span class="adj-tag discount">Desconto</span></td>
+         <td><strong style="color:#e74c3c">${(adj.desc||0)>0?'-':''}${$$(adj.desc||0)}</strong></td>
+         <td>${escHtml(adj.justDesc||'—')}</td>
+       </tr>`
+    : `<tr><td colspan="4" style="text-align:center;color:#7b8ea4;padding:18px">Nenhuma bonificação ou desconto nesta semana</td></tr>`;
+  return `
+    <div class="data-table" style="margin-top:14px">
+      <div class="table-head"><i class="fas fa-coins" style="color:var(--orange);margin-right:8px"></i>Bonificações e Descontos</div>
+      <div class="table-responsive">
+        <table>
+          <thead><tr><th>Semana</th><th>Tipo</th><th>Valor</th><th>Justificativa</th></tr></thead>
+          <tbody>${inner}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 function parseDate(v) {
   if (!v) return null;
   const d=new Date(String(v).replace(/\//g,'-'));
@@ -888,11 +932,19 @@ function buildWeekBlock(offset) {
     return { ts, hrs, reimb, addr: String(r['Endereço da obra'] || '').trim(), entry: r['Hora de entrada'] || '', exit: r['Hora de saída'] || '' };
   });
 
-  if (!processed.length) {
+  const wk = weekKeyEmp(offset);
+  const adj = MY_ADJ[wk] || { bonif:0, justBonif:'', desc:0, justDesc:'' };
+  const hasAdj = (adj.bonif||0)!==0 || (adj.desc||0)!==0;
+
+  if (!processed.length && !hasAdj) {
     return `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
   }
 
-  const rate = getRate(EMP_NAME), laborPay = totalHrs * rate, gasoline = daySet.size * 10, total = laborPay + totalReim + gasoline;
+  const rate = getRate(EMP_NAME), laborPay = totalHrs * rate, gasoline = daySet.size * 10;
+  const total = laborPay + totalReim + gasoline + (adj.bonif||0) - (adj.desc||0);
+  const adjRows = `
+      <div class="pay-row"><span class="pay-row-lbl">Bonificação (Extras)</span><span class="pay-row-val">${$$(adj.bonif||0)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Descontos</span><span class="pay-row-val">${(adj.desc||0)>0?'-':''}${$$(adj.desc||0)}</span></div>`;
   const payCard = `
     <div class="pay-card">
       <div class="pay-card-title"><i class="fas fa-dollar-sign"></i> Demonstrativo de Pagamento</div>
@@ -900,6 +952,7 @@ function buildWeekBlock(offset) {
       <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fmtHrs(totalHrs)} × $${rate}/h)</span><span class="pay-row-val">${$$(laborPay)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Reembolso de materiais</span><span class="pay-row-val">${$$(totalReim)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Adicional gasolina (${daySet.size} dia${daySet.size!==1?'s':''} × $10)</span><span class="pay-row-val">${$$(gasoline)}</span></div>
+      ${adjRows}
       <hr class="pay-divider">
       <div class="pay-total-row"><span class="pay-total-lbl">Total a receber</span><span class="pay-total-val">${$$(total)}</span></div>
     </div>`;
@@ -929,7 +982,7 @@ function buildWeekBlock(offset) {
       </div>
     </div>`;
 
-  return payCard + table;
+  return payCard + (processed.length ? table : '') + adjEmpTableHTML(adj, sun, sat);
 }
 
 // Navega só entre semana atual (0) e anterior (-1)
