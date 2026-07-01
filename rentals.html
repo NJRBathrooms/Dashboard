@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NJR Casas de Aluguel</title>
+<link rel="icon" href="/icon-192.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+:root { --navy:#0d2137; --navy2:#12385c; --orange:#e8820c; --orng2:#cf7207; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:#eef2f6; color:#2c3e50; }
+#loginScreen { min-height:100vh; background:linear-gradient(135deg,#061522,var(--navy2) 50%,#061522); display:flex; align-items:center; justify-content:center; padding:24px; }
+.login-card { background:#fff; border-radius:20px; padding:40px 32px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; }
+.login-card img { width:70px; margin-bottom:14px; }
+.login-card h1 { font-size:22px; font-weight:800; color:var(--navy); margin:0 0 4px; }
+.login-card p { color:#7b8ea4; font-size:14px; margin:0 0 22px; }
+.login-input { width:100%; padding:13px 16px; border:2px solid #dde7f1; border-radius:10px; font-size:15px; margin-bottom:14px; }
+.login-input:focus { outline:none; border-color:var(--orange); }
+.login-btn { width:100%; padding:13px; background:var(--orange); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+.login-btn:hover { background:var(--orng2); }
+.login-err { display:none; color:#e74c3c; font-size:13px; margin-top:12px; }
+#mainApp { display:none; }
+.app-header { background:var(--navy); padding:20px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:100; box-shadow:0 2px 16px rgba(0,0,0,.2); }
+.app-header .brand-icon { width:52px; height:52px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:6px; }
+.app-header .brand-icon img { max-width:100%; }
+.brand-name { color:#fff; font-size:19px; font-weight:800; line-height:1.1; }
+.brand-sub { color:rgba(255,255,255,.55); font-size:12px; }
+.logout-btn { margin-left:auto; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:9px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+.tab-nav { display:flex; gap:4px; background:#fff; padding:6px; overflow-x:auto; box-shadow:0 2px 8px rgba(0,0,0,.05); position:sticky; top:92px; z-index:99; }
+.tab-btn { flex:1; min-width:130px; border:none; background:none; padding:12px; border-radius:9px; font-size:13px; font-weight:700; color:#7b8ea4; cursor:pointer; white-space:nowrap; display:flex; align-items:center; justify-content:center; gap:7px; }
+.tab-btn.active { background:var(--navy); color:#fff; }
+.page { padding:22px; max-width:1150px; margin:0 auto; }
+.card2 { background:#fff; border-radius:16px; padding:20px; box-shadow:0 2px 12px rgba(0,0,0,.05); margin-bottom:18px; }
+.sec-title { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.metric-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.metric { background:#fff; border-radius:14px; padding:16px 18px; box-shadow:0 2px 12px rgba(0,0,0,.05); border-left:4px solid var(--orange); }
+.metric .lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7b8ea4; }
+.metric .val { font-size:24px; font-weight:900; color:var(--navy); margin-top:3px; }
+.metric.green { border-left-color:#27ae60; } .metric.green .val { color:#27ae60; }
+.metric.red { border-left-color:#e74c3c; } .metric.red .val { color:#e74c3c; }
+.house-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+.house-card { background:#fff; border-radius:16px; padding:18px; box-shadow:0 2px 12px rgba(0,0,0,.06); border-top:4px solid var(--navy); }
+.house-card.vac { border-top-color:#95a5a6; opacity:.92; }
+.hc-addr { font-size:15px; font-weight:800; color:var(--navy); margin-bottom:2px; }
+.hc-tenant { font-size:12px; color:#7b8ea4; margin-bottom:12px; }
+.badge2 { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; margin:2px 4px 2px 0; }
+.b-paid { background:rgba(39,174,96,.12); color:#27ae60; }
+.b-pend { background:rgba(243,156,18,.14); color:#e67e22; }
+.b-late { background:rgba(231,76,60,.12); color:#e74c3c; }
+.b-vac { background:rgba(149,165,166,.18); color:#7f8c8d; }
+.b-warn { background:rgba(230,126,34,.14); color:#d35400; }
+.b-info { background:rgba(41,128,185,.12); color:#2980b9; }
+.hc-rent { font-size:20px; font-weight:900; color:var(--navy); margin:8px 0; }
+.mini-btn { border:none; border-radius:8px; padding:8px 12px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.mini-btn.pri { background:var(--orange); color:#fff; } .mini-btn.pri:hover { background:var(--orng2); }
+.mini-btn.sec { background:#eef3f8; color:var(--navy); }
+.mini-btn.danger { background:rgba(231,76,60,.1); color:#e74c3c; }
+.f-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7b8ea4; margin-bottom:5px; display:block; }
+.f-input, .f-select { width:100%; padding:11px 13px; border:2px solid #dde7f1; border-radius:9px; font-size:14px; background:#fff; }
+.f-input:focus, .f-select:focus { outline:none; border-color:var(--orange); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+@media(max-width:640px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+.mb { margin-bottom:12px; }
+.btn-primary2 { background:var(--orange); color:#fff; border:none; border-radius:10px; padding:12px 20px; font-weight:700; font-size:14px; cursor:pointer; }
+.btn-primary2:hover { background:var(--orng2); }
+table { width:100%; border-collapse:collapse; }
+thead th { background:#f8fafd; padding:10px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7b8ea4; text-align:left; white-space:nowrap; }
+tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
+.tbl-wrap { overflow-x:auto; }
+.addr-wrap { position:relative; }
+.addr-dd { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #dde7f1; border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:220px; overflow-y:auto; z-index:50; display:none; margin-top:4px; }
+.addr-dd div { padding:10px 13px; font-size:13px; cursor:pointer; }
+.addr-dd div:hover { background:#f4f7fb; }
+.modal-ov { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:none; align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto; }
+.modal-ov.show { display:flex; }
+.modal-box { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:640px; margin:auto; }
+.modal-title { font-size:17px; font-weight:800; color:var(--navy); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.empty { padding:40px; text-align:center; color:#7b8ea4; }
+.empty i { font-size:40px; opacity:.3; display:block; margin-bottom:12px; }
+.njr-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#1f2d3d; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; box-shadow:0 8px 28px rgba(0,0,0,.3); display:flex; align-items:center; gap:8px; opacity:0; pointer-events:none; transition:.25s; z-index:2000; }
+.njr-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.njr-toast i { color:#2ecc71; } .njr-toast.err i { color:#e74c3c; }
+.spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <img src="/icon-192.png" alt="NJR">
+    <h1>NJR Casas de Aluguel</h1>
+    <p>Controle de aluguéis · Área administrativa</p>
+    <input type="password" id="pwd" class="login-input" placeholder="Senha do admin" autocomplete="off">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="mainApp">
+  <div class="app-header">
+    <div class="brand-icon"><img src="/icon-192.png" alt="NJR"></div>
+    <div>
+      <div class="brand-name">NJR Casas de Aluguel</div>
+      <div class="brand-sub" id="hdrSub">Carregando…</div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab1btn" onclick="showTab(1)"><i class="fas fa-gauge-high"></i> Dashboard</button>
+    <button class="tab-btn" id="tab2btn" onclick="showTab(2)"><i class="fas fa-house-chimney"></i> Cadastros &amp; Custos</button>
+    <button class="tab-btn" id="tab3btn" onclick="showTab(3)"><i class="fas fa-screwdriver-wrench"></i> Manutenção</button>
+    <button class="tab-btn" id="tab4btn" onclick="showTab(4)"><i class="fas fa-calculator"></i> Financeiro</button>
+  </div>
+  <div class="page" id="tab1"></div>
+  <div class="page" id="tab2" style="display:none"></div>
+  <div class="page" id="tab3" style="display:none"></div>
+  <div class="page" id="tab4" style="display:none"></div>
+</div>
+
+<div class="modal-ov" id="modal"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+// ══ ESTADO ══
+let DB = { casas:[], recebimentos:[], custos:[], manutencao:[], alertas:[] };
+const TIPOS_SERVICO = ['Plumbing','Painting','Drywall','Electrical','General Contracting','Plastering','Others'];
+
+// ══ HELPERS ══
+function $$ (n){ return '$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function parseAmt(v){ if(v==null||v==='')return 0; const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function parseDate(v){ if(!v)return null; const d=new Date(String(v).replace(/\//g,'-')); return isNaN(d.getTime())?null:d; }
+function norm(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function todayComp(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function fmtComp(c){ if(!/^\d{4}-\d{2}$/.test(c||''))return c||'—'; const [y,m]=c.split('-'); return MES[+m-1]+'/'+y; }
+function fmtDate(v){ const d=parseDate(v); return d?pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear():'—'; }
+function isOcupada(c){ return String(c['Status']||'').toLowerCase()!=='vacância' && String(c['Status']||'').toLowerCase()!=='vacancia'; }
+
+function showToast(msg,err){ let el=document.getElementById('njrToast'); if(!el){el=document.createElement('div');el.id='njrToast';el.className='njr-toast';document.body.appendChild(el);} el.innerHTML='<i class="fas '+(err?'fa-exclamation-triangle':'fa-check-circle')+'"></i> '+msg; el.classList.toggle('err',!!err); el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2400); }
+function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modal').classList.add('show'); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+
+// ══ AUTH ══
+async function doLogin(){
+  const pwd=document.getElementById('pwd').value, btn=document.getElementById('loginBtn'), err=document.getElementById('loginErr');
+  err.style.display='none'; btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ err.textContent=d.error||'Senha incorreta.'; err.style.display='block'; return; }
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    loadData();
+  }catch(e){ err.textContent='Erro de rede: '+e.message; err.style.display='block'; }
+  finally{ btn.disabled=false; btn.innerHTML='Entrar'; }
+}
+async function doLogout(){ await fetch('/api/logout',{method:'POST'}).catch(()=>{}); location.reload(); }
+document.getElementById('pwd').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+// ══ DADOS ══
+async function loadData(){
+  document.getElementById('hdrSub').textContent='Carregando…';
+  try{
+    const r=await fetch('/api/rentals-data');
+    if(r.status===401){ location.reload(); return; }
+    DB=await r.json();
+    if(DB.error) throw new Error(DB.error);
+    document.getElementById('hdrSub').textContent=(DB.casas||[]).length+' casas · atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderAll();
+  }catch(e){ document.getElementById('hdrSub').textContent='Erro ao carregar'; showToast('Erro: '+e.message,true); }
+}
+async function apiWrite(params){
+  const r=await fetch('/api/rentals-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+  if(r.status===401){ doLogout(); throw new Error('Sessão expirada'); }
+  const d=await r.json(); if(d.error) throw new Error(d.error); return d;
+}
+function renderAll(){ renderDash(); renderCad(); renderMan(); renderFin(); }
+
+// ══ ABAS ══
+let CUR=1;
+function showTab(n){ CUR=n; [1,2,3,4].forEach(i=>{ document.getElementById('tab'+i).style.display=i===n?'':'none'; document.getElementById('tab'+i+'btn').classList.toggle('active',i===n); }); }
+
+// ══ CÁLCULOS ══
+function recFor(addr,comp){ return DB.recebimentos.find(r=>norm(r['Endereço'])===norm(addr) && String(r['Competência'])===comp); }
+function rentStatus(casa,comp){
+  const rec=recFor(casa['Endereço'],comp);
+  if(rec) return { paid:true, label:rec['Status']||'Pago', cls:(rec['Multa']>0?'b-late':'b-paid'), total:parseAmt(rec['Total Recebido']), rowNum:rec._row };
+  const [y,m]=comp.split('-').map(Number); const today=new Date(); today.setHours(0,0,0,0);
+  const day1=new Date(y,m-1,1), day10=new Date(y,m-1,10,23,59,59);
+  if(today<=day1) return { paid:false, label:'No prazo (pendente)', cls:'b-pend' };
+  if(today<=day10) return { paid:false, label:'Pendente (sem multa)', cls:'b-pend' };
+  return { paid:false, label:'Atrasado (+$50)', cls:'b-late' };
+}
+function daysUntil(v){ const d=parseDate(v); if(!d)return null; const t=new Date(); t.setHours(0,0,0,0); d.setHours(0,0,0,0); return Math.round((d-t)/86400000); }
+function expiryBadge(v,kind){ const days=daysUntil(v); if(days==null)return ''; if(days<0)return '<span class="badge2 b-late"><i class="fas fa-triangle-exclamation"></i> '+kind+' vencido</span>'; if(days<=31)return '<span class="badge2 b-warn"><i class="fas fa-triangle-exclamation"></i> '+kind+' vence em '+days+'d</span>'; if(days<=62)return '<span class="badge2 b-info"><i class="fas fa-clock"></i> '+kind+' vence em ~'+Math.round(days/30)+' meses</span>'; return ''; }
+
+// ══ TAB 1 — DASHBOARD ══
+function renderDash(){
+  const comp=todayComp();
+  const casas=DB.casas.filter(c=>String(c['Endereço']||'').trim());
+  let recebido=0, custos=0;
+  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>recebido+=parseAmt(r['Total Recebido']));
+  DB.custos.filter(r=>String(r['Competência'])===comp).forEach(r=>custos+=parseAmt(r['Valor']));
+  DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>custos+=parseAmt(r['Valor do Serviço']));
+  const deposits=casas.reduce((s,c)=>s+parseAmt(c['Security Deposit']),0);
+  const cards=casas.map(c=>{
+    const oc=isOcupada(c); const st=oc?rentStatus(c,comp):null;
+    const badges=[];
+    if(!oc) badges.push('<span class="badge2 b-vac"><i class="fas fa-door-open"></i> Vacância</span>');
+    else badges.push('<span class="badge2 '+st.cls+'">'+(st.paid?'<i class="fas fa-check"></i> ':'<i class="fas fa-hourglass-half"></i> ')+esc(st.label)+'</span>');
+    const ce=expiryBadge(c['Fim do Contrato'],'Contrato'); if(ce)badges.push(ce);
+    const se=expiryBadge(c['Vigência do Seguro'],'Seguro'); if(se)badges.push(se);
+    const action = oc ? (st.paid
+        ? '<button class="mini-btn sec" onclick="openReceb(\''+esc(c['Endereço']).replace(/'/g,"\\'")+'\')"><i class="fas fa-pen"></i> Editar recebimento</button>'
+        : '<button class="mini-btn pri" onclick="openReceb(\''+esc(c['Endereço']).replace(/'/g,"\\'")+'\')"><i class="fas fa-check"></i> Marcar recebido</button>')
+      : '<button class="mini-btn sec" onclick="editCasa(\''+esc(c['Endereço']).replace(/'/g,"\\'")+'\')"><i class="fas fa-user-plus"></i> Definir inquilino</button>';
+    return '<div class="house-card'+(oc?'':' vac')+'">'
+      +'<div class="hc-addr">'+esc(c['Endereço'])+'</div>'
+      +'<div class="hc-tenant">'+(oc?('<i class="fas fa-user"></i> '+esc(c['Inquilino']||'—')):'Sem inquilino')+'</div>'
+      +'<div>'+badges.join('')+'</div>'
+      +'<div class="hc-rent">'+$$(parseAmt(c['Aluguel Mensal']))+'<span style="font-size:12px;color:#7b8ea4;font-weight:600"> /mês</span></div>'
+      +action+'</div>';
+  }).join('');
+  document.getElementById('tab1').innerHTML=
+    '<div class="metric-row">'
+    +'<div class="metric green"><div class="lbl">Recebido ('+fmtComp(comp)+')</div><div class="val">'+$$(recebido)+'</div></div>'
+    +'<div class="metric red"><div class="lbl">Custos ('+fmtComp(comp)+')</div><div class="val">'+$$(custos)+'</div></div>'
+    +'<div class="metric '+(recebido-custos>=0?'green':'red')+'"><div class="lbl">Resultado do mês</div><div class="val">'+$$(recebido-custos)+'</div></div>'
+    +'<div class="metric"><div class="lbl">Provisões (depósitos)</div><div class="val">'+$$(deposits)+'</div></div>'
+    +'</div>'
+    +'<div class="sec-title"><i class="fas fa-house"></i> Casas — competência '+fmtComp(comp)+'</div>'
+    +'<div class="house-grid">'+(cards||'<div class="empty"><i class="fas fa-house"></i>Nenhuma casa cadastrada</div>')+'</div>';
+}
+
+// Modal de recebimento
+function openReceb(addr){
+  const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
+  const comp=todayComp(); const rec=recFor(addr,comp);
+  openModal('<div class="modal-title"><i class="fas fa-hand-holding-dollar"></i> Recebimento — '+esc(addr)+'</div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Competência</label><input class="f-input" id="rcComp" value="'+comp+'" placeholder="YYYY-MM"></div>'
+    +'<div><label class="f-label">Valor do aluguel</label><input class="f-input" id="rcVal" type="number" step="0.01" value="'+(rec?parseAmt(rec['Valor do Aluguel']):parseAmt(c['Aluguel Mensal']))+'"></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Data do pagamento</label><input class="f-input" id="rcData" type="date" value="'+(rec?isoOf(rec['Data do Pagamento']):todayISO())+'"></div>'
+    +'<div class="mb"><label class="f-label">Observações</label><input class="f-input" id="rcObs" value="'+(rec?esc(rec['Observações']||''):'')+'"></div>'
+    +'<div style="font-size:12px;color:#7b8ea4;margin-bottom:14px"><i class="fas fa-info-circle"></i> Até dia 1: no prazo · até dia 10: atraso sem multa · após dia 10: +$50 de multa.</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +(rec?'<button class="mini-btn danger" onclick="delReceb('+rec._row+')"><i class="fas fa-trash"></i> Excluir</button>':'')
+    +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn-primary2" onclick="saveReceb(\''+esc(addr).replace(/'/g,"\\'")+'\')">Salvar</button></div>');
+}
+function isoOf(v){ const d=parseDate(v); return d?d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()):todayISO(); }
+async function saveReceb(addr){
+  try{ await apiWrite({action:'markRecebido',addr,competencia:document.getElementById('rcComp').value.trim(),valorAluguel:document.getElementById('rcVal').value,dataPagamento:document.getElementById('rcData').value,obs:document.getElementById('rcObs').value});
+    closeModal(); showToast('Recebimento salvo'); await loadData();
+  }catch(e){ showToast(e.message,true); }
+}
+async function delReceb(rowNum){ if(!confirm('Excluir este recebimento?'))return; try{ await apiWrite({action:'deleteRecebimento',rowNum}); closeModal(); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
+
+// ══ TAB 2 — CADASTROS & CUSTOS ══
+function renderCad(){
+  const casas=DB.casas.filter(c=>String(c['Endereço']||'').trim());
+  const rows=casas.map(c=>'<tr>'
+    +'<td><strong>'+esc(c['Endereço'])+'</strong></td>'
+    +'<td>'+(isOcupada(c)?esc(c['Inquilino']||'—'):'<span class="badge2 b-vac">Vacância</span>')+'</td>'
+    +'<td>'+$$(parseAmt(c['Aluguel Mensal']))+'</td>'
+    +'<td>'+fmtDate(c['Fim do Contrato'])+'</td>'
+    +'<td>'+fmtDate(c['Vigência do Seguro'])+'</td>'
+    +'<td><button class="mini-btn sec" onclick="editCasa(\''+esc(c['Endereço']).replace(/'/g,"\\'")+'\')"><i class="fas fa-pen"></i></button></td>'
+    +'</tr>').join('');
+  document.getElementById('tab2').innerHTML=
+    '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>'
+    +custosSection();
+}
+function custosSection(){
+  const recent=[...DB.custos].reverse().slice(0,25);
+  const rows=recent.map(c=>'<tr>'
+    +'<td>'+esc(c['Endereço'])+'</td><td>'+fmtComp(c['Competência'])+'</td><td>'+esc(c['Tipo']||'—')+'</td>'
+    +'<td>'+$$(parseAmt(c['Valor']))+'</td><td>'+fmtDate(c['Data do Pagamento'])+'</td>'
+    +'<td><button class="mini-btn danger" onclick="delCusto('+c._row+')"><i class="fas fa-trash"></i></button></td></tr>').join('');
+  return '<div class="card2"><div class="sec-title"><i class="fas fa-file-invoice-dollar"></i> Custos (mortgage, água, seguro, outros) '
+    +'<button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="addCusto()"><i class="fas fa-plus"></i> Lançar custo</button></div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Competência</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">Nenhum custo lançado</td></tr>')+'</tbody></table></div></div>';
+}
+function casaSelectOptions(sel){ return DB.casas.filter(c=>String(c['Endereço']||'').trim()).map(c=>'<option value="'+esc(c['Endereço'])+'"'+(norm(sel)===norm(c['Endereço'])?' selected':'')+'>'+esc(c['Endereço'])+'</option>').join(''); }
+
+function editCasa(addr){
+  const c=addr?DB.casas.find(x=>norm(x['Endereço'])===norm(addr)):{};
+  const g=(k)=>c&&c[k]!=null?c[k]:'';
+  const gd=(k)=>c&&c[k]?isoOf(c[k]):'';
+  const per=(k,opts)=>opts.map(o=>'<option'+(norm(g(k))===norm(o)?' selected':'')+'>'+o+'</option>').join('');
+  openModal('<div class="modal-title"><i class="fas fa-house-chimney"></i> '+(addr?'Editar casa':'Nova casa')+'</div>'
+    +'<div class="mb"><label class="f-label">Endereço *</label><input class="f-input" id="cAddr" value="'+esc(g('Endereço'))+'" '+(addr?'readonly style="background:#f4f7fb"':'')+'></div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Status</label><select class="f-select" id="cStatus"><option'+(isOcupada(c)?' selected':'')+'>Ocupada</option><option'+(!isOcupada(c)&&addr?' selected':'')+'>Vacância</option></select></div>'
+    +'<div><label class="f-label">Inquilino</label><input class="f-input" id="cInq" value="'+esc(g('Inquilino'))+'"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Contato do inquilino</label><input class="f-input" id="cCont" value="'+esc(g('Contato do Inquilino'))+'"></div>'
+    +'<div><label class="f-label">Aluguel mensal ($)</label><input class="f-input" id="cAlug" type="number" step="0.01" value="'+parseAmt(g('Aluguel Mensal'))+'"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Security deposit ($)</label><input class="f-input" id="cDep" type="number" step="0.01" value="'+parseAmt(g('Security Deposit'))+'"></div>'
+    +'<div><label class="f-label">Mortgage mensal ($)</label><input class="f-input" id="cMort" type="number" step="0.01" value="'+parseAmt(g('Mortgage Mensal'))+'"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Início do contrato</label><input class="f-input" id="cIni" type="date" value="'+gd('Início do Contrato')+'"></div>'
+    +'<div><label class="f-label">Fim do contrato</label><input class="f-input" id="cFim" type="date" value="'+gd('Fim do Contrato')+'"></div>'
+    +'</div><div class="grid3" style="margin-top:12px">'
+    +'<div><label class="f-label">Seguradora</label><input class="f-input" id="cSeg" value="'+esc(g('Seguradora'))+'"></div>'
+    +'<div><label class="f-label">Vigência do seguro</label><input class="f-input" id="cVig" type="date" value="'+gd('Vigência do Seguro')+'"></div>'
+    +'<div><label class="f-label">Valor do seguro ($)</label><input class="f-input" id="cValSeg" type="number" step="0.01" value="'+parseAmt(g('Valor do Seguro'))+'"></div>'
+    +'</div><div class="grid3" style="margin-top:12px">'
+    +'<div><label class="f-label">Period. seguro</label><select class="f-select" id="cPerSeg"><option value=""></option>'+per('Periodicidade do Seguro',['Mensal','Anual'])+'</select></div>'
+    +'<div><label class="f-label">Valor da água ($)</label><input class="f-input" id="cAgua" type="number" step="0.01" value="'+parseAmt(g('Valor da Água'))+'"></div>'
+    +'<div><label class="f-label">Period. água</label><select class="f-select" id="cPerAgua"><option value=""></option>'+per('Periodicidade da Água',['Mensal','Trimestral'])+'</select></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Observações</label><input class="f-input" id="cObs" value="'+esc(g('Observações'))+'"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end">'
+    +(addr?'<button class="mini-btn danger" onclick="delCasa(\''+esc(addr).replace(/'/g,"\\'")+'\')"><i class="fas fa-trash"></i> Excluir</button>':'')
+    +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn-primary2" onclick="saveCasa()">Salvar</button></div>');
+}
+async function saveCasa(){
+  const p={ action:'saveCasa', addr:document.getElementById('cAddr').value.trim(), status:document.getElementById('cStatus').value,
+    inquilino:document.getElementById('cInq').value, contato:document.getElementById('cCont').value,
+    aluguel:document.getElementById('cAlug').value, deposit:document.getElementById('cDep').value, mortgage:document.getElementById('cMort').value,
+    inicio:document.getElementById('cIni').value, fim:document.getElementById('cFim').value,
+    seguradora:document.getElementById('cSeg').value, vigenciaSeguro:document.getElementById('cVig').value, valorSeguro:document.getElementById('cValSeg').value,
+    periodSeguro:document.getElementById('cPerSeg').value, agua:document.getElementById('cAgua').value, periodAgua:document.getElementById('cPerAgua').value,
+    obs:document.getElementById('cObs').value };
+  if(!p.addr){ showToast('Endereço obrigatório',true); return; }
+  try{ await apiWrite(p); closeModal(); showToast('Casa salva'); await loadData(); }catch(e){ showToast(e.message,true); }
+}
+async function delCasa(addr){ if(!confirm('Excluir a casa '+addr+'? (os lançamentos ficam na base)'))return; try{ await apiWrite({action:'deleteCasa',addr}); closeModal(); showToast('Casa excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
+
+function addCusto(){
+  openModal('<div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Lançar custo</div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Casa *</label><select class="f-select" id="ktCasa">'+casaSelectOptions()+'</select></div>'
+    +'<div><label class="f-label">Competência *</label><input class="f-input" id="ktComp" value="'+todayComp()+'" placeholder="YYYY-MM"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ktTipo"><option>Mortgage</option><option>Água</option><option>Seguro</option><option>Outro</option></select></div>'
+    +'<div><label class="f-label">Valor ($) *</label><input class="f-input" id="ktVal" type="number" step="0.01"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Data do pagamento</label><input class="f-input" id="ktData" type="date" value="'+todayISO()+'"></div>'
+    +'<div><label class="f-label">Descrição</label><input class="f-input" id="ktDesc"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="mini-btn sec" onclick="closeModal()">Cancelar</button><button class="btn-primary2" onclick="saveCusto()">Salvar</button></div>');
+}
+async function saveCusto(){
+  try{ await apiWrite({action:'saveCusto',addr:document.getElementById('ktCasa').value,competencia:document.getElementById('ktComp').value.trim(),tipo:document.getElementById('ktTipo').value,valor:document.getElementById('ktVal').value,dataPagamento:document.getElementById('ktData').value,desc:document.getElementById('ktDesc').value});
+    closeModal(); showToast('Custo lançado'); await loadData();
+  }catch(e){ showToast(e.message,true); }
+}
+async function delCusto(rowNum){ if(!confirm('Excluir custo?'))return; try{ await apiWrite({action:'deleteCusto',rowNum}); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
+
+// ══ TAB 3 — MANUTENÇÃO ══
+let manPhoto=null;
+function renderMan(){
+  const list=[...DB.manutencao].reverse().slice(0,30).map(m=>'<tr>'
+    +'<td>'+esc(m['Endereço'])+'</td><td>'+fmtDate(m['Data de Conclusão'])+'</td><td>'+esc(m['Tipo de Serviço']||'—')+'</td>'
+    +'<td>'+esc(m['Empresa Subcontratada']||'—')+'</td><td>'+$$(parseAmt(m['Valor do Serviço']))+'</td>'
+    +'<td>'+esc(m['Status Pagamento']||'—')+'</td>'
+    +'<td>'+(m['Anexar Invoice']?'<a href="'+esc(m['Anexar Invoice'])+'" target="_blank" class="badge2 b-info"><i class="fas fa-file"></i> Invoice</a>':'—')+'</td>'
+    +'<td><button class="mini-btn danger" onclick="delMan('+m._row+')"><i class="fas fa-trash"></i></button></td></tr>').join('');
+  document.getElementById('tab3').innerHTML=
+    '<div class="card2"><div class="sec-title"><i class="fas fa-screwdriver-wrench"></i> Nova manutenção</div>'
+    +'<div class="mb addr-wrap"><label class="f-label">Endereço da casa *</label><input class="f-input" id="mAddr" placeholder="Digite para filtrar…" autocomplete="off" oninput="mFilter(this.value)" onfocus="mFilter(this.value)" onblur="setTimeout(()=>document.getElementById(\'mDD\').style.display=\'none\',180)"><div class="addr-dd" id="mDD"></div></div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Data de conclusão</label><input class="f-input" id="mData" type="date" value="'+todayISO()+'"></div>'
+    +'<div><label class="f-label">Tipo de serviço</label><select class="f-select" id="mTipo" onchange="document.getElementById(\'mTipoOutro\').style.display=this.value===\'Others\'?\'block\':\'none\'">'+TIPOS_SERVICO.map(t=>'<option>'+t+'</option>').join('')+'</select><input class="f-input" id="mTipoOutro" placeholder="Especifique o tipo" style="display:none;margin-top:8px"></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Descrição do serviço</label><input class="f-input" id="mDesc"></div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Empresa subcontratada</label><input class="f-input" id="mEmp"></div>'
+    +'<div><label class="f-label">Contato do subcontratado</label><input class="f-input" id="mCont"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Valor do serviço ($)</label><input class="f-input" id="mVal" type="number" step="0.01"></div>'
+    +'<div><label class="f-label">Status pagamento</label><select class="f-select" id="mStatus"><option>Pendente</option><option>Pago</option></select></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Invoice (opcional)</label><input type="file" id="mFile" accept="image/*,application/pdf" onchange="manPhoto=this.files[0]"></div>'
+    +'<div style="text-align:right"><button class="btn-primary2" id="mSaveBtn" onclick="saveMan()"><i class="fas fa-plus"></i> Adicionar manutenção</button></div></div>'
+    +'<div class="card2"><div class="sec-title"><i class="fas fa-list"></i> Manutenções recentes</div><div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Conclusão</th><th>Tipo</th><th>Empresa</th><th>Valor</th><th>Status</th><th>Invoice</th><th></th></tr></thead><tbody>'+(list||'<tr><td colspan="8" class="empty">Nenhuma manutenção</td></tr>')+'</tbody></table></div></div>';
+}
+function mFilter(v){ const dd=document.getElementById('mDD'); const q=norm(v); const opts=DB.casas.map(c=>c['Endereço']).filter(a=>a&&(!q||norm(a).includes(q))); dd.innerHTML=opts.map(a=>'<div onmousedown="document.getElementById(\'mAddr\').value=\''+esc(a).replace(/'/g,"\\'")+'\'">'+esc(a)+'</div>').join(''); dd.style.display=opts.length?'block':'none'; }
+async function saveMan(){
+  const addr=document.getElementById('mAddr').value.trim(); if(!addr){ showToast('Endereço obrigatório',true); return; }
+  let tipo=document.getElementById('mTipo').value; if(tipo==='Others') tipo=document.getElementById('mTipoOutro').value.trim()||'Others';
+  const btn=document.getElementById('mSaveBtn'); btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Salvando…';
+  try{
+    let invoiceUrl='';
+    if(manPhoto){
+      const fr=await apiWrite({action:'getDocsFolder',addr,subfolder:'Invoices'});
+      const b64=await fileB64(manPhoto);
+      const up=await apiWrite({action:'uploadFile',folderId:fr.id,fileBase64:b64,fileName:'invoice_'+Date.now()+'_'+manPhoto.name,mimeType:manPhoto.type||'application/octet-stream'});
+      invoiceUrl=up.fileUrl||'';
+    }
+    await apiWrite({action:'saveManutencao',addr,dataConclusao:document.getElementById('mData').value,tipo,desc:document.getElementById('mDesc').value,empresa:document.getElementById('mEmp').value,contato:document.getElementById('mCont').value,valor:document.getElementById('mVal').value,status:document.getElementById('mStatus').value,invoiceUrl});
+    manPhoto=null; showToast('Manutenção adicionada'); await loadData();
+  }catch(e){ showToast(e.message,true); }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="fas fa-plus"></i> Adicionar manutenção'; }
+}
+function fileB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); }); }
+async function delMan(rowNum){ if(!confirm('Excluir manutenção?'))return; try{ await apiWrite({action:'deleteManutencao',rowNum}); showToast('Excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
+
+// ══ TAB 4 — FINANCEIRO ══
+let FIN_COMP=todayComp();
+function renderFin(){
+  const comp=FIN_COMP;
+  const casas=DB.casas.filter(c=>String(c['Endereço']||'').trim());
+  let totRec=0, totCus=0;
+  const rows=casas.map(c=>{
+    const addr=c['Endereço'];
+    const rec=DB.recebimentos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Total Recebido']),0);
+    let cus=DB.custos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Valor']),0);
+    cus+=DB.manutencao.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Valor do Serviço']),0);
+    totRec+=rec; totCus+=cus;
+    const res=rec-cus;
+    return '<tr><td><strong>'+esc(addr)+'</strong></td><td style="color:#27ae60;font-weight:700">'+$$(rec)+'</td><td style="color:#e74c3c;font-weight:700">'+$$(cus)+'</td><td style="font-weight:800;color:'+(res>=0?'#27ae60':'#e74c3c')+'">'+$$(res)+'</td></tr>';
+  }).join('');
+  const deposits=casas.reduce((s,c)=>s+parseAmt(c['Security Deposit']),0);
+  document.getElementById('tab4').innerHTML=
+    '<div class="card2"><div class="sec-title"><i class="fas fa-calculator"></i> Financeiro por competência'
+    +'<input type="month" class="f-input" style="width:auto;margin-left:auto" value="'+comp+'" onchange="FIN_COMP=this.value;renderFin()"></div>'
+    +'<div class="metric-row">'
+    +'<div class="metric green"><div class="lbl">Receitas '+fmtComp(comp)+'</div><div class="val">'+$$(totRec)+'</div></div>'
+    +'<div class="metric red"><div class="lbl">Custos '+fmtComp(comp)+'</div><div class="val">'+$$(totCus)+'</div></div>'
+    +'<div class="metric '+(totRec-totCus>=0?'green':'red')+'"><div class="lbl">Resultado</div><div class="val">'+$$(totRec-totCus)+'</div></div>'
+    +'<div class="metric"><div class="lbl">Provisões (depósitos)</div><div class="val">'+$$(deposits)+'</div></div>'
+    +'</div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Receita</th><th>Custos</th><th>Resultado</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="empty">Sem casas</td></tr>')
+    +'<tr style="background:#f8fafd;font-weight:800"><td>TOTAL</td><td style="color:#27ae60">'+$$(totRec)+'</td><td style="color:#e74c3c">'+$$(totCus)+'</td><td style="color:'+(totRec-totCus>=0?'#27ae60':'#e74c3c')+'">'+$$(totRec-totCus)+'</td></tr>'
+    +'</tbody></table></div></div>'
+    +'<div class="card2"><div class="sec-title"><i class="fas fa-chart-line"></i> Detalhe dos lançamentos — '+fmtComp(comp)+'</div>'+finDetail(comp)+'</div>';
+}
+function finDetail(comp){
+  const items=[];
+  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido',valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento']}));
+  DB.custos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento']}));
+  DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Manutenção: '+(r['Tipo de Serviço']||''),valor:parseAmt(r['Valor do Serviço']),sign:-1,data:r['Data de Conclusão']}));
+  if(!items.length) return '<div class="empty"><i class="fas fa-receipt"></i>Nenhum lançamento nesta competência</div>';
+  const rows=items.map(i=>'<tr><td>'+esc(i.casa)+'</td><td>'+esc(i.tipo)+'</td><td>'+fmtDate(i.data)+'</td><td style="font-weight:700;color:'+(i.sign>0?'#27ae60':'#e74c3c')+'">'+(i.sign>0?'+':'-')+$$(i.valor)+'</td></tr>').join('');
+  return '<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Lançamento</th><th>Data</th><th>Valor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// Password sempre exigida — sem auto-login.
+</script>
+</body>
+</html>
