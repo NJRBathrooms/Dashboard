@@ -68,7 +68,8 @@ function nowFriendly(tz) {
 // e datas vêm como "serial" (dias desde 1899-12-30). Convertemos só as colunas de data.
 function isDateHeader(h) {
   const s = String(h).toLowerCase();
-  return s.includes('carimbo') || s.includes('hora') || s.includes('data') || s.includes('conclus');
+  return s.includes('carimbo') || s.includes('hora') || s.includes('data') || s.includes('conclus')
+      || s.includes('contrato') || s.includes('vig'); // datas do app de aluguel (Início/Fim do Contrato, Vigência do Seguro)
 }
 function fmtSerial(serial) {
   // serial 0 = 1899-12-30. Unix epoch = serial 25569. Lemos como "relógio de parede" via UTC.
