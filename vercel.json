@@ -9,6 +9,9 @@
     { "source": "/funcionarios", "destination": "/employees.html" },
     { "source": "/rentals", "destination": "/rentals.html" }
   ],
+  "crons": [
+    { "path": "/api/rentals-cron", "schedule": "0 12 * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
