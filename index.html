@@ -21,18 +21,18 @@
 body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:#1a2b3c; margin:0; overflow-x:hidden; }
 html { overflow-x:hidden; }
 
-/* LOGIN */
-#loginScreen { position:fixed; inset:0; z-index:9999; background:#f4f7fb url('/icon-512.png') center 17%/min(62vw,290px) no-repeat; display:flex; align-items:flex-end; justify-content:center; padding:24px 24px calc(env(safe-area-inset-bottom) + 46px); }
+/* LOGIN — padrão Eagle */
+#loginScreen { position:fixed; inset:0; z-index:9999; background:#fff url('/login-bg.png') center 20%/min(66vw,300px) no-repeat; display:flex; align-items:flex-end; justify-content:center; padding:24px 24px calc(env(safe-area-inset-bottom) + 40px); }
 .login-box { background:var(--navy); border-radius:22px; padding:30px 28px; width:min(400px,100%); box-shadow:0 24px 70px rgba(13,33,55,.45); border:1px solid rgba(232,130,12,.3); }
-.login-box h1 { color:#fff; font-size:23px; font-weight:800; margin:0 0 4px; text-align:center; }
-.login-box p.sub { color:var(--orange); font-size:11px; margin:0 0 20px; text-transform:uppercase; letter-spacing:2.5px; font-weight:700; text-align:center; }
-.login-input   { width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:13px 18px; font-size:15px; color:#fff; text-align:center; transition:all .2s; }
-.login-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.12); box-shadow:0 0 0 4px rgba(232,130,12,.18); }
+.login-box h1 { font-size:20px; font-weight:800; color:#fff; margin:0 0 4px; text-align:center; }
+.login-box p.sub { font-size:11px; color:var(--orng2); margin:0 0 18px; text-transform:uppercase; letter-spacing:2.5px; font-weight:700; text-align:center; }
+.login-input { width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; padding:13px 18px; font-size:15px; border-radius:14px; text-align:center; transition:all .2s; }
 .login-input::placeholder { color:rgba(255,255,255,.4); }
-.login-btn   { width:100%; background:linear-gradient(135deg,var(--orange),var(--orng2)); border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:800; color:#fff; cursor:pointer; margin-top:12px; transition:transform .12s; }
-.login-btn:active { transform:scale(.98); }
+.login-input:focus { outline:none; background:rgba(255,255,255,.12); border-color:var(--orange); box-shadow:0 0 0 4px rgba(232,130,12,.18); color:#fff; }
+.login-btn { background:linear-gradient(135deg,var(--orange),var(--orng2)); border:none; color:var(--navy); font-weight:800; padding:14px; border-radius:14px; font-size:15px; width:100%; margin-top:12px; cursor:pointer; transition:transform .12s; }
+.login-btn:active { transform:scale(.97); }
 .login-btn:disabled { opacity:.7; cursor:not-allowed; }
-.login-error  { color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:10px; display:none; }
+.login-error { color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:8px; display:none; }
 
 /* MAIN APP */
 #mainApp { display:none; }
@@ -319,7 +319,7 @@ tbody tr:hover td { background:#fafbfe; }
     <h1>NJR Bathrooms</h1>
     <p class="sub">Controle de Obras</p>
     <input type="password" id="pwdInput" class="login-input" placeholder="Senha de acesso" autocomplete="current-password">
-    <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-shield-halved" style="margin-right:8px"></i>Entrar</button>
     <div class="login-error" id="loginErr"><span id="loginErrMsg">Senha incorreta</span></div>
   </div>
 </div>
