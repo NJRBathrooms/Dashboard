@@ -22,21 +22,17 @@ body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; backg
 html { overflow-x:hidden; }
 
 /* LOGIN */
-#loginScreen { min-height:100vh; background:linear-gradient(135deg,#061522 0%,var(--navy2) 50%,#061522 100%); display:flex; align-items:center; justify-content:center; padding:24px; }
-.login-wrap  { width:100%; max-width:420px; }
-.login-card  { background:rgba(255,255,255,.07); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:48px 40px; text-align:center; }
-.login-icon  { width:80px; height:80px; background:#fff; border-radius:20px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:24px; box-shadow:0 8px 32px rgba(0,0,0,.35); overflow:hidden; padding:10px; }
-.login-icon img { width:100%; height:100%; object-fit:contain; }
-.login-card h1 { color:#fff; font-size:26px; font-weight:800; margin:0 0 6px; }
-.login-card p  { color:rgba(255,255,255,.5); font-size:14px; margin:0 0 36px; }
-.login-input   { width:100%; background:rgba(255,255,255,.08); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; padding:14px 18px; font-size:15px; color:#fff; transition:border-color .25s; margin-bottom:12px; }
-.login-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.12); }
-.login-input::placeholder { color:rgba(255,255,255,.35); }
-.login-btn   { width:100%; background:var(--orange); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:700; color:#fff; cursor:pointer; transition:all .25s; }
-.login-btn:hover { background:var(--orng2); transform:translateY(-2px); box-shadow:0 8px 24px rgba(232,130,12,.4); }
-.login-btn:disabled { opacity:.7; cursor:not-allowed; transform:none; }
-.login-error  { color:#ff6b6b; font-size:13px; margin-top:12px; display:none; }
-.login-footer { color:rgba(255,255,255,.25); font-size:12px; text-align:center; margin-top:20px; }
+#loginScreen { position:fixed; inset:0; z-index:9999; background:#f4f7fb url('/icon-512.png') center 17%/min(62vw,290px) no-repeat; display:flex; align-items:flex-end; justify-content:center; padding:24px 24px calc(env(safe-area-inset-bottom) + 46px); }
+.login-box { background:var(--navy); border-radius:22px; padding:30px 28px; width:min(400px,100%); box-shadow:0 24px 70px rgba(13,33,55,.45); border:1px solid rgba(232,130,12,.3); }
+.login-box h1 { color:#fff; font-size:23px; font-weight:800; margin:0 0 4px; text-align:center; }
+.login-box p.sub { color:var(--orange); font-size:11px; margin:0 0 20px; text-transform:uppercase; letter-spacing:2.5px; font-weight:700; text-align:center; }
+.login-input   { width:100%; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:13px 18px; font-size:15px; color:#fff; text-align:center; transition:all .2s; }
+.login-input:focus { outline:none; border-color:var(--orange); background:rgba(255,255,255,.12); box-shadow:0 0 0 4px rgba(232,130,12,.18); }
+.login-input::placeholder { color:rgba(255,255,255,.4); }
+.login-btn   { width:100%; background:linear-gradient(135deg,var(--orange),var(--orng2)); border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:800; color:#fff; cursor:pointer; margin-top:12px; transition:transform .12s; }
+.login-btn:active { transform:scale(.98); }
+.login-btn:disabled { opacity:.7; cursor:not-allowed; }
+.login-error  { color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:10px; display:none; }
 
 /* MAIN APP */
 #mainApp { display:none; }
@@ -184,6 +180,10 @@ tbody tr:hover td { background:#fafbfe; }
 .subtab-btn { flex:1; border:none; background:none; padding:11px 14px; border-radius:9px; font-size:13px; font-weight:700; color:#7b8ea4; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .18s; white-space:nowrap; }
 .subtab-btn.active { background:#fff; color:var(--navy); box-shadow:0 2px 8px rgba(0,0,0,.08); }
 .subtab-btn:hover:not(.active) { color:var(--navy2); }
+.report-btn { background:linear-gradient(135deg,var(--navy),var(--navy2)); color:#fff; border:none; border-radius:12px; padding:13px 24px; font-size:14px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:9px; box-shadow:0 4px 16px rgba(13,33,55,.25); transition:transform .12s; }
+.report-btn:hover { transform:translateY(-2px); }
+.report-btn i { color:var(--orange); }
+.report-btn:disabled { opacity:.65; cursor:not-allowed; transform:none; }
 
 /* PAY CARD (mesmo card do app de funcionário) */
 .pay-card { background:linear-gradient(135deg,var(--navy),var(--navy2)); border-radius:16px; padding:24px; color:#fff; height:100%; box-shadow:0 4px 20px rgba(13,33,55,.3); }
@@ -315,16 +315,12 @@ tbody tr:hover td { background:#fafbfe; }
 
 <!-- LOGIN -->
 <div id="loginScreen">
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-icon"><img src="/icon-192.png" alt="NJR Bathrooms"></div>
-      <h1>NJR Bathrooms</h1>
-      <p>Dashboard de Controle de Obras</p>
-      <input type="password" id="pwdInput" class="login-input" placeholder="Digite sua senha" autocomplete="current-password">
-      <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
-      <div class="login-error" id="loginErr"><i class="fas fa-exclamation-circle" style="margin-right:4px"></i><span id="loginErrMsg">Senha incorreta</span></div>
-    </div>
-    <div class="login-footer">NJR Bathrooms &copy; 2026 &nbsp;·&nbsp; Área restrita</div>
+  <div class="login-box">
+    <h1>NJR Bathrooms</h1>
+    <p class="sub">Controle de Obras</p>
+    <input type="password" id="pwdInput" class="login-input" placeholder="Senha de acesso" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-lock-open" style="margin-right:8px"></i>Entrar</button>
+    <div class="login-error" id="loginErr"><span id="loginErrMsg">Senha incorreta</span></div>
   </div>
 </div>
 
@@ -387,6 +383,9 @@ tbody tr:hover td { background:#fafbfe; }
         </div>
         <button class="wk-nav" onclick="moveWeek(1)"><i class="fas fa-chevron-right"></i></button>
       </div>
+      <div style="text-align:center;margin-bottom:18px">
+        <button class="report-btn" id="reportBtn" onclick="gerarRelatorio()"><i class="fas fa-file-invoice-dollar"></i> Gerar Relatório de Pagamento</button>
+      </div>
       <div id="gerBody"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
     </div>
 
@@ -397,8 +396,13 @@ tbody tr:hover td { background:#fafbfe; }
     </div>
   </div>
 
-  <!-- TAB 3 — Incluir Obra -->
+  <!-- TAB 3 — Incluir Obra / Cliente -->
   <div id="t3page" class="page" style="display:none">
+    <div class="subtab-nav">
+      <button class="subtab-btn active" id="st3obraBtn" onclick="showT3('obra')"><i class="fas fa-hard-hat"></i> Incluir Nova Obra</button>
+      <button class="subtab-btn" id="st3cliBtn" onclick="showT3('cli')"><i class="fas fa-user-plus"></i> Incluir Novo Cliente</button>
+    </div>
+    <div id="st3obra">
     <div class="form-section">
       <div class="section-title"><i class="fas fa-hard-hat" style="color:var(--orange)"></i>Incluir Nova Obra</div>
       <p class="required-note"><span>*</span> Campos obrigatórios</p>
@@ -480,9 +484,10 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
       <div id="f3Msg" style="display:none"></div>
     </div>
+    </div><!-- /st3obra -->
 
-    <!-- Section 2: Incluir Novo Cliente -->
-    <div class="form-section" style="margin-top:32px">
+    <div id="st3cli" style="display:none">
+    <div class="form-section">
       <div class="section-title"><i class="fas fa-user-plus" style="color:var(--orange)"></i>Incluir Novo Cliente</div>
       <p class="required-note"><span>*</span> Campos obrigatórios</p>
       <div class="row g-3">
@@ -514,11 +519,20 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
       <div id="cliMsg" style="display:none"></div>
     </div>
+    <div class="form-section" style="margin-top:24px">
+      <div class="section-title"><i class="fas fa-users" style="color:var(--orange)"></i>Clientes Cadastrados</div>
+      <div id="clientesTableWrap"></div>
+    </div>
+    </div><!-- /st3cli -->
   </div>
 
   <!-- TAB 4 — Registros -->
   <div id="t4page" class="page" style="display:none">
-
+    <div class="subtab-nav">
+      <button class="subtab-btn active" id="st4matBtn" onclick="showT4('mat')"><i class="fas fa-shopping-cart"></i> Compras de Materiais</button>
+      <button class="subtab-btn" id="st4subBtn" onclick="showT4('sub')"><i class="fas fa-handshake"></i> Subcontratos</button>
+    </div>
+    <div id="st4mat">
     <!-- Section 1: Compras de Materiais -->
     <div class="form-section mb-4">
       <div class="section-title"><i class="fas fa-shopping-cart" style="color:var(--orange)"></i>Registro de Compras de Materiais</div>
@@ -595,7 +609,9 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
       <div id="matMsg" style="display:none"></div>
     </div>
+    </div><!-- /st4mat -->
 
+    <div id="st4sub" style="display:none">
     <!-- Section 2: Subcontratos -->
     <div class="form-section">
       <div class="section-title"><i class="fas fa-handshake" style="color:var(--orange)"></i>Formulário de Subcontratos</div>
@@ -682,6 +698,7 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
       <div id="subMsg" style="display:none"></div>
     </div>
+    </div><!-- /st4sub -->
 
   </div>
 
@@ -867,7 +884,19 @@ async function apiWrite(params) {
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); }
+
+// Sub-abas da aba "Incluir Obra / Cliente" e "Registros"
+function showT3(w){ document.getElementById('st3obra').style.display=w==='obra'?'':'none'; document.getElementById('st3cli').style.display=w==='cli'?'':'none'; document.getElementById('st3obraBtn').classList.toggle('active',w==='obra'); document.getElementById('st3cliBtn').classList.toggle('active',w==='cli'); }
+function showT4(w){ document.getElementById('st4mat').style.display=w==='mat'?'':'none'; document.getElementById('st4sub').style.display=w==='sub'?'':'none'; document.getElementById('st4matBtn').classList.toggle('active',w==='mat'); document.getElementById('st4subBtn').classList.toggle('active',w==='sub'); }
+function renderClientesTable(){
+  const el=document.getElementById('clientesTableWrap'); if(!el)return;
+  const cs=PROC.clients||[];
+  if(!cs.length){ el.innerHTML='<div class="empty-box"><i class="fas fa-user-slash"></i><strong>Nenhum cliente cadastrado</strong></div>'; return; }
+  el.innerHTML='<div class="table-responsive"><table><thead><tr><th>Nome</th><th>Contato</th><th>Empresa</th><th>Email</th></tr></thead><tbody>'
+    +cs.map(c=>`<tr><td><strong>${escH(c.nome)}</strong></td><td>${escH(c.contato||'—')}</td><td>${escH(c.empresa||'—')}</td><td>${escH(c.email||'—')}</td></tr>`).join('')
+    +'</tbody></table></div>';
+}
 
 async function loadData() {
   // Pinta a tela instantaneamente com o último dado conhecido (cache local) e atualiza em 2º plano,
@@ -1540,6 +1569,78 @@ function renderGerencial() {
     ADJ_CTX[cid]={ emp, week:wk };
     return `<div class="col-12 col-lg-6 col-xl-4">${payCardHTML(emp, computeStats(byEmp[emp], emp), { adj:getAjuste(emp,wk), editable:true, cid })}</div>`;
   }).join('')}</div>`;
+}
+
+// ── RELATÓRIO DE PAGAMENTO (gera + envia por e-mail ao financeiro) ──
+async function gerarRelatorio() {
+  const {sun,sat}=getWeekBounds(wkOff);
+  const fmt=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+  const fmtFull=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const wk=weekKey(wkOff);
+  const rows=PROC.labor.filter(r=>r.ts&&r.ts>=sun&&r.ts<=sat);
+  const byEmp={}; rows.forEach(r=>{ if(!r.emp)return; (byEmp[r.emp]=byEmp[r.emp]||[]).push(r); });
+  const emps=Object.keys(byEmp).sort();
+  if(!emps.length){ showToast('Sem registros nesta semana para gerar relatório'); return; }
+  const btn=document.getElementById('reportBtn'); btn.disabled=true; const orig=btn.innerHTML; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Gerando...';
+
+  let grand=0;
+  const trs=emps.map(emp=>{
+    const s=computeStats(byEmp[emp],emp); const adj=getAjuste(emp,wk);
+    const total=s.total+(adj.bonif||0)-(adj.desc||0); grand+=total;
+    const descTxt=(adj.desc||0)>0?'-'+$$(adj.desc||0):$$(0);
+    return `<tr>
+      <td style="font-weight:700;color:#0d2137">${emp}</td>
+      <td>${fhm(s.totalHrs)}</td>
+      <td>${$$(s.laborPay)}</td>
+      <td>${$$(s.totalReim)}</td>
+      <td>${$$(s.gasoline)}</td>
+      <td style="color:#27ae60">${$$(adj.bonif||0)}</td>
+      <td style="color:#e74c3c">${descTxt}</td>
+      <td style="font-weight:800;color:#0d2137">${$$(total)}</td>
+    </tr>`;
+  }).join('');
+  const html=reportHTML('Dom '+fmt(sun)+' a Sáb '+fmt(sat), fmtFull(new Date()), trs, grand, emps.length);
+
+  // exibe em nova aba para conferência/impressão
+  try { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } } catch(_){}
+  // envia por e-mail ao financeiro (Paulinha)
+  try {
+    const r=await apiWrite({action:'emailReport', subject:'Relatório de Pagamento — Semana '+fmt(sun)+' a '+fmt(sat), html});
+    showToast('Relatório gerado e enviado para '+(r.to||'o financeiro'));
+  } catch(e){ showToast('Relatório gerado, mas falha no e-mail: '+e.message, true); }
+  finally { btn.disabled=false; btn.innerHTML=orig; }
+}
+function reportHTML(periodo, geradoEm, trs, grand, n) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Pagamento — NJR Bathrooms</title>
+  <style>
+    *{box-sizing:border-box;} body{font-family:Arial,Helvetica,sans-serif;color:#2c3e50;margin:0;padding:28px;background:#fff;}
+    .rpt{max-width:820px;margin:0 auto;}
+    .rpt-head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #e8820c;padding-bottom:14px;margin-bottom:6px;}
+    .rpt-head h1{font-size:22px;color:#0d2137;margin:0;}
+    .rpt-head .sub{font-size:12px;color:#7b8ea4;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+    .rpt-meta{font-size:13px;color:#555;margin:10px 0 18px;}
+    .rpt-meta strong{color:#0d2137;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:#0d2137;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+    tbody td{padding:10px 12px;border-bottom:1px solid #eef2f6;}
+    tbody tr:nth-child(even){background:#f8fafd;}
+    tfoot td{padding:13px 12px;background:#fff3e0;font-weight:800;color:#0d2137;font-size:15px;border-top:2px solid #e8820c;}
+    .rpt-foot{margin-top:22px;font-size:11px;color:#95a5a6;text-align:center;}
+    @media print{ body{padding:0;} .noprint{display:none;} }
+    .print-btn{background:#e8820c;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:13px;}
+  </style></head><body><div class="rpt">
+    <div class="rpt-head">
+      <div><h1>NJR Bathrooms</h1><div class="sub">Relatório de Pagamento — Funcionários</div></div>
+      <div class="noprint"><button class="print-btn" onclick="window.print()">🖨️ Imprimir</button></div>
+    </div>
+    <div class="rpt-meta"><strong>Período:</strong> ${periodo} &nbsp;·&nbsp; <strong>Funcionários:</strong> ${n} &nbsp;·&nbsp; <strong>Gerado em:</strong> ${geradoEm}</div>
+    <table>
+      <thead><tr><th>Funcionário</th><th>Horas</th><th>Mão de Obra</th><th>Reembolso</th><th>Gasolina</th><th>Bonificação</th><th>Desconto</th><th>Total a Pagar</th></tr></thead>
+      <tbody>${trs}</tbody>
+      <tfoot><tr><td colspan="7">TOTAL GERAL A PAGAR</td><td>${$$(grand)}</td></tr></tfoot>
+    </table>
+    <div class="rpt-foot">Documento gerado automaticamente pelo sistema NJR Bathrooms · Confidencial</div>
+  </div></body></html>`;
 }
 
 // ── VISÃO DETALHADA: seletor → card + tabela de todas as semanas ──
