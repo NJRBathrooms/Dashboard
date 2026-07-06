@@ -366,8 +366,18 @@ async function saveAjuste(params) {
   return { ok: true };
 }
 
+// ── RELATÓRIO DE PAGAMENTO (envia por e-mail ao financeiro) ──
+async function emailReport(params) {
+  const to = process.env.REPORT_EMAIL || 'Paulinhajusten@hotmail.com';
+  const subject = (params.subject || 'Relatório de Pagamento — NJR Bathrooms').toString().slice(0, 200);
+  const html = params.html || '';
+  if (!html) return { error: 'Relatório vazio.' };
+  await G.sendEmail(to, subject, html, true);
+  return { ok: true, to };
+}
+
 module.exports = {
-  addObra, closeObra, updateObra, saveAjuste,
+  addObra, closeObra, updateObra, saveAjuste, emailReport,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor,
