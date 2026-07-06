@@ -14,6 +14,7 @@ const HANDLERS = {
   deleteSubcontrato: A.deleteSubcontrato,
   addCliente: A.addCliente,
   saveAjuste: A.saveAjuste,
+  emailReport: A.emailReport,
   getOrCreateFolder,
   uploadFile,
 };
