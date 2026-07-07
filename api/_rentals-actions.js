@@ -25,6 +25,24 @@ async function findRow(ssId, sh, colName, value) {
   return 0;
 }
 
+// ── CASAS: reordenar (ordem manual persistida) ────────────
+async function reorderCasas(params) {
+  const order = Array.isArray(params.order) ? params.order.map(clean).filter(Boolean) : [];
+  if (!order.length) return { error: 'Ordem vazia.' };
+  const { ssId, sh } = await ctx('Casas');
+  if (sh.headers.indexOf('Ordem') < 0) return { error: 'Coluna Ordem indisponível; recarregue a página.' };
+  const addrIdx = sh.headers.indexOf('Endereço');
+  const addrCol = await R.readRentalColumn(ssId, sh.title, addrIdx);
+  const pairs = [];
+  order.forEach((addr, i) => {
+    for (let r = 1; r < addrCol.length; r++) {
+      if (norm(addrCol[r]) === norm(addr)) { pairs.push({ rowNum: r + 1, val: i + 1 }); break; }
+    }
+  });
+  await R.batchSetColumn(ssId, sh.title, sh.headers, 'Ordem', pairs);
+  return { ok: true, count: pairs.length };
+}
+
 // ── CASAS (upsert por Endereço) ───────────────────────────
 async function saveCasa(params) {
   const { ssId, sh } = await ctx('Casas');
@@ -228,7 +246,7 @@ async function getDocsFolder(params) {
 }
 
 module.exports = {
-  saveCasa, deleteCasa,
+  saveCasa, deleteCasa, reorderCasas,
   markRecebido, deleteRecebimento,
   saveCusto, deleteCusto,
   saveManutencao, deleteManutencao,
