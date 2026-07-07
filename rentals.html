@@ -226,7 +226,7 @@ function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMo
 const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function fmtComp(c){ if(!/^\d{4}-\d{2}$/.test(c||''))return c||'—'; const [y,m]=c.split('-'); return MES[+m-1]+'/'+y; }
 function fmtDate(v){ const d=parseDate(v); return d?pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear():'—'; }
-function isOcupada(c){ return String(c['Status']||'').toLowerCase()!=='vacância' && String(c['Status']||'').toLowerCase()!=='vacancia'; }
+function isOcupada(c){ if(String((c&&c['Inquilino'])||'').trim()) return true; const s=String((c&&c['Status'])||'').toLowerCase(); return s!=='vacância' && s!=='vacancia'; }
 
 function showToast(msg,err){ let el=document.getElementById('njrToast'); if(!el){el=document.createElement('div');el.id='njrToast';el.className='njr-toast';document.body.appendChild(el);} el.innerHTML='<i class="fas '+(err?'fa-exclamation-triangle':'fa-check-circle')+'"></i> '+msg; el.classList.toggle('err',!!err); el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2400); }
 function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modal').classList.add('show'); }
@@ -459,11 +459,12 @@ function editCasa(addr){
   const g=(k)=>c&&c[k]!=null?c[k]:'';
   const gd=(k)=>c&&c[k]?isoOf(c[k]):'';
   const per=(k,opts)=>opts.map(o=>'<option'+(norm(g(k))===norm(o)?' selected':'')+'>'+o+'</option>').join('');
+  const occ0=!!String(g('Inquilino')).trim();
   openModal('<div class="modal-title"><i class="fas fa-house-chimney"></i> '+(addr?'Editar casa':'Nova casa')+'</div>'
     +'<div class="mb"><label class="f-label">Endereço *</label><input class="f-input" id="cAddr" value="'+esc(g('Endereço'))+'" '+(addr?'readonly style="background:#f4f7fb"':'')+'></div>'
     +'<div class="grid2">'
-    +'<div><label class="f-label">Status</label><select class="f-select" id="cStatus"><option'+(isOcupada(c)?' selected':'')+'>Ocupada</option><option'+(!isOcupada(c)&&addr?' selected':'')+'>Vacância</option></select></div>'
-    +'<div><label class="f-label">Inquilino</label><input class="f-input" id="cInq" value="'+esc(g('Inquilino'))+'"></div>'
+    +'<div><label class="f-label">Inquilino</label><input class="f-input" id="cInq" value="'+esc(g('Inquilino'))+'" oninput="updCasaStatus()" placeholder="Nome do inquilino"></div>'
+    +'<div><label class="f-label">Situação</label><div style="padding-top:6px"><span id="cStatusHint" class="badge2 '+(occ0?'b-paid':'b-vac')+'">'+(occ0?'<i class="fas fa-user-check"></i> Ocupada':'<i class="fas fa-door-open"></i> Vacância')+'</span> <span style="font-size:11px;color:#7b8ea4">— vazio = Vacância</span></div></div>'
     +'</div><div class="grid2" style="margin-top:12px">'
     +'<div><label class="f-label">Contato do inquilino</label><input class="f-input" id="cCont" value="'+esc(g('Contato do Inquilino'))+'"></div>'
     +'<div><label class="f-label">Aluguel mensal ($)</label><input class="f-input" id="cAlug" type="number" step="0.01" value="'+parseAmt(g('Aluguel Mensal'))+'"></div>'
@@ -488,9 +489,11 @@ function editCasa(addr){
     +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
     +'<button class="btn-primary2" onclick="saveCasa()">Salvar</button></div>');
 }
+function updCasaStatus(){ const el=document.getElementById('cStatusHint'); if(!el)return; const occ=document.getElementById('cInq').value.trim()!==''; el.className='badge2 '+(occ?'b-paid':'b-vac'); el.innerHTML=occ?'<i class="fas fa-user-check"></i> Ocupada':'<i class="fas fa-door-open"></i> Vacância'; }
 async function saveCasa(){
-  const p={ action:'saveCasa', addr:document.getElementById('cAddr').value.trim(), status:document.getElementById('cStatus').value,
-    inquilino:document.getElementById('cInq').value, contato:document.getElementById('cCont').value,
+  const inq=document.getElementById('cInq').value;
+  const p={ action:'saveCasa', addr:document.getElementById('cAddr').value.trim(), status:(inq.trim()?'Ocupada':'Vacância'),
+    inquilino:inq, contato:document.getElementById('cCont').value,
     aluguel:document.getElementById('cAlug').value, deposit:document.getElementById('cDep').value, mortgage:document.getElementById('cMort').value,
     inicio:document.getElementById('cIni').value, fim:document.getElementById('cFim').value,
     seguradora:document.getElementById('cSeg').value, vigenciaSeguro:document.getElementById('cVig').value, valorSeguro:document.getElementById('cValSeg').value,
