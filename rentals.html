@@ -58,6 +58,8 @@ body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:#eef2f6
 .mini-btn.pri { background:var(--orange); color:#fff; } .mini-btn.pri:hover { background:var(--orng2); }
 .mini-btn.sec { background:#eef3f8; color:var(--navy); }
 .mini-btn.danger { background:rgba(231,76,60,.1); color:#e74c3c; }
+.mini-btn.ord-btn { padding:7px 9px; }
+.mini-btn:disabled { opacity:.32; cursor:default; }
 .f-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7b8ea4; margin-bottom:5px; display:block; }
 .f-input, .f-select { width:100%; padding:11px 13px; border:2px solid #dde7f1; border-radius:9px; font-size:14px; background:#fff; }
 .f-input:focus, .f-select:focus { outline:none; border-color:var(--orange); }
@@ -227,6 +229,8 @@ const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','de
 function fmtComp(c){ if(!/^\d{4}-\d{2}$/.test(c||''))return c||'—'; const [y,m]=c.split('-'); return MES[+m-1]+'/'+y; }
 function fmtDate(v){ const d=parseDate(v); return d?pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear():'—'; }
 function isOcupada(c){ if(String((c&&c['Inquilino'])||'').trim()) return true; const s=String((c&&c['Status'])||'').toLowerCase(); return s!=='vacância' && s!=='vacancia'; }
+function ordVal(c){ const n=parseInt(c&&c['Ordem'],10); return isNaN(n)?1e9:n; }
+function casasOrdered(){ return DB.casas.filter(c=>String(c['Endereço']||'').trim()).slice().sort((a,b)=>ordVal(a)-ordVal(b)); }
 
 function showToast(msg,err){ let el=document.getElementById('njrToast'); if(!el){el=document.createElement('div');el.id='njrToast';el.className='njr-toast';document.body.appendChild(el);} el.innerHTML='<i class="fas '+(err?'fa-exclamation-triangle':'fa-check-circle')+'"></i> '+msg; el.classList.toggle('err',!!err); el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2400); }
 function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modal').classList.add('show'); }
@@ -308,7 +312,7 @@ function houseState(c,comp){
 
 function renderDash(){
   const comp=dashComp;
-  const casas=DB.casas.filter(c=>String(c['Endereço']||'').trim());
+  const casas=casasOrdered();
   const states=casas.map(c=>({ c, s:houseState(c,comp) }));
   const occ =states.filter(x=>x.s.key!=='vac');
   const paid=occ.filter(x=>x.s.key==='paid');
@@ -428,19 +432,33 @@ async function delReceb(rowNum){ if(!confirm('Excluir este recebimento?'))return
 
 // ══ TAB 2 — CADASTROS & CUSTOS ══
 function renderCad(){
-  const casas=DB.casas.filter(c=>String(c['Endereço']||'').trim());
-  const rows=casas.map(c=>'<tr>'
+  const casas=casasOrdered(); const n=casas.length;
+  const rows=casas.map((c,i)=>{ const eAddr=esc(c['Endereço']).replace(/'/g,"\\'");
+    return '<tr>'
+    +'<td style="white-space:nowrap"><button class="mini-btn sec ord-btn" title="Subir" onclick="moveCasa('+i+',-1)" '+(i===0?'disabled':'')+'><i class="fas fa-chevron-up"></i></button> <button class="mini-btn sec ord-btn" title="Descer" onclick="moveCasa('+i+',1)" '+(i===n-1?'disabled':'')+'><i class="fas fa-chevron-down"></i></button></td>'
     +'<td><strong>'+esc(c['Endereço'])+'</strong></td>'
     +'<td>'+(isOcupada(c)?esc(c['Inquilino']||'—'):'<span class="badge2 b-vac">Vacância</span>')+'</td>'
     +'<td>'+$$(parseAmt(c['Aluguel Mensal']))+'</td>'
     +'<td>'+fmtDate(c['Fim do Contrato'])+'</td>'
     +'<td>'+fmtDate(c['Vigência do Seguro'])+'</td>'
-    +'<td><button class="mini-btn sec" onclick="editCasa(\''+esc(c['Endereço']).replace(/'/g,"\\'")+'\')"><i class="fas fa-pen"></i></button></td>'
-    +'</tr>').join('');
+    +'<td><button class="mini-btn sec" onclick="editCasa(\''+eAddr+'\')"><i class="fas fa-pen"></i></button></td>'
+    +'</tr>'; }).join('');
   document.getElementById('tab2').innerHTML=
-    '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>'
+    '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <span style="font-size:11px;font-weight:600;color:#7b8ea4;margin-left:8px">use ↑↓ para ordenar — vale no Dashboard</span><button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Ordem</th><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>'
     +custosSection();
+}
+let _reordering=false;
+async function moveCasa(idx,dir){
+  if(_reordering)return; const list=casasOrdered(); const j=idx+dir;
+  if(j<0||j>=list.length)return;
+  const arr=list.map(c=>c['Endereço']); const tmp=arr[idx]; arr[idx]=arr[j]; arr[j]=tmp;
+  const pos={}; arr.forEach((a,i)=>pos[norm(a)]=i+1);
+  DB.casas.forEach(c=>{ const p=pos[norm(c['Endereço'])]; if(p) c['Ordem']=p; });
+  _reordering=true; renderCad(); renderDash();
+  try{ await apiWrite({action:'reorderCasas',order:arr}); }
+  catch(e){ showToast(e.message,true); }
+  finally{ _reordering=false; }
 }
 function custosSection(){
   const recent=[...DB.custos].reverse().slice(0,25);
