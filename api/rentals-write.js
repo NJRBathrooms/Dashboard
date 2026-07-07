@@ -4,6 +4,7 @@ const A = require('./_rentals-actions');
 const HANDLERS = {
   saveCasa: A.saveCasa,
   deleteCasa: A.deleteCasa,
+  reorderCasas: A.reorderCasas,
   markRecebido: A.markRecebido,
   deleteRecebimento: A.deleteRecebimento,
   saveCusto: A.saveCusto,
