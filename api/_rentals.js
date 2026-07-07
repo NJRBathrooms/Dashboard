@@ -11,7 +11,7 @@ const DOCS_FOLDER = 'NJR Casas de Aluguel - Documentos';
 
 // Esquema das abas (título → cabeçalhos)
 const TABS = {
-  Casas: ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Status','Aluguel Mensal','Security Deposit','Início do Contrato','Fim do Contrato','Seguradora','Vigência do Seguro','Valor do Seguro','Periodicidade do Seguro','Mortgage Mensal','Valor da Água','Periodicidade da Água','Observações'],
+  Casas: ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Status','Aluguel Mensal','Security Deposit','Início do Contrato','Fim do Contrato','Seguradora','Vigência do Seguro','Valor do Seguro','Periodicidade do Seguro','Mortgage Mensal','Valor da Água','Periodicidade da Água','Observações','Ordem'],
   Recebimentos: ['Carimbo de data/hora','Endereço','Competência','Valor do Aluguel','Data do Pagamento','Multa','Total Recebido','Status','Observações'],
   Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Observações'],
   Manutenção: ['Carimbo de data/hora','Endereço','Data de Conclusão','Competência','Tipo de Serviço','Descrição do Serviço','Empresa Subcontratada','Contato do Subcontratado','Valor do Serviço','Status Pagamento','Anexar Invoice'],
@@ -77,15 +77,39 @@ async function ensureTabs(ssId) {
   const meta = await sheetsApi().spreadsheets.get({ spreadsheetId: ssId, fields: 'sheets.properties.title' });
   const existing = new Set(meta.data.sheets.map(s => s.properties.title));
   const missing = Object.keys(TABS).filter(t => !existing.has(t));
-  if (!missing.length) return;
-  await sheetsApi().spreadsheets.batchUpdate({
-    spreadsheetId: ssId,
-    requestBody: { requests: missing.map(title => ({ addSheet: { properties: { title } } })) },
-  });
-  const data = missing.map(title => ({ range: `${q(title)}!A1`, values: [TABS[title]] }));
-  await sheetsApi().spreadsheets.values.batchUpdate({
-    spreadsheetId: ssId, requestBody: { valueInputOption: 'RAW', data },
-  });
+  if (missing.length) {
+    await sheetsApi().spreadsheets.batchUpdate({
+      spreadsheetId: ssId,
+      requestBody: { requests: missing.map(title => ({ addSheet: { properties: { title } } })) },
+    });
+    const data = missing.map(title => ({ range: `${q(title)}!A1`, values: [TABS[title]] }));
+    await sheetsApi().spreadsheets.values.batchUpdate({
+      spreadsheetId: ssId, requestBody: { valueInputOption: 'RAW', data },
+    });
+  }
+  // evolução de colunas: garante que cada aba existente tenha todos os cabeçalhos do schema
+  const present = Object.keys(TABS).filter(t => existing.has(t));
+  if (present.length) {
+    const ranges = present.map(t => `${q(t)}!1:1`);
+    const hr = await sheetsApi().spreadsheets.values.batchGet({ spreadsheetId: ssId, ranges, valueRenderOption: 'UNFORMATTED_VALUE' });
+    const addData = [];
+    present.forEach((t, i) => {
+      const cur = (((hr.data.valueRanges[i] || {}).values || [[]])[0] || []).map(h => String(h).trim());
+      let next = cur.length;
+      TABS[t].forEach(h => { if (!cur.includes(h)) { addData.push({ range: `${q(t)}!${colLetter(next)}1`, values: [[h]] }); next++; } });
+    });
+    if (addData.length) {
+      await sheetsApi().spreadsheets.values.batchUpdate({ spreadsheetId: ssId, requestBody: { valueInputOption: 'RAW', data: addData } });
+    }
+  }
+}
+
+// escreve valores numa coluna (por cabeçalho) em várias linhas de uma vez
+async function batchSetColumn(ssId, title, headers, colName, pairs) {
+  const idx = headers.indexOf(colName);
+  if (idx < 0 || !pairs.length) return;
+  const data = pairs.map(p => ({ range: `${q(title)}!${colLetter(idx)}${p.rowNum}`, values: [[p.val]] }));
+  await sheetsApi().spreadsheets.values.batchUpdate({ spreadsheetId: ssId, requestBody: { valueInputOption: 'RAW', data } });
 }
 
 // ── Leitura ───────────────────────────────────────────────
@@ -164,6 +188,6 @@ async function readRentalColumn(ssId, title, colIdx0) {
 
 module.exports = {
   TABS, getRentalsSS, ensureTabs, readAllRentals,
-  loadRentalIndex, appendRental, updateRentalCells, deleteRentalRow, readRentalColumn,
+  loadRentalIndex, appendRental, updateRentalCells, deleteRentalRow, readRentalColumn, batchSetColumn,
   buildRow, nowInTz, DOCS_FOLDER,
 };
