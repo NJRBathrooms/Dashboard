@@ -1,0 +1,15 @@
+{
+  "name": "NJR Casas de Aluguel",
+  "short_name": "NJR Aluguéis",
+  "start_url": "/rentals",
+  "scope": "/rentals",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d2137",
+  "theme_color": "#0d2137",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
