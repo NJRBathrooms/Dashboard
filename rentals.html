@@ -561,9 +561,9 @@ async function quickReceb(addr,slug){
 
 // Modal de recebimento
 let _recebExpected=0, _recebPrev=0, _recebMode='total';
-function openReceb(addr){
+function openReceb(addr,compArg){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
-  const comp=(typeof dashComp!=='undefined'&&dashComp)?dashComp:todayComp(); const rec=recFor(addr,comp);
+  const comp=compArg||((typeof dashComp!=='undefined'&&dashComp)?dashComp:todayComp()); const rec=recFor(addr,comp);
   const aluguel=parseAmt(c['Aluguel Mensal']); const aguaRep=aguaRepasseFor(addr,comp);
   _recebExpected=aluguel+aguaRep;
   _recebPrev=rec?parseAmt(rec['Valor do Aluguel']):0;
@@ -807,6 +807,40 @@ async function saveCusto(){
   }catch(e){ showToast(e.message,true); }
 }
 async function delCusto(rowNum){ if(!confirm('Excluir custo?'))return; try{ await apiWrite({action:'deleteCusto',rowNum}); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
+function editCusto(row){
+  const k=DB.custos.find(x=>x._row===row); if(!k){ showToast('Custo não encontrado',true); return; }
+  const cur=k['Tipo']||'Outro'; const tipos=['Água','Seguro','Outro']; if(!tipos.some(t=>norm(t)===norm(cur)))tipos.push(cur);
+  const isAg=isAgua(cur);
+  openModal('<div class="modal-title"><i class="fas fa-pen"></i> Editar custo — '+esc(k['Endereço'])+'</div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Casa *</label><select class="f-select" id="ecCasa">'+casaSelectOptions(k['Endereço'])+'</select></div>'
+    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ecTipo" onchange="ecTipoChange()">'+tipos.map(t=>'<option'+(norm(t)===norm(cur)?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Valor ($) *</label><input class="f-input" id="ecVal" type="number" step="0.01" value="'+parseAmt(k['Valor'])+'"></div>'
+    +'<div><label class="f-label">Data do pagamento</label><input class="f-input" id="ecData" type="date" value="'+(k['Data do Pagamento']?isoOf(k['Data do Pagamento']):'')+'"></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Descrição</label><input class="f-input" id="ecDesc" value="'+esc(k['Descrição']||'')+'"></div>'
+    +'<div id="ecAguaWrap" class="mb" style="display:'+(isAg?'':'none')+';background:#eef6fb;border-radius:10px;padding:12px">'
+      +'<label class="f-label" style="margin-bottom:6px"><i class="fas fa-droplet"></i> Quem paga a água?</label>'
+      +'<select class="f-select" id="ecPagador">'
+        +'<option value="Proprietário"'+(norm(k['Pagador'])==='proprietário'?' selected':'')+'>Proprietário assume o custo</option>'
+        +'<option value="Inquilino"'+(norm(k['Pagador'])==='inquilino'?' selected':'')+'>Repassar ao inquilino (soma no aluguel)</option>'
+      +'</select></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">'
+    +'<button class="mini-btn danger" style="margin-right:auto" onclick="delCusto('+row+')"><i class="fas fa-trash"></i> Excluir</button>'
+    +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn-primary2" onclick="saveCustoEdit('+row+')">Salvar</button></div>');
+}
+function ecTipoChange(){ const t=document.getElementById('ecTipo').value, w=document.getElementById('ecAguaWrap'); if(w)w.style.display=(t==='Água')?'':'none'; }
+async function saveCustoEdit(row){
+  const k=DB.custos.find(x=>x._row===row); if(!k)return;
+  const tipo=document.getElementById('ecTipo').value, valor=document.getElementById('ecVal').value;
+  if(!valor||isNaN(parseFloat(valor))){ showToast('Valor obrigatório',true); return; }
+  const pagador=(tipo==='Água')?document.getElementById('ecPagador').value:'';
+  try{ await apiWrite({action:'saveCusto',rowNum:row,addr:document.getElementById('ecCasa').value,competencia:String(k['Competência']),tipo,valor,dataPagamento:document.getElementById('ecData').value,desc:document.getElementById('ecDesc').value,pagador});
+    closeModal(); showToast('Custo atualizado'); await loadData();
+  }catch(e){ showToast(e.message,true); }
+}
 
 // ══ TAB 3 — MANUTENÇÃO ══
 let manPhoto=null;
@@ -856,6 +890,34 @@ async function saveMan(){
 }
 function fileB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); }); }
 async function delMan(rowNum){ if(!confirm('Excluir manutenção?'))return; try{ await apiWrite({action:'deleteManutencao',rowNum}); showToast('Excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
+function editMan(row){
+  const m=DB.manutencao.find(x=>x._row===row); if(!m){ showToast('Manutenção não encontrada',true); return; }
+  openModal('<div class="modal-title"><i class="fas fa-pen"></i> Editar manutenção — '+esc(m['Endereço'])+'</div>'
+    +'<div class="mb"><label class="f-label">Endereço *</label><select class="f-select" id="emAddr">'+casaSelectOptions(m['Endereço'])+'</select></div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Data de conclusão</label><input class="f-input" id="emData" type="date" value="'+(m['Data de Conclusão']?isoOf(m['Data de Conclusão']):'')+'"></div>'
+    +'<div><label class="f-label">Tipo de serviço</label><input class="f-input" id="emTipo" value="'+esc(m['Tipo de Serviço']||'')+'"></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Descrição</label><input class="f-input" id="emDesc" value="'+esc(m['Descrição do Serviço']||'')+'"></div>'
+    +'<div class="grid2">'
+    +'<div><label class="f-label">Empresa subcontratada</label><input class="f-input" id="emEmp" value="'+esc(m['Empresa Subcontratada']||'')+'"></div>'
+    +'<div><label class="f-label">Contato</label><input class="f-input" id="emCont" value="'+esc(m['Contato do Subcontratado']||'')+'"></div>'
+    +'</div><div class="grid2" style="margin-top:12px">'
+    +'<div><label class="f-label">Valor ($)</label><input class="f-input" id="emVal" type="number" step="0.01" value="'+parseAmt(m['Valor do Serviço'])+'"></div>'
+    +'<div><label class="f-label">Status pagamento</label><select class="f-select" id="emStatus"><option'+(norm(m['Status Pagamento'])==='pendente'?' selected':'')+'>Pendente</option><option'+(norm(m['Status Pagamento'])==='pago'?' selected':'')+'>Pago</option></select></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">'
+    +'<button class="mini-btn danger" style="margin-right:auto" onclick="delMan('+row+')"><i class="fas fa-trash"></i> Excluir</button>'
+    +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn-primary2" onclick="saveManEdit('+row+')">Salvar</button></div>');
+}
+async function saveManEdit(row){
+  const m=DB.manutencao.find(x=>x._row===row); if(!m)return;
+  const addr=document.getElementById('emAddr').value; if(!addr){ showToast('Endereço obrigatório',true); return; }
+  try{ await apiWrite({action:'saveManutencao',rowNum:row,addr,dataConclusao:document.getElementById('emData').value,tipo:document.getElementById('emTipo').value,desc:document.getElementById('emDesc').value,empresa:document.getElementById('emEmp').value,contato:document.getElementById('emCont').value,valor:document.getElementById('emVal').value,status:document.getElementById('emStatus').value,invoiceUrl:m['Anexar Invoice']||''});
+    closeModal(); showToast('Manutenção atualizada'); await loadData();
+  }catch(e){ showToast(e.message,true); }
+}
 
 // ══ TAB 4 — FINANCEIRO ══
 let FIN_COMP=todayComp();
@@ -892,13 +954,23 @@ function renderFin(){
 }
 function finDetail(comp){
   const items=[];
-  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido'+(aguaRepasseFor(r['Endereço'],comp)>0?' (inclui água)':''),valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento']}));
-  DB.custos.filter(r=>String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).forEach(r=>items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento']}));
-  DB.casas.filter(c=>String(c['Endereço']||'').trim()&&parseAmt(c['Mortgage Mensal'])>0).forEach(c=>items.push({casa:c['Endereço'],tipo:'Mortgage (fixo mensal)',valor:parseAmt(c['Mortgage Mensal']),sign:-1,data:''}));
-  DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Manutenção: '+(r['Tipo de Serviço']||''),valor:parseAmt(r['Valor do Serviço']),sign:-1,data:r['Data de Conclusão']}));
+  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido'+(aguaRepasseFor(r['Endereço'],comp)>0?' (inclui água)':''),valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento'],src:'rec',row:r._row}));
+  DB.custos.filter(r=>String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).forEach(r=>items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento'],src:'custo',row:r._row}));
+  DB.casas.filter(c=>String(c['Endereço']||'').trim()&&parseAmt(c['Mortgage Mensal'])>0).forEach(c=>items.push({casa:c['Endereço'],tipo:'Mortgage (fixo mensal)',valor:parseAmt(c['Mortgage Mensal']),sign:-1,data:'',src:'mortgage'}));
+  DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Manutenção: '+(r['Tipo de Serviço']||''),valor:parseAmt(r['Valor do Serviço']),sign:-1,data:r['Data de Conclusão'],src:'man',row:r._row}));
   if(!items.length) return '<div class="empty"><i class="fas fa-receipt"></i>Nenhum lançamento nesta competência</div>';
-  const rows=items.map(i=>'<tr><td>'+esc(i.casa)+'</td><td>'+esc(i.tipo)+'</td><td>'+fmtDate(i.data)+'</td><td style="font-weight:700;color:'+(i.sign>0?'#27ae60':'#e74c3c')+'">'+(i.sign>0?'+':'-')+$$(i.valor)+'</td></tr>').join('');
-  return '<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Lançamento</th><th>Data</th><th>Valor</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  const rows=items.map(i=>{ const eAddr=esc(i.casa).replace(/'/g,"\\'");
+    return '<tr><td>'+esc(i.casa)+'</td><td>'+esc(i.tipo)+'</td><td>'+fmtDate(i.data)+'</td>'
+    +'<td style="font-weight:700;color:'+(i.sign>0?'#27ae60':'#e74c3c')+'">'+(i.sign>0?'+':'-')+$$(i.valor)+'</td>'
+    +'<td style="white-space:nowrap">'+finRowActions(i,eAddr,comp)+'</td></tr>'; }).join('');
+  return '<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Lançamento</th><th>Data</th><th>Valor</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function finRowActions(i,eAddr,comp){
+  if(i.src==='rec') return '<button class="mini-btn sec" title="Editar" onclick="openReceb(\''+eAddr+'\',\''+comp+'\')"><i class="fas fa-pen"></i></button> <button class="mini-btn danger" title="Excluir" onclick="delReceb('+i.row+')"><i class="fas fa-trash"></i></button>';
+  if(i.src==='custo') return '<button class="mini-btn sec" title="Editar" onclick="editCusto('+i.row+')"><i class="fas fa-pen"></i></button> <button class="mini-btn danger" title="Excluir" onclick="delCusto('+i.row+')"><i class="fas fa-trash"></i></button>';
+  if(i.src==='man') return '<button class="mini-btn sec" title="Editar" onclick="editMan('+i.row+')"><i class="fas fa-pen"></i></button> <button class="mini-btn danger" title="Excluir" onclick="delMan('+i.row+')"><i class="fas fa-trash"></i></button>';
+  if(i.src==='mortgage') return '<button class="mini-btn sec" title="Editar mortgage no cadastro da casa" onclick="editCasa(\''+eAddr+'\')"><i class="fas fa-pen"></i></button> <span title="Custo fixo do cadastro — não é excluível aqui" style="color:#9aabbd;font-size:12px;padding:0 4px"><i class="fas fa-lock"></i></span>';
+  return '';
 }
 
 // Password sempre exigida — sem auto-login.
