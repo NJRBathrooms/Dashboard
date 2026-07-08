@@ -22,7 +22,7 @@ body { font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif; backg
 html { overflow-x:hidden; }
 
 /* LOGIN — padrão Eagle */
-#loginScreen { position:fixed; inset:0; z-index:9999; background:#fff url('/login-bg.png') center 24%/min(82vw,400px) no-repeat; display:flex; align-items:flex-end; justify-content:center; padding:calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 40px + 10vh); }
+#loginScreen { position:fixed; inset:0; z-index:9999; background:#fff url('/login-bg.png') center 24%/min(82vw,400px) no-repeat; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:calc(env(safe-area-inset-top) + 20px) 24px calc(env(safe-area-inset-bottom) + 34px + 10vh); }
 .login-box { background:var(--navy); border-radius:22px; padding:30px 28px; width:min(400px,100%); box-shadow:0 24px 70px rgba(13,33,55,.45); border:1px solid rgba(232,130,12,.3); }
 .login-box h1 { font-size:20px; font-weight:800; color:#fff; margin:0 0 4px; text-align:center; }
 .login-box p.sub { font-size:11px; color:var(--orng2); margin:0 0 18px; text-transform:uppercase; letter-spacing:2.5px; font-weight:700; text-align:center; }
@@ -33,7 +33,7 @@ html { overflow-x:hidden; }
 .login-btn:active { transform:scale(.97); }
 .login-btn:disabled { opacity:.7; cursor:not-allowed; }
 .login-error { color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:8px; display:none; }
-.login-credit { position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 16px); text-align:center; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(13,33,55,.5); font-weight:600; }
+.login-credit { margin-top:18px; text-align:center; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(13,33,55,.55); font-weight:600; }
 
 /* MAIN APP */
 #mainApp { display:none; }
