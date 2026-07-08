@@ -213,9 +213,10 @@ tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
   </div>
   <div class="tab-nav" id="tabNav">
     <button class="tab-btn active" id="tab1btn" onclick="showTab(1)"><i class="fas fa-gauge-high"></i> Dashboard</button>
-    <button class="tab-btn" id="tab2btn" onclick="showTab(2)"><i class="fas fa-house-chimney"></i> Cadastros &amp; Custos</button>
-    <button class="tab-btn" id="tab3btn" onclick="showTab(3)"><i class="fas fa-screwdriver-wrench"></i> Manutenção</button>
-    <button class="tab-btn" id="tab4btn" onclick="showTab(4)"><i class="fas fa-calculator"></i> Financeiro</button>
+    <button class="tab-btn" id="tab2btn" onclick="showTab(2)"><i class="fas fa-house-chimney"></i> Cadastros</button>
+    <button class="tab-btn" id="tab3btn" onclick="showTab(3)"><i class="fas fa-file-invoice-dollar"></i> Custos</button>
+    <button class="tab-btn" id="tab4btn" onclick="showTab(4)"><i class="fas fa-screwdriver-wrench"></i> Manutenção</button>
+    <button class="tab-btn" id="tab5btn" onclick="showTab(5)"><i class="fas fa-calculator"></i> Financeiro</button>
     <div class="tab-indicator" id="tabIndicator"></div>
   </div>
   <div id="pageViewport">
@@ -223,6 +224,7 @@ tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
     <div class="page" id="tab2" style="display:none"></div>
     <div class="page" id="tab3" style="display:none"></div>
     <div class="page" id="tab4" style="display:none"></div>
+    <div class="page" id="tab5" style="display:none"></div>
   </div>
 </div>
 
@@ -288,7 +290,7 @@ async function apiWrite(params){
   if(r.status===401){ doLogout(); throw new Error('Sessão expirada'); }
   const d=await r.json(); if(d.error) throw new Error(d.error); return d;
 }
-function renderAll(){ renderDash(); renderCad(); renderMan(); renderFin(); requestAnimationFrame(()=>positionTabIndicator(CURRENT_TAB,false)); }
+function renderAll(){ renderDash(); renderCad(); renderCustos(); renderMan(); renderFin(); requestAnimationFrame(()=>positionTabIndicator(CURRENT_TAB,false)); }
 
 // ══ ABAS ══
 let CURRENT_TAB=1;
@@ -313,7 +315,7 @@ function showTab(n){
   const curEl=getPageEl(prev), targetEl=getPageEl(n);
   const dir=n>prev?1:-1, viewW=viewport.offsetWidth||window.innerWidth;
   CURRENT_TAB=n;
-  [1,2,3,4].forEach(i=>getBtnEl(i).classList.toggle('active',n===i));
+  [1,2,3,4,5].forEach(i=>getBtnEl(i).classList.toggle('active',n===i));
   positionTabIndicator(n,true);
   viewport.style.height=curEl.offsetHeight+'px';
   targetEl.style.cssText='position:absolute;top:0;left:0;width:100%;transition:none;transform:translateX('+(dir*viewW)+'px)';
@@ -340,7 +342,7 @@ window.addEventListener('load',()=>positionTabIndicator(CURRENT_TAB,false));
       if(Math.abs(dy)>Math.abs(dx)+5){ phase='idle'; return; }
       if(Math.abs(dx)<8)return;
       dir=dx<0?1:-1; curN=CURRENT_TAB; targetN=curN+dir;
-      if(targetN<1||targetN>4){ phase='edge'; return; }
+      if(targetN<1||targetN>5){ phase='edge'; return; }
       viewport=document.getElementById('pageViewport'); curEl=getPageEl(curN); targetEl=getPageEl(targetN);
       viewW=viewport.offsetWidth||window.innerWidth;
       viewport.style.height=curEl.offsetHeight+'px';
@@ -364,7 +366,7 @@ window.addEventListener('load',()=>positionTabIndicator(CURRENT_TAB,false));
     const commitDur='transform .25s cubic-bezier(.25,.46,.45,.94)', snapDur='transform .2s cubic-bezier(.4,0,.6,1)';
     if(commit){
       CURRENT_TAB=targetN;
-      [1,2,3,4].forEach(i=>getBtnEl(i).classList.toggle('active',CURRENT_TAB===i));
+      [1,2,3,4,5].forEach(i=>getBtnEl(i).classList.toggle('active',CURRENT_TAB===i));
       positionTabIndicator(CURRENT_TAB,true);
       curEl.style.transition=commitDur; targetEl.style.transition=commitDur;
       curEl.style.transform='translateX('+(-dir*viewW)+'px)'; targetEl.style.transform='translateX(0)';
@@ -553,8 +555,7 @@ function renderCad(){
     +'</tr>'; }).join('');
   document.getElementById('tab2').innerHTML=
     '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <span style="font-size:11px;font-weight:600;color:#7b8ea4;margin-left:8px">use ↑↓ para ordenar — vale no Dashboard</span><button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Ordem</th><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>'
-    +custosSection();
+    +'<div class="tbl-wrap"><table><thead><tr><th>Ordem</th><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>';
 }
 let _reordering=false;
 async function moveCasa(idx,dir){
@@ -568,15 +569,33 @@ async function moveCasa(idx,dir){
   catch(e){ showToast(e.message,true); }
   finally{ _reordering=false; }
 }
-function custosSection(){
-  const recent=[...DB.custos].reverse().slice(0,25);
-  const rows=recent.map(c=>'<tr>'
-    +'<td>'+esc(c['Endereço'])+'</td><td>'+fmtComp(c['Competência'])+'</td><td>'+esc(c['Tipo']||'—')+'</td>'
-    +'<td>'+$$(parseAmt(c['Valor']))+'</td><td>'+fmtDate(c['Data do Pagamento'])+'</td>'
-    +'<td><button class="mini-btn danger" onclick="delCusto('+c._row+')"><i class="fas fa-trash"></i></button></td></tr>').join('');
-  return '<div class="card2"><div class="sec-title"><i class="fas fa-file-invoice-dollar"></i> Custos (mortgage, água, seguro, outros) '
+// ══ TAB 3 — CUSTOS (por competência) ══
+let custComp=todayComp();
+function custMonth(d){ const [y,m]=custComp.split('-').map(Number); const dt=new Date(y,m-1+d,1); custComp=dt.getFullYear()+'-'+pad2(dt.getMonth()+1); renderCustos(); }
+function custToday(){ custComp=todayComp(); renderCustos(); }
+function renderCustos(){
+  const comp=custComp;
+  const list=DB.custos.filter(c=>String(c['Competência'])===comp).slice().sort((a,b)=>norm(a['Endereço']).localeCompare(norm(b['Endereço'])));
+  let tot=0;
+  const rows=list.map(c=>{ tot+=parseAmt(c['Valor']); return '<tr>'
+    +'<td><strong>'+esc(c['Endereço'])+'</strong></td>'
+    +'<td>'+esc(c['Tipo']||'—')+'</td>'
+    +'<td>'+$$(parseAmt(c['Valor']))+'</td>'
+    +'<td>'+fmtDate(c['Data do Pagamento'])+'</td>'
+    +'<td>'+esc(c['Descrição']||'—')+'</td>'
+    +'<td><button class="mini-btn danger" onclick="delCusto('+c._row+')"><i class="fas fa-trash"></i></button></td></tr>'; }).join('');
+  const [yy,mm]=comp.split('-'); const isCur=comp===todayComp();
+  const nav='<div class="mnav"><button class="mnav-arw" onclick="custMonth(-1)" aria-label="Mês anterior">‹</button>'
+    +'<div class="mnav-lbl">'+(MESLONG[+mm-1]||'')+' <b>'+yy+'</b></div>'
+    +'<button class="mnav-arw" onclick="custMonth(1)" aria-label="Próximo mês">›</button>'
+    +(isCur?'':'<button class="mnav-today" onclick="custToday()">hoje</button>')+'</div>';
+  document.getElementById('tab3').innerHTML= nav
+    +'<div class="card2"><div class="sec-title"><i class="fas fa-file-invoice-dollar"></i> Custos — '+fmtComp(comp)
     +'<button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="addCusto()"><i class="fas fa-plus"></i> Lançar custo</button></div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Competência</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">Nenhum custo lançado</td></tr>')+'</tbody></table></div></div>';
+    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th>Descrição</th><th></th></tr></thead><tbody>'
+    +(rows||'<tr><td colspan="6" class="empty">Nenhum custo neste mês</td></tr>')
+    +(list.length?'<tr><td colspan="2" style="text-align:right;font-weight:800">Total</td><td style="font-weight:800;color:var(--navy)">'+$$(tot)+'</td><td colspan="3"></td></tr>':'')
+    +'</tbody></table></div></div>';
 }
 function casaSelectOptions(sel){ return DB.casas.filter(c=>String(c['Endereço']||'').trim()).map(c=>'<option value="'+esc(c['Endereço'])+'"'+(norm(sel)===norm(c['Endereço'])?' selected':'')+'>'+esc(c['Endereço'])+'</option>').join(''); }
 
@@ -600,14 +619,9 @@ function editCasa(addr){
     +'</div><div class="grid2" style="margin-top:12px">'
     +'<div><label class="f-label">Início do contrato</label><input class="f-input" id="cIni" type="date" value="'+gd('Início do Contrato')+'"></div>'
     +'<div><label class="f-label">Fim do contrato</label><input class="f-input" id="cFim" type="date" value="'+gd('Fim do Contrato')+'"></div>'
-    +'</div><div class="grid3" style="margin-top:12px">'
+    +'</div><div class="grid2" style="margin-top:12px">'
     +'<div><label class="f-label">Seguradora</label><input class="f-input" id="cSeg" value="'+esc(g('Seguradora'))+'"></div>'
     +'<div><label class="f-label">Vigência do seguro</label><input class="f-input" id="cVig" type="date" value="'+gd('Vigência do Seguro')+'"></div>'
-    +'<div><label class="f-label">Valor do seguro ($)</label><input class="f-input" id="cValSeg" type="number" step="0.01" value="'+parseAmt(g('Valor do Seguro'))+'"></div>'
-    +'</div><div class="grid3" style="margin-top:12px">'
-    +'<div><label class="f-label">Period. seguro</label><select class="f-select" id="cPerSeg"><option value=""></option>'+per('Periodicidade do Seguro',['Mensal','Anual'])+'</select></div>'
-    +'<div><label class="f-label">Valor da água ($)</label><input class="f-input" id="cAgua" type="number" step="0.01" value="'+parseAmt(g('Valor da Água'))+'"></div>'
-    +'<div><label class="f-label">Period. água</label><select class="f-select" id="cPerAgua"><option value=""></option>'+per('Periodicidade da Água',['Mensal','Trimestral'])+'</select></div>'
     +'</div>'
     +'<div class="mb" style="margin-top:12px"><label class="f-label">Observações</label><input class="f-input" id="cObs" value="'+esc(g('Observações'))+'"></div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
@@ -622,8 +636,7 @@ async function saveCasa(){
     inquilino:inq, contato:document.getElementById('cCont').value,
     aluguel:document.getElementById('cAlug').value, deposit:document.getElementById('cDep').value, mortgage:document.getElementById('cMort').value,
     inicio:document.getElementById('cIni').value, fim:document.getElementById('cFim').value,
-    seguradora:document.getElementById('cSeg').value, vigenciaSeguro:document.getElementById('cVig').value, valorSeguro:document.getElementById('cValSeg').value,
-    periodSeguro:document.getElementById('cPerSeg').value, agua:document.getElementById('cAgua').value, periodAgua:document.getElementById('cPerAgua').value,
+    seguradora:document.getElementById('cSeg').value, vigenciaSeguro:document.getElementById('cVig').value,
     obs:document.getElementById('cObs').value };
   if(!p.addr){ showToast('Endereço obrigatório',true); return; }
   try{ await apiWrite(p); closeModal(); showToast('Casa salva'); await loadData(); }catch(e){ showToast(e.message,true); }
@@ -631,22 +644,49 @@ async function saveCasa(){
 async function delCasa(addr){ if(!confirm('Excluir a casa '+addr+'? (os lançamentos ficam na base)'))return; try{ await apiWrite({action:'deleteCasa',addr}); closeModal(); showToast('Casa excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
 
 function addCusto(){
-  openModal('<div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Lançar custo</div>'
+  openModal('<div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Lançar custo — '+fmtComp(custComp)+'</div>'
     +'<div class="grid2">'
     +'<div><label class="f-label">Casa *</label><select class="f-select" id="ktCasa">'+casaSelectOptions()+'</select></div>'
-    +'<div><label class="f-label">Competência *</label><input class="f-input" id="ktComp" value="'+todayComp()+'" placeholder="YYYY-MM"></div>'
+    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ktTipo" onchange="custTipoChange()"><option>Mortgage</option><option>Água</option><option>Seguro</option><option>Outro</option></select></div>'
     +'</div><div class="grid2" style="margin-top:12px">'
-    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ktTipo"><option>Mortgage</option><option>Água</option><option>Seguro</option><option>Outro</option></select></div>'
     +'<div><label class="f-label">Valor ($) *</label><input class="f-input" id="ktVal" type="number" step="0.01"></div>'
-    +'</div><div class="grid2" style="margin-top:12px">'
     +'<div><label class="f-label">Data do pagamento</label><input class="f-input" id="ktData" type="date" value="'+todayISO()+'"></div>'
-    +'<div><label class="f-label">Descrição</label><input class="f-input" id="ktDesc"></div>'
+    +'</div>'
+    +'<div class="mb" style="margin-top:12px"><label class="f-label">Descrição</label><input class="f-input" id="ktDesc"></div>'
+    +'<div id="ktRepeatWrap" class="mb" style="display:none;background:#f4f7fb;border-radius:10px;padding:12px">'
+      +'<label class="f-label" style="margin-bottom:8px"><i class="fas fa-rotate"></i> Repetição automática</label>'
+      +'<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">'
+        +'<div><label class="f-label">Repetir por (meses)</label><input class="f-input" id="ktMeses" type="number" min="1" step="1" value="1" style="width:130px"></div>'
+        +'<button type="button" id="ktVigBtn" class="mini-btn sec" style="display:none" onclick="ktVigFill()"><i class="fas fa-shield-halved"></i> Até o fim da vigência</button>'
+      +'</div>'
+      +'<div style="font-size:11px;color:#7b8ea4;margin-top:8px">Lança o mesmo valor a partir de '+fmtComp(custComp)+', um por mês. Use 1 para só este mês.</div>'
     +'</div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="mini-btn sec" onclick="closeModal()">Cancelar</button><button class="btn-primary2" onclick="saveCusto()">Salvar</button></div>');
+  custTipoChange();
+}
+function custTipoChange(){
+  const tipo=document.getElementById('ktTipo').value;
+  const wrap=document.getElementById('ktRepeatWrap'), segBtn=document.getElementById('ktVigBtn');
+  const show=(tipo==='Mortgage'||tipo==='Seguro');
+  wrap.style.display=show?'':'none'; segBtn.style.display=(tipo==='Seguro')?'':'none';
+  if(!show){ const m=document.getElementById('ktMeses'); if(m)m.value=1; }
+}
+function ktVigFill(){
+  const c=DB.casas.find(x=>norm(x['Endereço'])===norm(document.getElementById('ktCasa').value));
+  const vig=c?parseDate(c['Vigência do Seguro']):null;
+  if(!vig){ showToast('Casa sem vigência do seguro cadastrada',true); return; }
+  const [sy,sm]=custComp.split('-').map(Number);
+  const months=(vig.getFullYear()-sy)*12+((vig.getMonth()+1)-sm)+1;
+  if(months<1){ showToast('Vigência do seguro já passou',true); return; }
+  document.getElementById('ktMeses').value=months; showToast(months+' meses até a vigência');
 }
 async function saveCusto(){
-  try{ await apiWrite({action:'saveCusto',addr:document.getElementById('ktCasa').value,competencia:document.getElementById('ktComp').value.trim(),tipo:document.getElementById('ktTipo').value,valor:document.getElementById('ktVal').value,dataPagamento:document.getElementById('ktData').value,desc:document.getElementById('ktDesc').value});
-    closeModal(); showToast('Custo lançado'); await loadData();
+  const tipo=document.getElementById('ktTipo').value, valor=document.getElementById('ktVal').value;
+  if(!valor||isNaN(parseFloat(valor))){ showToast('Valor obrigatório',true); return; }
+  const wrap=document.getElementById('ktRepeatWrap');
+  let meses=1; if(wrap&&wrap.style.display!=='none'){ meses=parseInt(document.getElementById('ktMeses').value)||1; if(meses<1)meses=1; }
+  try{ const r=await apiWrite({action:'lancarCusto',addr:document.getElementById('ktCasa').value,competencia:custComp,tipo,valor,dataPagamento:document.getElementById('ktData').value,desc:document.getElementById('ktDesc').value,meses});
+    closeModal(); showToast(meses>1?('Custo lançado em '+(r.count||meses)+' meses'):'Custo lançado'); await loadData();
   }catch(e){ showToast(e.message,true); }
 }
 async function delCusto(rowNum){ if(!confirm('Excluir custo?'))return; try{ await apiWrite({action:'deleteCusto',rowNum}); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
@@ -660,7 +700,7 @@ function renderMan(){
     +'<td>'+esc(m['Status Pagamento']||'—')+'</td>'
     +'<td>'+(m['Anexar Invoice']?'<a href="'+esc(m['Anexar Invoice'])+'" target="_blank" class="badge2 b-info"><i class="fas fa-file"></i> Invoice</a>':'—')+'</td>'
     +'<td><button class="mini-btn danger" onclick="delMan('+m._row+')"><i class="fas fa-trash"></i></button></td></tr>').join('');
-  document.getElementById('tab3').innerHTML=
+  document.getElementById('tab4').innerHTML=
     '<div class="card2"><div class="sec-title"><i class="fas fa-screwdriver-wrench"></i> Nova manutenção</div>'
     +'<div class="mb addr-wrap"><label class="f-label">Endereço da casa *</label><input class="f-input" id="mAddr" placeholder="Digite para filtrar…" autocomplete="off" oninput="mFilter(this.value)" onfocus="mFilter(this.value)" onblur="setTimeout(()=>document.getElementById(\'mDD\').style.display=\'none\',180)"><div class="addr-dd" id="mDD"></div></div>'
     +'<div class="grid2">'
@@ -716,7 +756,7 @@ function renderFin(){
     return '<tr><td><strong>'+esc(addr)+'</strong></td><td style="color:#27ae60;font-weight:700">'+$$(rec)+'</td><td style="color:#e74c3c;font-weight:700">'+$$(cus)+'</td><td style="font-weight:800;color:'+(res>=0?'#27ae60':'#e74c3c')+'">'+$$(res)+'</td></tr>';
   }).join('');
   const deposits=casas.reduce((s,c)=>s+parseAmt(c['Security Deposit']),0);
-  document.getElementById('tab4').innerHTML=
+  document.getElementById('tab5').innerHTML=
     '<div class="card2"><div class="sec-title"><i class="fas fa-calculator"></i> Financeiro por competência'
     +'<input type="month" class="f-input" style="width:auto;margin-left:auto" value="'+comp+'" onchange="FIN_COMP=this.value;renderFin()"></div>'
     +'<div class="metric-row">'
