@@ -187,7 +187,13 @@ tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
 .act-btn.vac{ background:#eef3f8; color:var(--navy); }
 .act-btn.partial{ background:var(--partial); color:#fff; } .act-btn.partial:hover{ filter:brightness(.95); }
 .receb-flag{ display:none; margin-bottom:14px; font-size:12.5px; font-weight:700; color:var(--partial-d); background:var(--partial-t); border:1px solid rgba(232,89,12,.3); border-radius:10px; padding:10px 12px; }
+.receb-flag.ok{ color:var(--paid-d); background:var(--paid-t); border-color:rgba(15,157,104,.3); }
 .receb-flag i{ margin-right:6px; }
+.receb-prev{ margin-bottom:12px; font-size:12.5px; color:var(--navy); background:#f4f7fb; border-radius:10px; padding:10px 12px; font-variant-numeric:tabular-nums; }
+.receb-prev b{ font-weight:800; }
+.subnav{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.subnav button{ border:none; background:#eef3f8; color:#5c6b7a; font-weight:700; font-size:13px; padding:9px 16px; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+.subnav button.active{ background:var(--navy); color:#fff; }
 .confirm{ flex:1; border:1.5px dashed var(--orange); border-radius:12px; padding:10px 12px; background:#fff8f0; }
 .confirm-txt{ font-size:12.5px; color:var(--navy); font-weight:600; margin-bottom:9px; font-variant-numeric:tabular-nums; }
 .confirm-txt b{ font-weight:900; }
@@ -419,6 +425,7 @@ function slugAddr(a){ return 'house-'+norm(a).replace(/[^a-z0-9]+/g,'-'); }
 function shortAddr(a){ const m=String(a||'').match(/\d+[A-Za-z]?/); return m?m[0]:(String(a||'').trim().split(/\s+/)[0]||'—'); }
 function multaPreview(comp){ const [y,m]=comp.split('-').map(Number); const day10=new Date(y,m-1,10,23,59,59); return new Date()>day10?50:0; }
 function isAgua(t){ const n=norm(t); return n==='água'||n==='agua'; }
+function isMortgage(t){ return norm(t)==='mortgage'; }
 // água paga pelo proprietário e repassada ao inquilino, na competência informada (soma dos lançamentos)
 function aguaRepasseFor(addr,comp){ return DB.custos.filter(c=>norm(c['Endereço'])===norm(addr)&&String(c['Competência'])===comp&&isAgua(c['Tipo'])&&norm(c['Pagador'])==='inquilino').reduce((s,c)=>s+parseAmt(c['Valor']),0); }
 // aluguel esperado no mês = aluguel + água repassada
@@ -534,38 +541,50 @@ function scrollHouse(slug){ const el=document.getElementById(slug); if(!el)retur
 function askReceb(addr,slug){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
   const el=document.getElementById('act-'+slug); if(!el)return;
-  const rent=parseAmt(c['Aluguel Mensal']), multa=multaPreview(dashComp), total=rent+multa;
+  const rent=expectedRent(c,dashComp), multa=multaPreview(dashComp), total=rent+multa;
+  const aguaRep=aguaRepasseFor(addr,dashComp);
   const t=new Date(), dstr=pad2(t.getDate())+'/'+pad2(t.getMonth()+1);
   const fine=multa>0?'<span class="fine">+$50 multa</span>':'<span class="ok">sem multa</span>';
+  const aguaTxt=aguaRep>0?' · inclui '+$$(aguaRep)+' água':'';
   const eAddr=esc(addr).replace(/'/g,"\\'");
-  el.innerHTML='<div class="confirm"><div class="confirm-txt">Receber <b>'+$$(total)+'</b> · hoje '+dstr+' · '+fine+'</div>'
+  el.innerHTML='<div class="confirm"><div class="confirm-txt">Receber <b>'+$$(total)+'</b>'+aguaTxt+' · hoje '+dstr+' · '+fine+'</div>'
     +'<div class="confirm-btns"><button class="c-adjust" onclick="openReceb(\''+eAddr+'\')">Ajustar</button>'
     +'<button class="c-ok" id="ok-'+slug+'" onclick="quickReceb(\''+eAddr+'\',\''+slug+'\')"><i class="fas fa-check"></i> Confirmar</button></div></div>';
 }
 async function quickReceb(addr,slug){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
   const btn=document.getElementById('ok-'+slug); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span>'; }
-  try{ await apiWrite({action:'markRecebido',addr,competencia:dashComp,valorAluguel:parseAmt(c['Aluguel Mensal']),dataPagamento:todayISO(),obs:''});
+  try{ await apiWrite({action:'markRecebido',addr,competencia:dashComp,valorAluguel:expectedRent(c,dashComp),dataPagamento:todayISO(),obs:''});
     showToast('Recebimento registrado'); await loadData();
   }catch(e){ showToast(e.message,true); if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-check"></i> Confirmar'; } }
 }
 
 // Modal de recebimento
-let _recebExpected=0;
+let _recebExpected=0, _recebPrev=0, _recebMode='total';
 function openReceb(addr){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
   const comp=(typeof dashComp!=='undefined'&&dashComp)?dashComp:todayComp(); const rec=recFor(addr,comp);
   const aluguel=parseAmt(c['Aluguel Mensal']); const aguaRep=aguaRepasseFor(addr,comp);
   _recebExpected=aluguel+aguaRep;
+  _recebPrev=rec?parseAmt(rec['Valor do Aluguel']):0;
+  const faltaAtual=Math.round((_recebExpected-_recebPrev)*100)/100;
+  // se já existe um recebimento parcial nesse mês → modo "parcela" (pede só o que falta)
+  _recebMode=(rec && faltaAtual>0.005)?'installment':'total';
   const expHint=aguaRep>0?('esperado <b>'+$$(_recebExpected)+'</b> ('+$$(aluguel)+' aluguel + '+$$(aguaRep)+' água)'):('esperado <b>'+$$(_recebExpected)+'</b>');
+  const prevBox=(_recebMode==='installment')
+    ? '<div class="receb-prev"><i class="fas fa-clock-rotate-left"></i> Já recebido <b>'+$$(_recebPrev)+'</b> de '+$$(_recebExpected)+' — falta <b>'+$$(faltaAtual)+'</b>. Informe abaixo o valor <b>deste</b> pagamento; será somado ao já recebido.</div>'
+    : '';
+  const valLabel=(_recebMode==='installment')?'Valor deste pagamento':'Valor recebido';
+  const valDefault=(_recebMode==='installment')?faltaAtual:(rec?_recebPrev:_recebExpected);
   openModal('<div class="modal-title"><i class="fas fa-hand-holding-dollar"></i> Recebimento — '+esc(addr)+'</div>'
+    +prevBox
     +'<div class="grid2">'
     +'<div><label class="f-label">Competência</label><input class="f-input" id="rcComp" value="'+comp+'" placeholder="YYYY-MM"></div>'
-    +'<div><label class="f-label">Valor recebido</label><input class="f-input" id="rcVal" type="number" step="0.01" oninput="onRecebInput()" value="'+(rec?parseAmt(rec['Valor do Aluguel']):_recebExpected)+'"></div>'
+    +'<div><label class="f-label">'+valLabel+'</label><input class="f-input" id="rcVal" type="number" step="0.01" oninput="onRecebInput()" value="'+valDefault+'"></div>'
     +'</div>'
     +'<div style="font-size:11.5px;color:#7b8ea4;margin:6px 0 12px"><i class="fas fa-info-circle"></i> Valor '+expHint+'.</div>'
     +'<div class="receb-flag" id="rcFlag"></div>'
-    +'<div class="mb"><label class="f-label">Data do pagamento</label><input class="f-input" id="rcData" type="date" value="'+(rec?isoOf(rec['Data do Pagamento']):todayISO())+'"></div>'
+    +'<div class="mb"><label class="f-label">Data do pagamento</label><input class="f-input" id="rcData" type="date" value="'+((_recebMode==='installment'||!rec)?todayISO():isoOf(rec['Data do Pagamento']))+'"></div>'
     +'<div class="mb"><label class="f-label">Observações</label><input class="f-input" id="rcObs" value="'+(rec?esc(rec['Observações']||''):'')+'"></div>'
     +'<div style="font-size:12px;color:#7b8ea4;margin-bottom:14px"><i class="fas fa-info-circle"></i> Até dia 1: no prazo · até dia 10: atraso sem multa · após dia 10: +$50 de multa.</div>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
@@ -576,20 +595,36 @@ function openReceb(addr){
 }
 function onRecebInput(){
   const inp=document.getElementById('rcVal'), el=document.getElementById('rcFlag'); if(!el||!inp)return;
-  const v=parseFloat(inp.value)||0; const falta=Math.round((_recebExpected-v)*100)/100;
-  if(_recebExpected>0 && falta>0.005){ el.style.display='block'; el.innerHTML='<i class="fas fa-flag"></i> Pagamento parcial — falta <b>'+$$(falta)+'</b> de '+$$(_recebExpected)+' esperado. A casa fica sinalizada em laranja até quitar.'; }
+  const v=parseFloat(inp.value)||0;
+  const totalAfter=(_recebMode==='installment')?Math.round((_recebPrev+v)*100)/100:v;
+  const falta=Math.round((_recebExpected-totalAfter)*100)/100;
+  if(_recebExpected>0 && falta>0.005){ el.className='receb-flag'; el.style.display='block'; el.innerHTML='<i class="fas fa-flag"></i> '+(_recebMode==='installment'?'Ainda faltará ':'Pagamento parcial — falta ')+'<b>'+$$(falta)+'</b> de '+$$(_recebExpected)+'. A casa fica laranja até quitar.'; }
+  else if(_recebExpected>0){ el.className='receb-flag ok'; el.style.display='block'; el.innerHTML='<i class="fas fa-check-circle"></i> Quita o mês — total recebido '+$$(totalAfter)+' de '+$$(_recebExpected)+'.'; }
   else{ el.style.display='none'; }
 }
 function isoOf(v){ const d=parseDate(v); return d?d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()):todayISO(); }
 async function saveReceb(addr){
-  try{ await apiWrite({action:'markRecebido',addr,competencia:document.getElementById('rcComp').value.trim(),valorAluguel:document.getElementById('rcVal').value,dataPagamento:document.getElementById('rcData').value,obs:document.getElementById('rcObs').value});
-    closeModal(); showToast('Recebimento salvo'); await loadData();
+  const raw=parseFloat(document.getElementById('rcVal').value);
+  if(isNaN(raw)){ showToast('Valor obrigatório',true); return; }
+  const total=(_recebMode==='installment')?Math.round((_recebPrev+raw)*100)/100:raw;
+  try{ await apiWrite({action:'markRecebido',addr,competencia:document.getElementById('rcComp').value.trim(),valorAluguel:total,dataPagamento:document.getElementById('rcData').value,obs:document.getElementById('rcObs').value});
+    closeModal(); showToast(_recebMode==='installment'?'Pagamento somado ao recebido':'Recebimento salvo'); await loadData();
   }catch(e){ showToast(e.message,true); }
 }
 async function delReceb(rowNum){ if(!confirm('Excluir este recebimento?'))return; try{ await apiWrite({action:'deleteRecebimento',rowNum}); closeModal(); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
 
-// ══ TAB 2 — CADASTROS & CUSTOS ══
+// ══ TAB 2 — CADASTROS ══
+let cadSub='casas';
+function setCadSub(s){ cadSub=s; renderCad(); }
 function renderCad(){
+  const hist=DB.historico||[];
+  const subnav='<div class="subnav">'
+    +'<button class="'+(cadSub==='casas'?'active':'')+'" onclick="setCadSub(\'casas\')"><i class="fas fa-house-chimney"></i> Casas</button>'
+    +'<button class="'+(cadSub==='hist'?'active':'')+'" onclick="setCadSub(\'hist\')"><i class="fas fa-clock-rotate-left"></i> Histórico de inquilinos'+(hist.length?' <span class="badge2 b-info" style="font-size:9px">'+hist.length+'</span>':'')+'</button>'
+    +'</div>';
+  document.getElementById('tab2').innerHTML=subnav+(cadSub==='hist'?cadHistHTML():cadCasasHTML());
+}
+function cadCasasHTML(){
   const casas=casasOrdered(); const n=casas.length;
   const rows=casas.map((c,i)=>{ const eAddr=esc(c['Endereço']).replace(/'/g,"\\'");
     return '<tr>'
@@ -603,9 +638,23 @@ function renderCad(){
     +(isOcupada(c)?' <button class="mini-btn" title="Remover inquilino" style="background:#fff3e6;color:#b45309" onclick="removeInquilino(\''+eAddr+'\')"><i class="fas fa-user-minus"></i></button>':'')
     +'</td>'
     +'</tr>'; }).join('');
-  document.getElementById('tab2').innerHTML=
-    '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <span style="font-size:11px;font-weight:600;color:#7b8ea4;margin-left:8px">use ↑↓ para ordenar — vale no Dashboard</span><button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
+  return '<div class="card2"><div class="sec-title"><i class="fas fa-house-chimney"></i> Casas <span style="font-size:11px;font-weight:600;color:#7b8ea4;margin-left:8px">use ↑↓ para ordenar — vale no Dashboard</span><button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="editCasa(null)"><i class="fas fa-plus"></i> Nova casa</button></div>'
     +'<div class="tbl-wrap"><table><thead><tr><th>Ordem</th><th>Endereço</th><th>Inquilino</th><th>Aluguel</th><th>Fim Contrato</th><th>Vig. Seguro</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="empty">Nenhuma casa</td></tr>')+'</tbody></table></div></div>';
+}
+function cadHistHTML(){
+  const hist=(DB.historico||[]).slice().sort((a,b)=>{ const ae=norm(a['Endereço']).localeCompare(norm(b['Endereço'])); if(ae!==0)return ae; return String(b['Encerrado em']||'').localeCompare(String(a['Encerrado em']||'')); });
+  const rows=hist.map(h=>'<tr>'
+    +'<td><strong>'+esc(h['Endereço'])+'</strong></td>'
+    +'<td>'+esc(h['Inquilino']||'—')+'</td>'
+    +'<td>'+esc(h['Contato do Inquilino']||'—')+'</td>'
+    +'<td>'+fmtDate(h['Início do Contrato'])+' – '+fmtDate(h['Fim do Contrato'])+'</td>'
+    +'<td>'+fmtDate(h['Encerrado em'])+'</td>'
+    +'<td>'+esc(h['Motivo']||'—')+'</td>'
+    +'</tr>').join('');
+  return '<div class="card2"><div class="sec-title"><i class="fas fa-clock-rotate-left"></i> Histórico de inquilinos <span style="font-size:11px;font-weight:600;color:#7b8ea4;margin-left:8px">inquilinos anteriores de cada casa</span></div>'
+    +'<div class="tbl-wrap"><table><thead><tr><th>Endereço</th><th>Inquilino</th><th>Contato</th><th>Vigência do contrato</th><th>Saída</th><th>Motivo</th></tr></thead><tbody>'
+    +(rows||'<tr><td colspan="6" class="empty">Nenhum inquilino arquivado ainda. Ao remover ou trocar um inquilino, ele aparece aqui.</td></tr>')
+    +'</tbody></table></div></div>';
 }
 let _reordering=false;
 async function moveCasa(idx,dir){
@@ -625,7 +674,7 @@ function custMonth(d){ const [y,m]=custComp.split('-').map(Number); const dt=new
 function custToday(){ custComp=todayComp(); renderCustos(); }
 function renderCustos(){
   const comp=custComp;
-  const list=DB.custos.filter(c=>String(c['Competência'])===comp).slice().sort((a,b)=>norm(a['Endereço']).localeCompare(norm(b['Endereço'])));
+  const list=DB.custos.filter(c=>String(c['Competência'])===comp&&!isMortgage(c['Tipo'])).slice().sort((a,b)=>norm(a['Endereço']).localeCompare(norm(b['Endereço'])));
   let tot=0;
   const rows=list.map(c=>{ tot+=parseAmt(c['Valor']); return '<tr>'
     +'<td><strong>'+esc(c['Endereço'])+'</strong></td>'
@@ -642,6 +691,7 @@ function renderCustos(){
   document.getElementById('tab3').innerHTML= nav
     +'<div class="card2"><div class="sec-title"><i class="fas fa-file-invoice-dollar"></i> Custos — '+fmtComp(comp)
     +'<button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="addCusto()"><i class="fas fa-plus"></i> Lançar custo</button></div>'
+    +'<div style="font-size:11.5px;color:#7b8ea4;margin:-4px 0 12px"><i class="fas fa-circle-info"></i> O <b>mortgage</b> é fixo por casa (cadastro) e entra automaticamente como custo no Financeiro — não precisa lançar aqui.</div>'
     +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th>Descrição</th><th></th></tr></thead><tbody>'
     +(rows||'<tr><td colspan="6" class="empty">Nenhum custo neste mês</td></tr>')
     +(list.length?'<tr><td colspan="2" style="text-align:right;font-weight:800">Total</td><td style="font-weight:800;color:var(--navy)">'+$$(tot)+'</td><td colspan="3"></td></tr>':'')
@@ -681,9 +731,9 @@ function editCasa(addr){
     +'<button class="btn-primary2" onclick="saveCasa()">Salvar</button></div>');
 }
 async function removeInquilino(addr){
-  if(!confirm('Remover o inquilino desta casa?\n\nO endereço e os dados da casa serão mantidos; o contrato é encerrado e a casa passa a Vacância.'))return;
-  try{ await apiWrite({action:'saveCasa',addr,inquilino:'',contato:'',status:'Vacância',inicio:'',fim:''});
-    closeModal(); showToast('Inquilino removido — casa em Vacância'); await loadData();
+  if(!confirm('Remover o inquilino desta casa?\n\nO endereço e os dados da casa serão mantidos, o inquilino vai para o "Histórico de inquilinos" e a casa passa a Vacância.'))return;
+  try{ await apiWrite({action:'removerInquilino',addr});
+    closeModal(); showToast('Inquilino removido — arquivado no histórico'); await loadData();
   }catch(e){ showToast(e.message,true); }
 }
 function updCasaStatus(){ const el=document.getElementById('cStatusHint'); if(!el)return; const occ=document.getElementById('cInq').value.trim()!==''; el.className='badge2 '+(occ?'b-paid':'b-vac'); el.innerHTML=occ?'<i class="fas fa-user-check"></i> Ocupada':'<i class="fas fa-door-open"></i> Vacância'; }
@@ -704,7 +754,7 @@ function addCusto(){
   openModal('<div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Lançar custo — '+fmtComp(custComp)+'</div>'
     +'<div class="grid2">'
     +'<div><label class="f-label">Casa *</label><select class="f-select" id="ktCasa">'+casaSelectOptions()+'</select></div>'
-    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ktTipo" onchange="custTipoChange()"><option>Mortgage</option><option>Água</option><option>Seguro</option><option>Outro</option></select></div>'
+    +'<div><label class="f-label">Tipo *</label><select class="f-select" id="ktTipo" onchange="custTipoChange()"><option>Água</option><option>Seguro</option><option>Outro</option></select></div>'
     +'</div><div class="grid2" style="margin-top:12px">'
     +'<div><label class="f-label">Valor ($) *</label><input class="f-input" id="ktVal" type="number" step="0.01"></div>'
     +'<div><label class="f-label">Data do pagamento</label><input class="f-input" id="ktData" type="date" value="'+todayISO()+'"></div>'
@@ -732,7 +782,7 @@ function addCusto(){
 function custTipoChange(){
   const tipo=document.getElementById('ktTipo').value;
   const wrap=document.getElementById('ktRepeatWrap'), segBtn=document.getElementById('ktVigBtn'), agua=document.getElementById('ktAguaWrap');
-  const show=(tipo==='Mortgage'||tipo==='Seguro');
+  const show=(tipo==='Seguro');
   wrap.style.display=show?'':'none'; segBtn.style.display=(tipo==='Seguro')?'':'none';
   if(agua) agua.style.display=(tipo==='Água')?'':'none';
   if(!show){ const m=document.getElementById('ktMeses'); if(m)m.value=1; }
@@ -815,11 +865,12 @@ function renderFin(){
   let totRec=0, totCus=0;
   const rows=casas.map(c=>{
     const addr=c['Endereço'];
-    const rec0=DB.recebimentos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Total Recebido']),0);
-    const aguaReceita=DB.custos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp&&isAgua(r['Tipo'])&&norm(r['Pagador'])==='inquilino').reduce((s,r)=>s+parseAmt(r['Valor']),0);
-    const rec=rec0+aguaReceita;
-    let cus=DB.custos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Valor']),0);
+    // receita = recebimentos (já incluem a água repassada, que é cobrada junto do aluguel)
+    const rec=DB.recebimentos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Total Recebido']),0);
+    // custos lançados (exclui mortgage, que é fixo do cadastro) + manutenção + mortgage fixo
+    let cus=DB.custos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).reduce((s,r)=>s+parseAmt(r['Valor']),0);
     cus+=DB.manutencao.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Valor do Serviço']),0);
+    cus+=parseAmt(c['Mortgage Mensal']);
     totRec+=rec; totCus+=cus;
     const res=rec-cus;
     return '<tr><td><strong>'+esc(addr)+'</strong></td><td style="color:#27ae60;font-weight:700">'+$$(rec)+'</td><td style="color:#e74c3c;font-weight:700">'+$$(cus)+'</td><td style="font-weight:800;color:'+(res>=0?'#27ae60':'#e74c3c')+'">'+$$(res)+'</td></tr>';
@@ -841,8 +892,9 @@ function renderFin(){
 }
 function finDetail(comp){
   const items=[];
-  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido',valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento']}));
-  DB.custos.filter(r=>String(r['Competência'])===comp).forEach(r=>{ items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento']}); if(isAgua(r['Tipo'])&&norm(r['Pagador'])==='inquilino') items.push({casa:r['Endereço'],tipo:'Água repassada ao inquilino',valor:parseAmt(r['Valor']),sign:1,data:r['Data do Pagamento']}); });
+  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido'+(aguaRepasseFor(r['Endereço'],comp)>0?' (inclui água)':''),valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento']}));
+  DB.custos.filter(r=>String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).forEach(r=>items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento']}));
+  DB.casas.filter(c=>String(c['Endereço']||'').trim()&&parseAmt(c['Mortgage Mensal'])>0).forEach(c=>items.push({casa:c['Endereço'],tipo:'Mortgage (fixo mensal)',valor:parseAmt(c['Mortgage Mensal']),sign:-1,data:''}));
   DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Manutenção: '+(r['Tipo de Serviço']||''),valor:parseAmt(r['Valor do Serviço']),sign:-1,data:r['Data de Conclusão']}));
   if(!items.length) return '<div class="empty"><i class="fas fa-receipt"></i>Nenhum lançamento nesta competência</div>';
   const rows=items.map(i=>'<tr><td>'+esc(i.casa)+'</td><td>'+esc(i.tipo)+'</td><td>'+fmtDate(i.data)+'</td><td style="font-weight:700;color:'+(i.sign>0?'#27ae60':'#e74c3c')+'">'+(i.sign>0?'+':'-')+$$(i.valor)+'</td></tr>').join('');
