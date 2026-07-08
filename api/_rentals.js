@@ -13,7 +13,7 @@ const DOCS_FOLDER = 'NJR Casas de Aluguel - Documentos';
 const TABS = {
   Casas: ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Status','Aluguel Mensal','Security Deposit','Início do Contrato','Fim do Contrato','Seguradora','Vigência do Seguro','Valor do Seguro','Periodicidade do Seguro','Mortgage Mensal','Valor da Água','Periodicidade da Água','Observações','Ordem'],
   Recebimentos: ['Carimbo de data/hora','Endereço','Competência','Valor do Aluguel','Data do Pagamento','Multa','Total Recebido','Status','Observações'],
-  Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Observações'],
+  Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Pagador','Observações'],
   Manutenção: ['Carimbo de data/hora','Endereço','Data de Conclusão','Competência','Tipo de Serviço','Descrição do Serviço','Empresa Subcontratada','Contato do Subcontratado','Valor do Serviço','Status Pagamento','Anexar Invoice'],
   Alertas: ['Tipo','Endereço','Marco','Enviado em'],
 };
