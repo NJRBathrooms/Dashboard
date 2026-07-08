@@ -8,6 +8,7 @@ const HANDLERS = {
   markRecebido: A.markRecebido,
   deleteRecebimento: A.deleteRecebimento,
   saveCusto: A.saveCusto,
+  lancarCusto: A.lancarCusto,
   deleteCusto: A.deleteCusto,
   saveManutencao: A.saveManutencao,
   deleteManutencao: A.deleteManutencao,
