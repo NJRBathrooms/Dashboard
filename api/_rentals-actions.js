@@ -163,7 +163,7 @@ async function lancarCusto(params) {
   const comp = clean(params.competencia);
   if (!addr || !/^\d{4}-\d{2}$/.test(comp)) return { error: 'Casa e competência (YYYY-MM) obrigatórios.' };
   let meses = parseInt(params.meses); if (isNaN(meses) || meses < 1) meses = 1; if (meses > 120) meses = 120;
-  const tipo = clean(params.tipo), desc = clean(params.desc), valor = num(params.valor), dataIso = clean(params.dataPagamento);
+  const tipo = clean(params.tipo), desc = clean(params.desc), valor = num(params.valor), dataIso = clean(params.dataPagamento), pagador = clean(params.pagador);
   const rows = [];
   for (let k = 0; k < meses; k++) {
     rows.push(R.buildRow(sh.headers, [
@@ -174,6 +174,7 @@ async function lancarCusto(params) {
       { key: 'Descrição', val: desc },
       { key: 'Valor', val: valor },
       { key: 'Data do Pagamento', val: shiftDateIso(dataIso, k) },
+      { key: 'Pagador', val: pagador },
       { key: 'Observações', val: '' },
     ]));
   }
@@ -193,6 +194,7 @@ async function saveCusto(params) {
     { key: 'Descrição', val: clean(params.desc) },
     { key: 'Valor', val: num(params.valor) },
     { key: 'Data do Pagamento', val: clean(params.dataPagamento) },
+    { key: 'Pagador', val: clean(params.pagador) },
     { key: 'Observações', val: clean(params.obs) },
   ];
   const rowNum = parseInt(params.rowNum);
