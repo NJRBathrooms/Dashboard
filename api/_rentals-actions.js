@@ -43,6 +43,53 @@ async function reorderCasas(params) {
   return { ok: true, count: pairs.length };
 }
 
+// serial do Sheets (ou string) → ISO YYYY-MM-DD (texto)
+function serialToIso(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number') { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000); return d.toISOString().slice(0, 10); }
+  const s = String(v).trim(); const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[1] + '-' + m[2] + '-' + m[3]) : s;
+}
+
+// arquiva o inquilino atual de uma casa na aba "Histórico de Inquilinos"
+async function archiveTenant(ssId, oldRow, motivo) {
+  const inq = clean(oldRow['Inquilino']);
+  if (!inq) return;
+  const { sh } = await ctx('Histórico de Inquilinos');
+  if (!sh) return;
+  const row = R.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: R.nowInTz() },
+    { key: 'Endereço', val: clean(oldRow['Endereço']) },
+    { key: 'Inquilino', val: inq },
+    { key: 'Contato do Inquilino', val: clean(oldRow['Contato do Inquilino']), forceText: true },
+    { key: 'Início do Contrato', val: serialToIso(oldRow['Início do Contrato']), forceText: true },
+    { key: 'Fim do Contrato', val: serialToIso(oldRow['Fim do Contrato']), forceText: true },
+    { key: 'Encerrado em', val: new Date().toISOString().slice(0, 10), forceText: true },
+    { key: 'Motivo', val: motivo || '' },
+    { key: 'Observações', val: '' },
+  ]);
+  await R.appendRental(ssId, sh.title, row);
+}
+
+// remove o inquilino de uma casa (arquiva no histórico e libera a casa)
+async function removerInquilino(params) {
+  const { ssId, sh } = await ctx('Casas');
+  const addr = clean(params.addr);
+  if (!addr) return { error: 'Endereço obrigatório.' };
+  const rowNum = await findRow(ssId, sh, 'Endereço', addr);
+  if (!rowNum) return { error: 'Casa não encontrada.' };
+  const oldRow = await R.readRentalRow(ssId, sh.title, rowNum, sh.headers);
+  await archiveTenant(ssId, oldRow, clean(params.motivo) || 'Saída do inquilino');
+  await R.updateRentalCells(ssId, sh.title, rowNum, sh.headers, [
+    { key: 'Carimbo de data/hora', val: R.nowInTz() },
+    { key: 'Inquilino', val: '' },
+    { key: 'Contato do Inquilino', val: '' },
+    { key: 'Status', val: 'Vacância' },
+    { key: 'Início do Contrato', val: '' },
+    { key: 'Fim do Contrato', val: '' },
+  ]);
+  return { ok: true };
+}
+
 // ── CASAS (upsert por Endereço) ───────────────────────────
 async function saveCasa(params) {
   const { ssId, sh } = await ctx('Casas');
@@ -68,6 +115,14 @@ async function saveCasa(params) {
   ];
   const rowNum = await findRow(ssId, sh, 'Endereço', addr);
   if (rowNum) {
+    // se o inquilino mudou (troca ou saída), arquiva o anterior no histórico
+    if (params.inquilino !== undefined) {
+      const oldRow = await R.readRentalRow(ssId, sh.title, rowNum, sh.headers);
+      const oldInq = clean(oldRow['Inquilino']), newInq = clean(params.inquilino);
+      if (oldInq && norm(oldInq) !== norm(newInq)) {
+        await archiveTenant(ssId, oldRow, newInq ? 'Troca de inquilino' : 'Saída do inquilino');
+      }
+    }
     // não sobrescreve campos não enviados: só atualiza os que vieram definidos
     const updates = map.filter(m => params[keyToParam(m.key)] !== undefined || m.key === 'Endereço');
     await R.updateRentalCells(ssId, sh.title, rowNum, sh.headers, updates.concat([{ key: 'Carimbo de data/hora', val: R.nowInTz() }]));
@@ -277,7 +332,7 @@ async function getDocsFolder(params) {
 }
 
 module.exports = {
-  saveCasa, deleteCasa, reorderCasas,
+  saveCasa, deleteCasa, reorderCasas, removerInquilino,
   markRecebido, deleteRecebimento,
   saveCusto, lancarCusto, deleteCusto,
   saveManutencao, deleteManutencao,
