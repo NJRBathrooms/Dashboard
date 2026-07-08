@@ -31,6 +31,7 @@ html { overflow-x:hidden; }
 .login-btn:active { transform:scale(.97); }
 .login-btn:disabled { opacity:.7; cursor:not-allowed; }
 .login-error { color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:8px; display:none; }
+.login-credit { position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 16px); text-align:center; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(13,33,55,.5); font-weight:600; }
 
 /* MAIN APP */
 #mainApp { display:none; }
@@ -179,6 +180,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-shield-halved" style="margin-right:8px"></i>Entrar</button>
     <div class="login-error" id="loginErr"><span id="loginErrMsg">Senha incorreta</span></div>
   </div>
+  <div class="login-credit">built by FAR Process Improvement</div>
 </div>
 
 <!-- APP -->
