@@ -29,6 +29,7 @@ body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:#eef2f6
 .login-btn:active { transform:scale(.97); }
 .login-btn:disabled { opacity:.7; cursor:not-allowed; }
 .login-err { display:none; color:#ff8585; font-size:13px; text-align:center; min-height:20px; margin-top:8px; }
+.login-credit { position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 16px); text-align:center; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(13,33,55,.5); font-weight:600; }
 #mainApp { display:none; }
 .app-header { background:var(--navy); padding:calc(env(safe-area-inset-top) + 16px) 20px 16px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:100; box-shadow:0 2px 16px rgba(0,0,0,.2); }
 .app-header .brand-icon { width:52px; height:52px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:6px; flex-shrink:0; }
@@ -218,6 +219,7 @@ tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
     <button class="login-btn" id="loginBtn" onclick="doLogin()"><i class="fas fa-shield-halved" style="margin-right:8px"></i>Entrar</button>
     <div class="login-err" id="loginErr"></div>
   </div>
+  <div class="login-credit">built by FAR Process Improvement</div>
 </div>
 
 <div id="mainApp">
