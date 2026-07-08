@@ -156,6 +156,14 @@ async function appendRental(ssId, title, row) {
   });
 }
 
+async function appendRows(ssId, title, rows) {
+  if (!rows || !rows.length) return;
+  await sheetsApi().spreadsheets.values.append({
+    spreadsheetId: ssId, range: q(title), valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS', requestBody: { values: rows },
+  });
+}
+
 async function updateRentalCells(ssId, title, rowNum, headers, updates) {
   const data = [];
   for (const u of updates) {
@@ -188,6 +196,6 @@ async function readRentalColumn(ssId, title, colIdx0) {
 
 module.exports = {
   TABS, getRentalsSS, ensureTabs, readAllRentals,
-  loadRentalIndex, appendRental, updateRentalCells, deleteRentalRow, readRentalColumn, batchSetColumn,
+  loadRentalIndex, appendRental, appendRows, updateRentalCells, deleteRentalRow, readRentalColumn, batchSetColumn,
   buildRow, nowInTz, DOCS_FOLDER,
 };
