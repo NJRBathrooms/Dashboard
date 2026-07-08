@@ -5,6 +5,7 @@ const HANDLERS = {
   saveCasa: A.saveCasa,
   deleteCasa: A.deleteCasa,
   reorderCasas: A.reorderCasas,
+  removerInquilino: A.removerInquilino,
   markRecebido: A.markRecebido,
   deleteRecebimento: A.deleteRecebimento,
   saveCusto: A.saveCusto,
