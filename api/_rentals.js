@@ -15,6 +15,7 @@ const TABS = {
   Recebimentos: ['Carimbo de data/hora','Endereço','Competência','Valor do Aluguel','Data do Pagamento','Multa','Total Recebido','Status','Observações'],
   Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Pagador','Observações'],
   Manutenção: ['Carimbo de data/hora','Endereço','Data de Conclusão','Competência','Tipo de Serviço','Descrição do Serviço','Empresa Subcontratada','Contato do Subcontratado','Valor do Serviço','Status Pagamento','Anexar Invoice'],
+  'Histórico de Inquilinos': ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Início do Contrato','Fim do Contrato','Encerrado em','Motivo','Observações'],
   Alertas: ['Tipo','Endereço','Marco','Enviado em'],
 };
 
@@ -132,6 +133,7 @@ async function readAllRentals() {
     recebimentos: out.Recebimentos || [],
     custos: out.Custos || [],
     manutencao: out['Manutenção'] || [],
+    historico: out['Histórico de Inquilinos'] || [],
     alertas: out.Alertas || [],
     lastUpdated: new Date().toISOString(),
   };
@@ -186,6 +188,17 @@ async function deleteRentalRow(ssId, sheetId, rowNum) {
   });
 }
 
+// lê uma linha inteira (nº real) → objeto { header: valor }
+async function readRentalRow(ssId, title, rowNum, headers) {
+  const resp = await sheetsApi().spreadsheets.values.get({
+    spreadsheetId: ssId, range: `${q(title)}!${rowNum}:${rowNum}`, valueRenderOption: 'UNFORMATTED_VALUE',
+  });
+  const vals = (resp.data.values && resp.data.values[0]) || [];
+  const obj = {};
+  (headers || []).forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : ''; });
+  return obj;
+}
+
 async function readRentalColumn(ssId, title, colIdx0) {
   const col = colLetter(colIdx0);
   const resp = await sheetsApi().spreadsheets.values.get({
@@ -196,6 +209,6 @@ async function readRentalColumn(ssId, title, colIdx0) {
 
 module.exports = {
   TABS, getRentalsSS, ensureTabs, readAllRentals,
-  loadRentalIndex, appendRental, appendRows, updateRentalCells, deleteRentalRow, readRentalColumn, batchSetColumn,
+  loadRentalIndex, appendRental, appendRows, updateRentalCells, deleteRentalRow, readRentalColumn, readRentalRow, batchSetColumn,
   buildRow, nowInTz, DOCS_FOLDER,
 };
