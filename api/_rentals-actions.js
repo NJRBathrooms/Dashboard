@@ -152,6 +152,35 @@ async function deleteRecebimento(params) {
 }
 
 // ── CUSTOS (mortgage/água/seguro/outros) ──────────────────
+// competência YYYY-MM deslocada em k meses
+function addMonthsComp(comp, k) { const [y, m] = comp.split('-').map(Number); const d = new Date(y, m - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function shiftDateIso(iso, k) { if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return ''; const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1 + k, d); return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+
+// lança 1..N custos em meses consecutivos (recorrência de mortgage/seguro)
+async function lancarCusto(params) {
+  const { ssId, sh } = await ctx('Custos');
+  const addr = clean(params.addr);
+  const comp = clean(params.competencia);
+  if (!addr || !/^\d{4}-\d{2}$/.test(comp)) return { error: 'Casa e competência (YYYY-MM) obrigatórios.' };
+  let meses = parseInt(params.meses); if (isNaN(meses) || meses < 1) meses = 1; if (meses > 120) meses = 120;
+  const tipo = clean(params.tipo), desc = clean(params.desc), valor = num(params.valor), dataIso = clean(params.dataPagamento);
+  const rows = [];
+  for (let k = 0; k < meses; k++) {
+    rows.push(R.buildRow(sh.headers, [
+      { key: 'Carimbo de data/hora', val: R.nowInTz() },
+      { key: 'Endereço', val: addr },
+      { key: 'Competência', val: addMonthsComp(comp, k), forceText: true },
+      { key: 'Tipo', val: tipo },
+      { key: 'Descrição', val: desc },
+      { key: 'Valor', val: valor },
+      { key: 'Data do Pagamento', val: shiftDateIso(dataIso, k) },
+      { key: 'Observações', val: '' },
+    ]));
+  }
+  await R.appendRows(ssId, sh.title, rows);
+  return { ok: true, count: rows.length };
+}
+
 async function saveCusto(params) {
   const { ssId, sh } = await ctx('Custos');
   const addr = clean(params.addr);
@@ -248,7 +277,7 @@ async function getDocsFolder(params) {
 module.exports = {
   saveCasa, deleteCasa, reorderCasas,
   markRecebido, deleteRecebimento,
-  saveCusto, deleteCusto,
+  saveCusto, lancarCusto, deleteCusto,
   saveManutencao, deleteManutencao,
   getDocsFolder, uploadFile,
 };
