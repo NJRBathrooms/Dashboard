@@ -98,6 +98,9 @@ html { overflow-x:hidden; }
 .addr-opt { padding:10px 14px; font-size:13.5px; cursor:pointer; color:var(--navy); display:flex; align-items:center; gap:8px; transition:background .15s; }
 .addr-opt:hover,.addr-opt.active { background:rgba(232,130,12,.08); color:var(--orange); }
 .addr-opt-empty { padding:12px 14px; font-size:13px; color:#7b8ea4; }
+.addr-input.invalid { border-color:#e03131; background:#fff6f6; }
+.addr-hint { display:none; margin-top:6px; font-size:12px; color:#e03131; font-weight:600; }
+.addr-hint.show { display:block; }
 
 /* MATERIALS CONDITIONAL BLOCK */
 #materialBlock { display:none; margin-top:4px; }
@@ -216,11 +219,12 @@ tbody tr:hover td { background:#fafbfe; }
         <div class="mb-3">
           <label class="f-label">Endereço da Obra <span class="f-req">*</span></label>
           <div class="addr-wrap">
-            <input type="text" id="addrInput" class="addr-input" placeholder="Digite para filtrar endereços..."
-                   oninput="filterAddrs(this.value)" onfocus="filterAddrs(this.value)" onblur="closeAddrDD()" autocomplete="off">
+            <input type="text" id="addrInput" class="addr-input" placeholder="Selecione um endereço cadastrado..."
+                   oninput="onAddrInput(this.value)" onfocus="filterAddrs(this.value)" onblur="onAddrBlur()" autocomplete="off">
             <button class="addr-clear-btn" id="clearAddr" onclick="clearAddr()">×</button>
             <div id="addrDropdown" class="addr-dropdown"></div>
           </div>
+          <div id="addrHint" class="addr-hint"></div>
         </div>
 
         <!-- Nome (read-only) -->
@@ -611,6 +615,7 @@ function selectAddr(a) {
   document.getElementById('addrInput').value=a;
   const cb=document.getElementById('clearAddr'); if(cb) cb.style.display='flex';
   document.getElementById('addrDropdown').classList.remove('open');
+  setAddrInvalid(false);
 }
 
 function closeAddrDD() { setTimeout(()=>document.getElementById('addrDropdown').classList.remove('open'),180); }
@@ -620,8 +625,20 @@ function clearAddr() {
   document.getElementById('addrInput').value='';
   document.getElementById('clearAddr').style.display='none';
   document.getElementById('addrDropdown').classList.remove('open');
+  setAddrInvalid(false);
   document.getElementById('addrInput').focus();
 }
+
+// só permite endereços já cadastrados (presentes na barra de pesquisa)
+function isRegisteredAddr(v){ const t=(v||'').trim().toLowerCase(); return !!t && ALL_ADDRS.some(a=>String(a).trim().toLowerCase()===t); }
+function canonicalAddr(v){ const t=(v||'').trim().toLowerCase(); return ALL_ADDRS.find(a=>String(a).trim().toLowerCase()===t) || ''; }
+function setAddrInvalid(show){
+  const inp=document.getElementById('addrInput'), h=document.getElementById('addrHint');
+  if(inp) inp.classList.toggle('invalid',!!show);
+  if(h){ h.classList.toggle('show',!!show); h.textContent=show?'Endereço não cadastrado — selecione uma opção da lista.':''; }
+}
+function onAddrInput(val){ SEL_ADDR=''; setAddrInvalid(false); filterAddrs(val); }
+function onAddrBlur(){ closeAddrDD(); const v=(document.getElementById('addrInput').value||'').trim(); setAddrInvalid(!!v && !isRegisteredAddr(v)); }
 
 function esc(s)    { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -728,13 +745,15 @@ async function uploadAllPhotos(addr) {
 // FORM SUBMISSION
 // ══════════════════════════════════════════════════════════
 async function submitForm() {
-  const addr   =(document.getElementById('addrInput').value||SEL_ADDR||'').trim();
+  const typedAddr=(document.getElementById('addrInput').value||SEL_ADDR||'').trim();
+  const addr   = canonicalAddr(typedAddr); // só aceita endereço cadastrado
   const entry  = document.getElementById('entryTime').value.trim();
   const exit   = document.getElementById('exitTime').value.trim();
   const bought = document.getElementById('boughtMaterials').value;
 
   const errors=[];
-  if (!addr)  errors.push('Endereço da obra é obrigatório.');
+  if (!typedAddr) { errors.push('Endereço da obra é obrigatório.'); }
+  else if (!addr) { errors.push('Endereço não cadastrado — selecione um endereço da lista de opções.'); setAddrInvalid(true); }
   if (!isValidTime(entry)) errors.push('Hora de entrada inválida (use HH:MM, ex.: 08:00).');
   if (!isValidTime(exit))  errors.push('Hora de saída inválida (use HH:MM, ex.: 17:00).');
   if (bought==='Sim') {
@@ -788,6 +807,7 @@ async function submitForm() {
 function resetForm() {
   SEL_ADDR='';
   document.getElementById('addrInput').value='';
+  setAddrInvalid(false);
   const cb=document.getElementById('clearAddr'); if(cb) cb.style.display='none';
   document.getElementById('entryTime').value='';
   document.getElementById('exitTime').value='';
