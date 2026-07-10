@@ -15,6 +15,7 @@ const HANDLERS = {
   addCliente: A.addCliente,
   saveAjuste: A.saveAjuste,
   emailReport: A.emailReport,
+  emailInvoice: A.emailInvoice,
   getOrCreateFolder,
   uploadFile,
 };
