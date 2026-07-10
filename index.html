@@ -310,6 +310,32 @@ tbody tr:hover td { background:#fafbfe; }
 .modal-actions { display:flex; gap:10px; margin-top:20px; justify-content:flex-end; flex-wrap:wrap; }
 .modal-cancel-btn { background:#f0f4f8; border:none; border-radius:10px; padding:10px 20px; font-size:14px; font-weight:600; color:#7b8ea4; cursor:pointer; }
 .modal-cancel-btn:hover { background:#dde7f1; }
+
+/* CUSTO TOTAL PARA O CLIENTE + INVOICE */
+.client-cost-card { display:flex; align-items:center; gap:18px; background:linear-gradient(135deg,#0d2137,#173651); border-radius:16px; padding:20px 24px; margin-bottom:18px; color:#fff; flex-wrap:wrap; box-shadow:0 8px 26px rgba(13,33,55,.18); }
+.ccc-info { flex:1 1 auto; min-width:0; }
+.ccc-lbl { font-size:12.5px; color:#9fb3c8; font-weight:600; letter-spacing:.3px; }
+.ccc-lbl i { color:var(--orange); margin-right:6px; }
+.ccc-val { font-size:30px; font-weight:800; color:#fff; margin:2px 0; font-variant-numeric:tabular-nums; }
+.ccc-sub { font-size:12px; color:#8aa0b6; }
+.ccc-btn { flex:0 0 auto; border:none; border-radius:12px; padding:13px 20px; font-size:14px; font-weight:800; cursor:pointer; background:linear-gradient(135deg,var(--orange),#f59c2a); color:#0d2137; display:inline-flex; align-items:center; gap:8px; }
+.ccc-btn:hover { filter:brightness(.97); }
+.invoice-overlay { display:none; position:fixed; inset:0; z-index:4000; background:#eef2f7; flex-direction:column; }
+.invoice-overlay.open { display:flex; }
+.invoice-actions { display:flex; gap:10px; padding:12px 16px; background:#fff; border-bottom:1px solid #e3e9f0; flex-wrap:wrap; position:sticky; top:0; z-index:2; }
+.inv-btn { border:none; border-radius:10px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+.inv-back { background:#eef3f8; color:#0d2137; }
+.inv-print { background:#0d2137; color:#fff; }
+.inv-send { background:linear-gradient(135deg,var(--orange),#f59c2a); color:#0d2137; margin-left:auto; }
+.inv-btn:disabled { opacity:.7; cursor:not-allowed; }
+.invoice-scroll { flex:1; overflow-y:auto; padding:24px 16px 60px; }
+@media print {
+  body * { visibility:hidden !important; }
+  #invoiceOverlay, #invoiceOverlay * { visibility:visible !important; }
+  #invoiceOverlay { position:absolute; inset:0; background:#fff; display:block !important; }
+  .invoice-actions { display:none !important; }
+  .invoice-scroll { overflow:visible !important; padding:0 !important; }
+}
 </style>
 </head>
 <body>
@@ -782,6 +808,16 @@ tbody tr:hover td { background:#fafbfe; }
       </div>
       <div id="orcModalMsg" style="display:none;margin-top:12px"></div>
     </div>
+  </div>
+
+  <!-- INVOICE (consulta) -->
+  <div id="invoiceOverlay" class="invoice-overlay">
+    <div class="invoice-actions">
+      <button class="inv-btn inv-back" onclick="closeInvoice()"><i class="fas fa-arrow-left"></i> Voltar ao app</button>
+      <button class="inv-btn inv-print" onclick="printInvoice()"><i class="fas fa-print"></i> Imprimir</button>
+      <button class="inv-btn inv-send" id="invSendBtn" onclick="sendInvoiceEmail()"><i class="fas fa-paper-plane"></i> Enviar para Nilmar Rebellatto</button>
+    </div>
+    <div class="invoice-scroll"><div id="invoiceSheet" class="invoice-sheet"></div></div>
   </div>
 
 </div>
@@ -1796,6 +1832,18 @@ function obraDetailHTML(addr, ids) {
     `:''}
   </div>` : '';
 
+  // ── Custo Total para o Cliente (receita contratada + extra cliente) + botão de invoice ──
+  const custoCliente=(hasOrc?obra.orcamento:0)+d.totX;
+  const clientCostHtml=(hasOrc||d.totX>0)?`
+  <div class="client-cost-card">
+    <div class="ccc-info">
+      <div class="ccc-lbl"><i class="fas fa-file-invoice-dollar"></i> Custo Total para o Cliente</div>
+      <div class="ccc-val">${$$(custoCliente)}</div>
+      <div class="ccc-sub">Receita contratada ${$$(hasOrc?obra.orcamento:0)} + Extra cliente ${$$(d.totX)}</div>
+    </div>
+    <button class="ccc-btn" onclick="openInvoice('${esc(addr)}')"><i class="fas fa-file-invoice"></i> Gerar invoice</button>
+  </div>`:'';
+
   const charts=`
     <div class="row g-3 mb-4">
       <div class="col-12 col-lg-6">
@@ -1923,7 +1971,66 @@ function obraDetailHTML(addr, ids) {
       </div>
     </div>`;
 
-  return obraInfoHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
+  return obraInfoHtml + clientCostHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
+}
+
+// ── INVOICE (consulta) para o cliente ─────────────────────
+function invoiceData(addr) {
+  const obra=PROC.obras.find(o=>o.addr===addr)||{orcamento:0};
+  const d=calcAddr(addr);
+  const orc=obra.orcamento||0;
+  const extras=d.mt.filter(r=>r.isExtra);
+  return { obra, addr, orc, extras, totX:d.totX, total:orc+d.totX };
+}
+function invoiceHTML(addr) {
+  const {obra,orc,extras,totX,total}=invoiceData(addr);
+  const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const line=(desc,val,extra)=>`<tr>
+    <td style="padding:11px 14px;border-bottom:1px solid #e9eef4;font-size:14px;color:#1a2b3c">${desc}${extra?' <span style="background:#e6f7f2;color:#16a085;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:4px">EXTRA</span>':''}</td>
+    <td style="padding:11px 14px;border-bottom:1px solid #e9eef4;font-size:14px;color:#1a2b3c;text-align:right;white-space:nowrap">${$$(val)}</td></tr>`;
+  const rows=[ line('Serviço contratado'+(obra.escopo?' — '+escH(obra.escopo):''), orc, false) ]
+    .concat(extras.map(r=>line(escH(r.desc||'Item extra')+(r.dataCom?' <span style="color:#8aa0b6;font-size:12px">('+(fmtDt(r.dataCom)||'')+')</span>':''), r.amount, true)))
+    .join('');
+  return `<div style="max-width:640px;margin:0 auto;background:#fff;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1a2b3c;border:1px solid #e3e9f0;border-radius:14px;overflow:hidden">
+    <div style="background:#0d2137;padding:22px 24px;color:#fff">
+      <div style="font-size:20px;font-weight:800;letter-spacing:.5px">NJR BATHROOMS</div>
+      <div style="font-size:12px;color:#f2a340;letter-spacing:1px;margin-top:2px">INVOICE</div>
+    </div>
+    <div style="background:#fff4e6;color:#b45309;padding:9px 24px;font-size:12px;font-weight:700;letter-spacing:.4px;text-align:center;border-bottom:1px solid #f0e0c8">
+      DOCUMENTO SOMENTE PARA CONSULTA — não constitui cobrança oficial
+    </div>
+    <div style="padding:20px 24px">
+      <table style="width:100%;font-size:13px;color:#5a7088;margin-bottom:16px"><tr>
+        <td style="vertical-align:top"><div style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;color:#8aa0b6">Cliente</div><div style="font-size:15px;font-weight:700;color:#1a2b3c">${escH(obra.cliente||'—')}</div>${obra.contato?`<div style="font-size:12px">${escH(obra.contato)}</div>`:''}</td>
+        <td style="vertical-align:top;text-align:right"><div style="text-transform:uppercase;font-size:11px;letter-spacing:.5px;color:#8aa0b6">Obra</div><div style="font-size:13px;font-weight:600;color:#1a2b3c">${escH(addr)}</div><div style="font-size:12px;margin-top:4px">Emitido em ${hoje}</div></td>
+      </tr></table>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e9eef4;border-radius:10px;overflow:hidden">
+        <thead><tr style="background:#f4f7fb"><th style="padding:10px 14px;text-align:left;font-size:11px;letter-spacing:.5px;color:#5a7088;text-transform:uppercase">Descrição</th><th style="padding:10px 14px;text-align:right;font-size:11px;letter-spacing:.5px;color:#5a7088;text-transform:uppercase">Valor</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td style="padding:14px;font-size:15px;font-weight:800;background:#0d2137;color:#fff">TOTAL A COBRAR</td><td style="padding:14px;font-size:18px;font-weight:800;text-align:right;background:#0d2137;color:#f2a340;white-space:nowrap">${$$(total)}</td></tr></tfoot>
+      </table>
+      <div style="font-size:11.5px;color:#8aa0b6;margin-top:14px;line-height:1.5">Valor de referência para consulta: receita contratada (${$$(orc)}) somada aos custos extras aprovados (${$$(totX)}). Documento gerado automaticamente pelo sistema NJR Bathrooms — apenas para consulta.</div>
+    </div>
+  </div>`;
+}
+function openInvoice(addr) {
+  const ov=document.getElementById('invoiceOverlay');
+  document.getElementById('invoiceSheet').innerHTML=invoiceHTML(addr);
+  ov.dataset.addr=addr; ov.classList.add('open'); document.body.classList.add('invoice-open');
+}
+function closeInvoice() {
+  const ov=document.getElementById('invoiceOverlay');
+  ov.classList.remove('open'); document.body.classList.remove('invoice-open');
+}
+function printInvoice() { window.print(); }
+async function sendInvoiceEmail() {
+  const ov=document.getElementById('invoiceOverlay'); const addr=ov.dataset.addr; if(!addr)return;
+  const btn=document.getElementById('invSendBtn'); const orig=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;margin-right:6px"></div>Enviando...';
+  try{ const r=await apiWrite({action:'emailInvoice',addr,subject:'Invoice (consulta) — '+addr,html:invoiceHTML(addr)});
+    showToast('Invoice enviado para Nilmar ('+(r.to||'tenilmar@icloud.com')+')');
+  }catch(e){ showToast('Erro ao enviar: '+e.message,true); }
+  finally{ btn.disabled=false; btn.innerHTML=orig; }
 }
 
 // ── RENDER CHARTS ─────────────────────────────────────────
