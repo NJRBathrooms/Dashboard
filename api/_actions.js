@@ -376,8 +376,18 @@ async function emailReport(params) {
   return { ok: true, to };
 }
 
+// ── INVOICE (consulta) — envia por e-mail a Nilmar Rebellatto ──
+async function emailInvoice(params) {
+  const to = process.env.INVOICE_EMAIL || 'tenilmar@icloud.com';
+  const subject = (params.subject || 'Invoice para consulta — NJR Bathrooms').toString().slice(0, 200);
+  const html = params.html || '';
+  if (!html) return { error: 'Invoice vazio.' };
+  await G.sendEmail(to, subject, html, true);
+  return { ok: true, to };
+}
+
 module.exports = {
-  addObra, closeObra, updateObra, saveAjuste, emailReport,
+  addObra, closeObra, updateObra, saveAjuste, emailReport, emailInvoice,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor,
