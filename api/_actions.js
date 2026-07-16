@@ -126,12 +126,22 @@ async function updateObra(params) {
 }
 
 // ── MATERIAIS ─────────────────────────────────────────────
+const COL_COBRADO = 'Valor Cobrado do Cliente ($)';
+
+// garante que a coluna exista na aba (cria o cabeçalho na primeira coluna livre)
+async function ensureColumn(sh, colName) {
+  if (sh.headers.includes(colName)) return;
+  await G.updateCell(sh.title, 1, sh.headers.length, colName);
+  sh.headers.push(colName);
+}
+
 async function addMaterial(params) {
   const { index } = await G.loadSheetIndex();
   const sh = G.findSheetEntry(index, KW.mats);
   if (!sh) return { error: 'Aba de materiais não encontrada. Verifique se existe uma aba com as colunas "Data da Compra" e "Descrição dos Itens".' };
   const addr = (params.addr || '').trim();
   if (!addr) return { error: 'Endereço obrigatório.' };
+  await ensureColumn(sh, COL_COBRADO);
 
   const row = G.buildRow(sh.headers, [
     { key: 'Carimbo de data/hora', val: G.nowInTz() },
@@ -140,6 +150,7 @@ async function addMaterial(params) {
     { key: 'É um custo extra para o cliente pagar?', val: params.isExtra || 'Não' },
     { key: 'Descrição dos Itens', val: params.desc || '' },
     { key: 'Valor Total Pago ($)', val: params.amount ? round2(params.amount) : '' },
+    { key: COL_COBRADO, val: params.valorCobrado ? round2(params.valorCobrado) : '' },
     { key: 'Anexar Comprovante/NF', val: params.comprovante || '' },
     { key: 'Observa', fuzzy: true, val: params.obs || '' },
     { key: 'Selecione a empresa', val: params.empresa || '' },
@@ -154,10 +165,12 @@ async function updateMaterial(params) {
   if (!sh) return { error: 'Aba de materiais não encontrada.' };
   const rowNum = parseInt(params.rowNum);
   if (!rowNum || rowNum < 2) return { error: 'Número de linha inválido.' };
+  if (params.valorCobrado !== undefined) await ensureColumn(sh, COL_COBRADO);
   const updates = [];
   if (params.dataCom) updates.push({ key: 'Data da Compra', val: params.dataCom });
   if (params.desc !== undefined) updates.push({ key: 'Descrição dos Itens', val: params.desc });
   if (params.amount !== undefined) updates.push({ key: 'Valor Total Pago ($)', val: params.amount ? round2(params.amount) : '' });
+  if (params.valorCobrado !== undefined) updates.push({ key: COL_COBRADO, val: params.valorCobrado ? round2(params.valorCobrado) : '' });
   if (params.isExtra !== undefined) updates.push({ key: 'É um custo extra para o cliente pagar?', val: params.isExtra });
   if (params.empresa !== undefined) updates.push({ key: 'Selecione a empresa', val: params.empresa });
   if (params.obs !== undefined) updates.push({ key: 'Observa', fuzzy: true, val: params.obs });
