@@ -582,7 +582,7 @@ tbody tr:hover td { background:#fafbfe; }
         </div>
         <div class="col-md-5">
           <label class="f-label">É um custo extra para o cliente pagar? <span class="f-req">*</span></label>
-          <select id="matIsExtra" class="f-input">
+          <select id="matIsExtra" class="f-input" onchange="toggleMatCobrado()">
             <option value="Não">Não</option>
             <option value="Sim">Sim</option>
           </select>
@@ -595,8 +595,16 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Valor Total Pago ($) <span class="f-req">*</span></label>
           <div class="f-input-prefix">
             <span class="prefix">$</span>
-            <input type="text" id="matAmount" class="f-input" inputmode="decimal" placeholder="0.00">
+            <input type="text" id="matAmount" class="f-input" inputmode="decimal" placeholder="0.00" oninput="prefillMatCobrado()">
           </div>
+        </div>
+        <div class="col-md-4" id="matCobradoWrap" style="display:none">
+          <label class="f-label">Valor Cobrado do Cliente ($) <span class="f-req">*</span></label>
+          <div class="f-input-prefix">
+            <span class="prefix">$</span>
+            <input type="text" id="matCobrado" class="f-input" inputmode="decimal" placeholder="0.00" oninput="_matCobradoTouched=true">
+          </div>
+          <small style="color:#7b8ea4;font-size:11px;margin-top:4px;display:block">Quanto o cliente vai pagar por este extra (pago + lucro).</small>
         </div>
         <div class="col-12">
           <label class="f-label">Anexar Comprovante/NF <small style="text-transform:none;color:#7b8ea4">(opcional — pode tirar/selecionar várias fotos, uma de cada vez)</small></label>
@@ -1325,13 +1333,17 @@ function processAll() {
       isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, receipts:laborReceipts(r),
       entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
   });
-  PROC.materials=DB.materials.map(r=>({
+  PROC.materials=DB.materials.map(r=>{
+    const cobV=r['Valor Cobrado do Cliente ($)'];
+    return {
     _row:r['_row'],
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
     dataCom:r['Data da Compra']||'', desc:r['Descrição dos Itens']||'', amount:parseAmt(r['Valor Total Pago ($)']),
+    // valor cobrado do cliente ('' quando não informado → extras antigos assumem cobrado = pago)
+    cobradoRaw:(cobV===''||cobV==null)?'':parseAmt(cobV),
     company:r['Selecione a empresa']||'', comprovante:r['Anexar Comprovante/NF']||'',
     isExtra:String(r['É um custo extra para o cliente pagar?']||'').toLowerCase()==='sim',
-  }));
+  };});
   PROC.subs=DB.subcontractors.map(r=>({
     _row:r['_row'],
     ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
@@ -1373,6 +1385,8 @@ function processAll() {
 }
 
 // ── TAB 1 RENDER ──────────────────────────────────────────
+// valor efetivamente cobrado do cliente por um extra (sem valor informado → assume = pago)
+function cobradoEff(r){ return (r.cobradoRaw===''||r.cobradoRaw==null)?r.amount:r.cobradoRaw; }
 function calcAddr(addr) {
   const lc=PROC.labor.filter(r=>r.addr===addr);
   const mt=PROC.materials.filter(r=>r.addr===addr);
@@ -1391,9 +1405,12 @@ function calcAddr(addr) {
   const totNjrMat=lc.reduce((s,r)=>s+(r.njrMat||0),0);
   const totM=mt.filter(r=>!r.isExtra).reduce((s,r)=>s+r.amount,0)+totNjrMat;
   const totS=sb.reduce((s,r)=>s+r.amount,0);
+  // Extras (aditivos): custo pago pela NJR e valor cobrado do cliente (sem cobrado → assume = pago)
   const totX=mt.filter(r=>r.isExtra).reduce((s,r)=>s+r.amount,0);
-  const grand=totL+totR+totM+totS;
-  return {lc,mt,sb,empMap,totL,totR,totM,totS,totX,totNjrMat,grand};
+  const totXCob=mt.filter(r=>r.isExtra).reduce((s,r)=>s+cobradoEff(r),0);
+  // Custo Realizado inclui o custo dos extras (a receita dos extras entra na receita total)
+  const grand=totL+totR+totM+totS+totX;
+  return {lc,mt,sb,empMap,totL,totR,totM,totS,totX,totXCob,totNjrMat,grand};
 }
 
 function renderTab1() {
@@ -1743,9 +1760,11 @@ function obraDetailHTML(addr, ids) {
   const emps=Object.entries(d.empMap).sort((a,b)=>b[1].lc-a[1].lc);
   const pct=(v,t)=>t?Math.round(v/t*100):0;
   const hasOrc=obra&&obra.orcamento>0;
-  const saldo=hasOrc?obra.orcamento-d.grand:0;
-  const margem=hasOrc&&obra.orcamento?Math.round(saldo/obra.orcamento*100):0;
-  const pctUsed=hasOrc?Math.round(d.grand/obra.orcamento*100):0;
+  // Receita total = contratada (base) + extras cobrados do cliente (aditivos)
+  const receitaTotal=hasOrc?obra.orcamento+d.totXCob:d.totXCob;
+  const saldo=hasOrc?receitaTotal-d.grand:0;
+  const margem=hasOrc&&receitaTotal?Math.round(saldo/receitaTotal*100):0;
+  const pctUsed=hasOrc&&receitaTotal?Math.round(d.grand/receitaTotal*100):0;
 
   const obraInfoHtml = obra ? `
   <div class="obra-info-banner mb-4">
@@ -1781,16 +1800,16 @@ function obraDetailHTML(addr, ids) {
     <div class="row g-3 align-items-stretch">
       <div class="col-md-4">
         <div class="res-metric rmc-receita h-100">
-          <div class="rmc-lbl"><i class="fas fa-file-invoice-dollar me-1"></i>Receita Contratada</div>
-          <div class="rmc-val">${$$(obra.orcamento)}<button class="orc-edit-btn" onclick="openEditOrcamento('${esc(addr)}')" title="Editar orçamento"><i class="fas fa-pen"></i></button></div>
-          <div class="rmc-sub">Valor acordado com o cliente</div>
+          <div class="rmc-lbl"><i class="fas fa-file-invoice-dollar me-1"></i>Receita Total</div>
+          <div class="rmc-val">${$$(receitaTotal)}<button class="orc-edit-btn" onclick="openEditOrcamento('${esc(addr)}')" title="Editar orçamento base"><i class="fas fa-pen"></i></button></div>
+          <div class="rmc-sub">${d.totXCob>0?`Contratada ${$$(obra.orcamento)} + extras ${$$(d.totXCob)}`:'Valor acordado com o cliente'}</div>
         </div>
       </div>
       <div class="col-md-4">
         <div class="res-metric rmc-custo h-100">
           <div class="rmc-lbl"><i class="fas fa-shopping-cart me-1"></i>Custo Realizado</div>
           <div class="rmc-val">${$$(d.grand)}</div>
-          <div class="rmc-sub">${noCosts?'Nenhum custo registrado ainda':pctUsed+'% da receita comprometida'}</div>
+          <div class="rmc-sub">${noCosts?'Nenhum custo registrado ainda':pctUsed+'% da receita comprometida'+(d.totX>0?' · inclui extras '+$$(d.totX):'')}</div>
         </div>
       </div>
       <div class="col-md-4">
@@ -1821,7 +1840,7 @@ function obraDetailHTML(addr, ids) {
     </div>
     <div class="res-equation">
       <span class="rmc-lbl" style="margin:0">Receita</span>
-      <span class="eq-val">${$$(obra.orcamento)}</span>
+      <span class="eq-val">${$$(receitaTotal)}</span>
       <span class="eq-op">−</span>
       <span class="rmc-lbl" style="margin:0">Custo</span>
       <span class="eq-val">${$$(d.grand)}</span>
@@ -1829,17 +1848,18 @@ function obraDetailHTML(addr, ids) {
       <span class="rmc-lbl" style="margin:0">Lucro</span>
       <span class="${saldo>=0?'eq-result-pos':'eq-result-neg'}">${$$(saldo)}</span>
     </div>
+    ${d.totXCob>0?`<div style="font-size:11.5px;color:#7b8ea4;margin-top:8px"><i class="fas fa-circle-plus" style="color:#16a085"></i> Aditivos (extras do cliente): cobrado ${$$(d.totXCob)} − custo ${$$(d.totX)} = <strong style="color:${d.totXCob-d.totX>=0?'#16a085':'#e74c3c'}">${$$(d.totXCob-d.totX)}</strong> de lucro nos extras</div>`:''}
     `:''}
   </div>` : '';
 
-  // ── Custo Total para o Cliente (receita contratada + extra cliente) + botão de invoice ──
-  const custoCliente=(hasOrc?obra.orcamento:0)+d.totX;
-  const clientCostHtml=(hasOrc||d.totX>0)?`
+  // ── Custo Total para o Cliente (receita contratada + extras COBRADOS) + botão de invoice ──
+  const custoCliente=(hasOrc?obra.orcamento:0)+d.totXCob;
+  const clientCostHtml=(hasOrc||d.totXCob>0)?`
   <div class="client-cost-card">
     <div class="ccc-info">
       <div class="ccc-lbl"><i class="fas fa-file-invoice-dollar"></i> Custo Total para o Cliente</div>
       <div class="ccc-val">${$$(custoCliente)}</div>
-      <div class="ccc-sub">Receita contratada ${$$(hasOrc?obra.orcamento:0)} + Extra cliente ${$$(d.totX)}</div>
+      <div class="ccc-sub">Receita contratada ${$$(hasOrc?obra.orcamento:0)} + Extra cliente ${$$(d.totXCob)}</div>
     </div>
     <button class="ccc-btn" onclick="openInvoice('${esc(addr)}')"><i class="fas fa-file-invoice"></i> Gerar invoice</button>
   </div>`:'';
@@ -1890,7 +1910,7 @@ function obraDetailHTML(addr, ids) {
       <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-mat"><div class="m-label">Material</div><div class="m-value">${$$(d.totM)}</div><div class="m-sub">${pct(d.totM,d.grand)}% do total</div></div></div>
       <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-sub"><div class="m-label">Subcontratados</div><div class="m-value">${$$(d.totS)}</div><div class="m-sub">${pct(d.totS,d.grand)}% do total</div></div></div>
       <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-reimb"><div class="m-label">Reembolso Func.</div><div class="m-value">${$$(d.totR)}</div><div class="m-sub">${pct(d.totR,d.grand)}% do total</div></div></div>
-      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-extra"><div class="m-label">Extra Cliente</div><div class="m-value">${$$(d.totX)}</div><div class="m-sub">${pct(d.totX,d.grand)}% do total</div></div></div>
+      <div class="col-6 col-sm-4 col-xl-2"><div class="metric-card c-extra"><div class="m-label">Extra Cliente</div><div class="m-value">${$$(d.totXCob)}</div><div class="m-sub">custo ${$$(d.totX)} · lucro ${$$(d.totXCob-d.totX)}</div></div></div>
     </div>`;
 
   // ── NEW TABLES: Materiais / Subcontratados / Material Extra ──
@@ -1905,18 +1925,19 @@ function obraDetailHTML(addr, ids) {
     return urls.map((u,i)=>`<a href="${u}" target="_blank" style="color:var(--orange);margin-right:8px;white-space:nowrap"><i class="fas fa-paperclip me-1"></i>${i+1}</a>`).join('');
   };
 
-  const materialRowsHtml = (list) => list.length
+  const materialRowsHtml = (list, withCobrado) => list.length
     ? list.map(r=>`<tr>
         <td>${fmtDt(r.dataCom)||'—'}</td>
         <td>${r.desc||'—'}</td>
         <td>${$$(r.amount)}</td>
+        ${withCobrado?`<td style="color:#16a085;font-weight:600">${$$(cobradoEff(r))}${r.cobradoRaw===''?' <small title="Valor cobrado não informado — assumindo = pago. Edite o item para definir." style="color:#e67e22">≈</small>':''}</td>`:''}
         <td>${renderLinkList(r.comprovante)}</td>
         <td class="td-actions">
           <button class="row-act-btn edit" onclick="openEditMaterial(${r._row},'${esc(addr)}')" title="Editar"><i class="fas fa-pen"></i></button>
           <button class="row-act-btn del" onclick="confirmDeleteRow('material',${r._row},'${esc(addr)}')" title="Excluir"><i class="fas fa-trash"></i></button>
         </td>
       </tr>`).join('')
-    : `<tr><td colspan="5" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
+    : `<tr><td colspan="${withCobrado?6:5}" style="text-align:center;color:#7b8ea4">Nenhum registro</td></tr>`;
 
   const materialTable=`
     <div class="data-table mb-4">
@@ -1957,15 +1978,17 @@ function obraDetailHTML(addr, ids) {
       </div>
     </div>`;
 
+  const extraPago=matExtra.reduce((s,r)=>s+r.amount,0);
+  const extraCob=matExtra.reduce((s,r)=>s+cobradoEff(r),0);
   const materialExtraTable=`
     <div class="data-table mb-4">
       <div class="table-head"><i class="fas fa-exclamation-circle me-2" style="color:#16a085"></i>Material Extra para o Cliente Pagar</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Comprovante</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Data da Compra</th><th>Descrição dos Itens</th><th>Valor Pago</th><th>Valor Cobrado</th><th>Comprovante</th><th>Ações</th></tr></thead>
           <tbody>
-            ${materialRowsHtml(matExtra)}
-            ${matExtra.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td style="color:#16a085">${$$(matExtra.reduce((s,r)=>s+r.amount,0))}</td><td colspan="2"></td></tr>`:''}
+            ${materialRowsHtml(matExtra,true)}
+            ${matExtra.length?`<tr class="tr-total"><td colspan="2">TOTAL</td><td>${$$(extraPago)}</td><td style="color:#16a085">${$$(extraCob)}</td><td colspan="2">Lucro nos extras: <span style="color:${extraCob-extraPago>=0?'#16a085':'#e74c3c'}">${$$(extraCob-extraPago)}</span></td></tr>`:''}
           </tbody>
         </table>
       </div>
@@ -1980,7 +2003,8 @@ function invoiceData(addr) {
   const d=calcAddr(addr);
   const orc=obra.orcamento||0;
   const extras=d.mt.filter(r=>r.isExtra);
-  return { obra, addr, orc, extras, totX:d.totX, total:orc+d.totX };
+  // valores COBRADOS do cliente (nunca expor o custo NJR no invoice)
+  return { obra, addr, orc, extras, totX:d.totXCob, total:orc+d.totXCob };
 }
 function invoiceHTML(addr) {
   const {obra,orc,extras,totX,total}=invoiceData(addr);
@@ -1989,7 +2013,7 @@ function invoiceHTML(addr) {
     <td style="padding:11px 14px;border-bottom:1px solid #e9eef4;font-size:14px;color:#1a2b3c">${desc}${extra?' <span style="background:#e6f7f2;color:#16a085;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:4px">EXTRA</span>':''}</td>
     <td style="padding:11px 14px;border-bottom:1px solid #e9eef4;font-size:14px;color:#1a2b3c;text-align:right;white-space:nowrap">${$$(val)}</td></tr>`;
   const rows=[ line('Serviço contratado'+(obra.escopo?' — '+escH(obra.escopo):''), orc, false) ]
-    .concat(extras.map(r=>line(escH(r.desc||'Item extra')+(r.dataCom?' <span style="color:#8aa0b6;font-size:12px">('+(fmtDt(r.dataCom)||'')+')</span>':''), r.amount, true)))
+    .concat(extras.map(r=>line(escH(r.desc||'Item extra')+(r.dataCom?' <span style="color:#8aa0b6;font-size:12px">('+(fmtDt(r.dataCom)||'')+')</span>':''), cobradoEff(r), true)))
     .join('');
   return `<div style="max-width:640px;margin:0 auto;background:#fff;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1a2b3c;border:1px solid #e3e9f0;border-radius:14px;overflow:hidden">
     <div style="background:#0d2137;padding:22px 24px;color:#fff">
@@ -2044,15 +2068,15 @@ function renderObraCharts(addr, ids, refs) {
   const obra=PROC.obras.find(o=>o.addr===addr);
   const hasOrc=obra&&obra.orcamento>0;
   const emps=Object.entries(d.empMap).sort((a,b)=>b[1].lc-a[1].lc);
-  const total=d.totL+d.totS+d.totM+d.totR;
+  const total=d.totL+d.totS+d.totM+d.totR+d.totX;
 
   if (refs.donut) { try { refs.donut.destroy(); } catch(e){} refs.donut=null; }
   const donutEl=document.getElementById(ids.donut);
   safeGetChart(donutEl);
   if (donutEl) refs.donut=new Chart(donutEl.getContext('2d'),{
     type:'doughnut', plugins:[ChartDataLabels],
-    data:{ labels:['Mão de Obra','Subcontratados','Material','Reembolso'],
-      datasets:[{data:[d.totL,d.totS,d.totM,d.totR],backgroundColor:['#2980b9','#8e44ad','#27ae60','#e67e22'],borderWidth:0,hoverOffset:10}] },
+    data:{ labels:['Mão de Obra','Subcontratados','Material','Reembolso','Extra Cliente'],
+      datasets:[{data:[d.totL,d.totS,d.totM,d.totR,d.totX],backgroundColor:['#2980b9','#8e44ad','#27ae60','#e67e22','#16a085'],borderWidth:0,hoverOffset:10}] },
     options:{ cutout:'62%',
       plugins:{ legend:{position:'bottom',labels:{padding:14,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>` ${c.label}: ${$$(c.raw)}`}},
@@ -2065,9 +2089,10 @@ function renderObraCharts(addr, ids, refs) {
     const budgetEl=document.getElementById(ids.budget);
     safeGetChart(budgetEl);
     if (budgetEl) {
-      const spent=Math.min(d.grand,obra.orcamento);
-      const left=Math.max(0,obra.orcamento-d.grand);
-      const over=Math.max(0,d.grand-obra.orcamento);
+      const receitaTot=obra.orcamento+d.totXCob; // receita total = base + extras cobrados
+      const spent=Math.min(d.grand,receitaTot);
+      const left=Math.max(0,receitaTot-d.grand);
+      const over=Math.max(0,d.grand-receitaTot);
       refs.budget=new Chart(budgetEl.getContext('2d'),{
         type:'bar', plugins:[ChartDataLabels],
         data:{ labels:[''],
@@ -2292,7 +2317,7 @@ function renderCloseForm() {
   }
   const d=calcAddr(addr);
   const hasOrc=obra&&obra.orcamento>0;
-  const saldo=hasOrc?obra.orcamento-d.grand:null;
+  const saldo=hasOrc?(obra.orcamento+d.totXCob)-d.grand:null; // receita total (base + extras) − custo
   area.innerHTML=`
     <div class="close-form-card">
       <div class="cfc-title"><i class="fas fa-building me-2" style="color:var(--orange)"></i>${addr}</div>
@@ -2565,20 +2590,35 @@ async function uploadFiles(files, statusId, setUrls, addr, subfolder) {
 }
 
 // ── TAB 4: REGISTROS — MATERIAIS ──────────────────────────
+// Campo "Valor Cobrado do Cliente" só aparece quando é custo extra (Sim)
+let _matCobradoTouched=false;
+function toggleMatCobrado() {
+  const isExtra=document.getElementById('matIsExtra').value==='Sim';
+  document.getElementById('matCobradoWrap').style.display=isExtra?'':'none';
+  if (isExtra) prefillMatCobrado();
+  else { document.getElementById('matCobrado').value=''; _matCobradoTouched=false; }
+}
+function prefillMatCobrado() {
+  if (document.getElementById('matIsExtra').value!=='Sim' || _matCobradoTouched) return;
+  document.getElementById('matCobrado').value=document.getElementById('matAmount').value;
+}
 async function submitMaterial() {
   const addr=SEL_ADDR_MAT;
   const dataCom=document.getElementById('matDataCom').value;
   const isExtra=document.getElementById('matIsExtra').value;
   const desc=document.getElementById('matDesc').value.trim();
   const amount=document.getElementById('matAmount').value.trim();
+  const cobrado=document.getElementById('matCobrado').value.trim();
   const obs=document.getElementById('matObs').value.trim();
   const empresa=document.getElementById('matEmpresa').value;
   const amountNum = parseFloat(amount.replace(',','.'));
+  const cobradoNum = parseFloat(cobrado.replace(',','.'));
   if (!addr)          { showRegMsg('mat','err','Endereço é obrigatório.'); return; }
   if (!dataCom)       { showRegMsg('mat','err','Data da Compra é obrigatória.'); return; }
   if (!desc)          { showRegMsg('mat','err','Descrição dos Itens é obrigatória.'); return; }
   if (!amount)        { showRegMsg('mat','err','Valor Total Pago é obrigatório.'); return; }
   if (isNaN(amountNum)||amountNum<=0) { showRegMsg('mat','err','Informe um valor numérico válido (ex: 1500 ou 1500.00).'); return; }
+  if (isExtra==='Sim' && (!cobrado||isNaN(cobradoNum)||cobradoNum<=0)) { showRegMsg('mat','err','Informe o Valor Cobrado do Cliente para o custo extra.'); return; }
   if (!empresa)       { showRegMsg('mat','err','Selecione a empresa.'); return; }
   const btn=document.getElementById('matBtn');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
@@ -2586,10 +2626,11 @@ async function submitMaterial() {
     _matCompURL='';
     const fileOk=await uploadFiles(matFiles,'matFileStatus',u=>_matCompURL=u,addr,'Comprovantes');
     if (!fileOk) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Registrar Compra'; return; }
-    await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount:String(amountNum),comprovante:_matCompURL,obs,empresa});
+    await apiWrite({action:'addMaterial',addr,dataCom,isExtra,desc,amount:String(amountNum),valorCobrado:isExtra==='Sim'?String(cobradoNum):'',comprovante:_matCompURL,obs,empresa});
     showRegMsg('mat','ok','Compra de materiais registrada com sucesso!');
-    ['matDataCom','matDesc','matAmount','matObs'].forEach(id=>document.getElementById(id).value='');
+    ['matDataCom','matDesc','matAmount','matCobrado','matObs'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('matIsExtra').value='Não';
+    _matCobradoTouched=false; toggleMatCobrado();
     document.getElementById('matEmpresa').value='';
     document.getElementById('matAddrInput').value='';
     toggleClearBtn('clearAddrMat','');
@@ -2734,7 +2775,7 @@ function openEditMaterial(rowNum, addr) {
       </div>
       <div class="col-md-6">
         <label class="f-label">É custo extra do cliente?</label>
-        <select id="em_isExtra" class="f-input">
+        <select id="em_isExtra" class="f-input" onchange="document.getElementById('em_cobradoWrap').style.display=this.value==='Sim'?'':'none'">
           <option value="Não"${!r.isExtra?' selected':''}>Não</option>
           <option value="Sim"${r.isExtra?' selected':''}>Sim</option>
         </select>
@@ -2747,6 +2788,12 @@ function openEditMaterial(rowNum, addr) {
         <label class="f-label">Valor Total Pago ($)</label>
         <div class="f-input-prefix"><span class="prefix">$</span>
           <input type="text" id="em_amount" class="f-input" inputmode="decimal" value="${r.amount||''}">
+        </div>
+      </div>
+      <div class="col-md-6" id="em_cobradoWrap" style="display:${r.isExtra?'':'none'}">
+        <label class="f-label">Valor Cobrado do Cliente ($)</label>
+        <div class="f-input-prefix"><span class="prefix">$</span>
+          <input type="text" id="em_cobrado" class="f-input" inputmode="decimal" value="${r.cobradoRaw||''}" placeholder="${r.amount||'0.00'}">
         </div>
       </div>
       <div class="col-md-6">
@@ -2807,13 +2854,17 @@ async function saveRowEdit() {
     if (EDIT_ROW_STATE.type === 'material') {
       const raw = document.getElementById('em_amount').value.replace(',', '.');
       const newAmount = raw ? parseFloat(raw) : null;
+      const isExtraVal = document.getElementById('em_isExtra').value;
+      const cobradoStr = (document.getElementById('em_cobrado').value || '').replace(',', '.').trim();
+      const newCobrado = (isExtraVal === 'Sim' && cobradoStr && !isNaN(parseFloat(cobradoStr))) ? parseFloat(cobradoStr) : null;
       const params = {
         action:  'updateMaterial',
         rowNum:  EDIT_ROW_STATE.rowNum,
         dataCom: document.getElementById('em_dataCom').value,
         desc:    document.getElementById('em_desc').value.trim(),
         amount:  newAmount != null ? String(newAmount) : '',
-        isExtra: document.getElementById('em_isExtra').value,
+        valorCobrado: newCobrado != null ? String(newCobrado) : '',
+        isExtra: isExtraVal,
         empresa: document.getElementById('em_empresa').value.trim(),
       };
       await apiWrite(params);
@@ -2822,6 +2873,7 @@ async function saveRowEdit() {
         dataCom: params.dataCom || PROC.materials[idx].dataCom,
         desc:    params.desc,
         amount:  newAmount != null ? newAmount : PROC.materials[idx].amount,
+        cobradoRaw: newCobrado != null ? newCobrado : '',
         isExtra: params.isExtra === 'Sim',
         company: params.empresa,
       });
