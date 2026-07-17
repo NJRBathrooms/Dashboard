@@ -3,14 +3,17 @@
   "functions": {
     "api/write.js": { "maxDuration": 60 },
     "api/emp-write.js": { "maxDuration": 60 },
-    "api/rentals-write.js": { "maxDuration": 60 }
+    "api/rentals-write.js": { "maxDuration": 60 },
+    "api/sub-form.js": { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/funcionarios", "destination": "/employees.html" },
-    { "source": "/rentals", "destination": "/rentals.html" }
+    { "source": "/rentals", "destination": "/rentals.html" },
+    { "source": "/subcontractors", "destination": "/subcontractors.html" }
   ],
   "crons": [
-    { "path": "/api/rentals-cron", "schedule": "0 12 * * *" }
+    { "path": "/api/rentals-cron", "schedule": "0 12 * * *" },
+    { "path": "/api/insurance-cron", "schedule": "0 13 * * *" }
   ],
   "headers": [
     {
@@ -28,7 +31,7 @@
       ]
     },
     {
-      "source": "/(rentals|funcionarios)",
+      "source": "/(rentals|funcionarios|subcontractors)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
       ]
