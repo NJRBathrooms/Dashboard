@@ -4,7 +4,7 @@
     "api/write.js": { "maxDuration": 60 },
     "api/emp-write.js": { "maxDuration": 60 },
     "api/rentals-write.js": { "maxDuration": 60 },
-    "api/sub-form.js": { "maxDuration": 60 }
+    "api/rentals-cron.js": { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/funcionarios", "destination": "/employees.html" },
@@ -12,8 +12,7 @@
     { "source": "/subcontractors", "destination": "/subcontractors.html" }
   ],
   "crons": [
-    { "path": "/api/rentals-cron", "schedule": "0 12 * * *" },
-    { "path": "/api/insurance-cron", "schedule": "0 13 * * *" }
+    { "path": "/api/rentals-cron", "schedule": "0 12 * * *" }
   ],
   "headers": [
     {
