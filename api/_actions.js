@@ -389,6 +389,122 @@ async function emailReport(params) {
   return { ok: true, to };
 }
 
+// ── INSURANCE & W9 (compliance de subcontratados) ──────────
+const SUBPROF_SHEET = 'Insurance & W9';
+const SUBPROF_HEADERS = ['Carimbo de data/hora', 'Owner Name', 'Company Name', 'Company Address', 'Email', 'Phone', 'COI Policy Number', 'Insurance Expiration', 'COI URL', 'EIN', 'W9 URL', 'Alerted30', 'AlertedExpired'];
+
+// localiza (ou cria) a aba "Insurance & W9" — mesmo padrão do saveAjuste
+async function ensureSubProfSheet() {
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === SUBPROF_SHEET);
+  if (!sh) {
+    await G.createSheet(SUBPROF_SHEET, SUBPROF_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === SUBPROF_SHEET);
+  }
+  return sh;
+}
+
+// chamado pelo endpoint PÚBLICO (sub-form.js) após validar a chave do link
+async function addSubProfile(fields) {
+  const sh = await ensureSubProfSheet();
+  if (!sh) return { error: 'Could not create the "Insurance & W9" tab.' };
+  const row = G.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: G.nowInTz() },
+    { key: 'Owner Name', val: fields.ownerName },
+    { key: 'Company Name', val: fields.companyName },
+    { key: 'Company Address', val: fields.companyAddress },
+    { key: 'Email', val: fields.email },
+    { key: 'Phone', val: fields.phone, forceText: true },
+    { key: 'COI Policy Number', val: fields.coiPolicyNumber, forceText: true },
+    { key: 'Insurance Expiration', val: fields.insuranceExpiration, forceText: true },
+    { key: 'COI URL', val: fields.coiUrl },
+    { key: 'EIN', val: fields.ein, forceText: true },
+    { key: 'W9 URL', val: fields.w9Url },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true };
+}
+
+async function updateSubProfile(params) {
+  const sh = await ensureSubProfSheet();
+  if (!sh) return { error: 'Aba "Insurance & W9" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  const forceText = ['phone', 'coiPolicyNumber', 'insuranceExpiration', 'ein'];
+  const map = {
+    ownerName: 'Owner Name', companyName: 'Company Name', companyAddress: 'Company Address',
+    email: 'Email', phone: 'Phone', coiPolicyNumber: 'COI Policy Number',
+    insuranceExpiration: 'Insurance Expiration', ein: 'EIN',
+  };
+  const updates = [];
+  Object.entries(map).forEach(([pk, hdr]) => {
+    if (params[pk] !== undefined) updates.push({ key: hdr, val: String(params[pk] || '').trim(), forceText: forceText.includes(pk) });
+  });
+  // vencimento alterado → rearma os alertas do cron
+  if (params.insuranceExpiration !== undefined) {
+    updates.push({ key: 'Alerted30', val: '' }, { key: 'AlertedExpired', val: '' });
+  }
+  if (!updates.length) return { error: 'Nada para atualizar.' };
+  await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
+  return { ok: true };
+}
+
+async function deleteSubProfile(params) {
+  const sh = await ensureSubProfSheet();
+  if (!sh) return { error: 'Aba "Insurance & W9" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
+// URL do formulário público — sempre aponta para o domínio de produção
+function subFormUrl(origin) {
+  const { subFormKey } = require('./_subform');
+  const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const base = prodHost ? ('https://' + prodHost) : String(origin || '').replace(/\/+$/, '');
+  if (!base) return null;
+  return base + '/subcontractors?key=' + encodeURIComponent(subFormKey());
+}
+
+async function getSubFormLink(params) {
+  const url = subFormUrl(params.origin);
+  if (!url) return { error: 'URL do site indisponível.' };
+  return { ok: true, url };
+}
+
+// convite (em inglês) para o subcontratado enviar COI + W-9 pelo link seguro
+async function sendSubInvite(params) {
+  const email = String(params.email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'E-mail inválido.' };
+  const formUrl = subFormUrl(params.origin);
+  if (!formUrl) return { error: 'URL do site indisponível.' };
+  const eu = String(formUrl).replace(/&/g, '&amp;');
+  const html = `
+<div style="font-family:Arial,sans-serif;max-width:560px;color:#1a2b3c;line-height:1.55">
+  <p>Hello,</p>
+  <p>To keep you active as a subcontractor with <strong>NJR Bathrooms</strong>, we need a current
+  Certificate of Insurance (Workers' Compensation) and a completed, signed IRS Form W-9 on file.</p>
+  <p>Please use this secure link to submit everything — it takes about 5 minutes and no account is needed:</p>
+  <p style="margin:18px 0">
+    <a href="${eu}" style="background:#e8820c;color:#0d2137;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:700">Submit your Insurance &amp; W-9</a>
+  </p>
+  <p style="font-size:13px;color:#6b7c90">Or copy this link into your browser:<br><a href="${eu}">${eu}</a></p>
+  <p>Have ready:</p>
+  <ul>
+    <li>Your company legal name and address</li>
+    <li>Business email and phone</li>
+    <li>COI policy number and expiration date, with a PDF or photo of the certificate</li>
+    <li>Your EIN and a completed, signed Form W-9 (PDF or photo)</li>
+  </ul>
+  <p>When your insurance renews, please use the same link to submit the updated certificate.</p>
+  <p>Thank you,<br><strong>Nilmar Rebellatto</strong> — NJR Bathrooms</p>
+</div>`;
+  await G.sendEmail(email, 'Action Required — Insurance & W-9 on File with NJR Bathrooms', html, true);
+  return { ok: true, to: email };
+}
+
 // ── INVOICE (consulta) — envia por e-mail a Nilmar Rebellatto ──
 async function emailInvoice(params) {
   const to = process.env.INVOICE_EMAIL || 'tenilmar@icloud.com';
@@ -404,4 +520,6 @@ module.exports = {
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor,
+  SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
+  getSubFormLink, sendSubInvite,
 };
