@@ -152,6 +152,7 @@ async function readAll() {
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
   const cli   = findValues(byTitle, ['contato do cliente', 'email do cliente']);
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
+  const subp  = findValues(byTitle, ['company name', 'coi policy']);
   return {
     labor:          labor ? rowsToObjects(labor)     : [],
     materials:      mats  ? rowsToObjects(mats)      : [],
@@ -159,6 +160,7 @@ async function readAll() {
     obras:          obras ? rowsToObjects(obras)     : [],
     clients:        cli   ? rowsToObjects(cli)       : [],
     ajustes:        ajus  ? rowsToObjects(ajus)      : [],
+    subProfiles:    subp  ? rowsToObjects(subp)      : [],
     lastUpdated:    new Date().toISOString(),
   };
 }
