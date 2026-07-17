@@ -389,6 +389,74 @@ async function emailReport(params) {
   return { ok: true, to };
 }
 
+// ── USUÁRIOS / FUNCIONÁRIOS (nome, senha de login, rate/h) ──
+const FUNC_RATE_COL = 'Rate ($/h)';
+
+async function getFuncSheet() {
+  const { index } = await G.loadSheetIndex();
+  return G.findSheetEntry(index, ['nome', 'senha']);
+}
+
+// upsert por Nome: cria funcionário novo (nome+senha obrigatórios) ou
+// atualiza rate e/ou senha do existente (campos vazios = manter)
+async function saveFuncionario(params) {
+  const nome = (params.nome || '').trim();
+  if (!nome) return { error: 'Nome obrigatório.' };
+  const senha = (params.senha || '').trim();
+  const rate = (params.rate !== undefined && params.rate !== '') ? round2(params.rate) : undefined;
+
+  const sh = await getFuncSheet();
+  if (!sh) return { error: 'Aba "Funcionários" (colunas Nome/Senha) não encontrada na planilha.' };
+  await ensureColumn(sh, FUNC_RATE_COL);
+
+  const nomeIdx = sh.headers.indexOf('Nome');
+  const col = await G.readColumn(sh.title, nomeIdx);
+  let rowNum = 0;
+  for (let i = 1; i < col.length; i++) {
+    if (G.normStr(col[i]) === G.normStr(nome)) { rowNum = i + 1; break; }
+  }
+
+  // senha não pode se repetir: o login do app de horas identifica o funcionário só pela senha
+  if (senha) {
+    const senhaIdx = sh.headers.indexOf('Senha');
+    if (senhaIdx >= 0) {
+      const senhas = await G.readColumn(sh.title, senhaIdx);
+      for (let i = 1; i < senhas.length; i++) {
+        if ((i + 1) !== rowNum && String(senhas[i] || '').trim() === senha) {
+          return { error: 'Esta senha já está em uso por outro funcionário — escolha outra.' };
+        }
+      }
+    }
+  }
+
+  if (rowNum) {
+    const updates = [];
+    if (senha) updates.push({ key: 'Senha', val: senha, forceText: true });
+    if (rate !== undefined) updates.push({ key: FUNC_RATE_COL, val: rate });
+    if (!updates.length) return { error: 'Nada para atualizar — informe nova senha e/ou rate.' };
+    await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
+    return { ok: true, updated: true };
+  }
+
+  if (!senha) return { error: 'Senha é obrigatória para funcionário novo.' };
+  const row = G.buildRow(sh.headers, [
+    { key: 'Nome', val: nome },
+    { key: 'Senha', val: senha, forceText: true },
+    { key: FUNC_RATE_COL, val: rate !== undefined ? rate : '' },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true, created: true };
+}
+
+async function deleteFuncionario(params) {
+  const sh = await getFuncSheet();
+  if (!sh) return { error: 'Aba "Funcionários" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
 // ── INSURANCE & W9 (compliance de subcontratados) ──────────
 const SUBPROF_SHEET = 'Insurance & W9';
 const SUBPROF_HEADERS = ['Carimbo de data/hora', 'Owner Name', 'Company Name', 'Company Address', 'Email', 'Phone', 'COI Policy Number', 'Insurance Expiration', 'COI URL', 'EIN', 'W9 URL', 'Alerted30', 'AlertedExpired'];
@@ -520,6 +588,7 @@ module.exports = {
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor,
+  saveFuncionario, deleteFuncionario,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
 };
