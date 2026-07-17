@@ -384,6 +384,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-clipboard-list"></i> Registros</button>
     <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
     <button class="tab-btn" id="t6btn" onclick="showTab(6)"><i class="fas fa-shield-halved"></i> Insurance &amp; W9</button>
+    <button class="tab-btn" id="t7btn" onclick="showTab(7)"><i class="fas fa-users-gear"></i> Usuários</button>
     <div id="tabIndicator" class="tab-indicator"></div>
   </div>
 
@@ -802,6 +803,11 @@ tbody tr:hover td { background:#fafbfe; }
     <div id="insBody"></div>
   </div>
 
+  <!-- TAB 7: USUÁRIOS (funcionários do app de horas) -->
+  <div id="t7page" class="page" style="display:none">
+    <div id="usrBody"></div>
+  </div>
+
   </div>
 
   <!-- Edit Row Modal (material / subcontrato) -->
@@ -949,7 +955,60 @@ async function apiWrite(params) {
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); }
+
+// ══ TAB 7: USUÁRIOS (funcionários do app de horas) ════════
+function renderUsuarios(){
+  const el=document.getElementById('usrBody'); if(!el)return;
+  const fs=[...(PROC.funcionarios||[])].sort((a,b)=>a.nome.localeCompare(b.nome));
+  const trs=fs.map(f=>`<tr>
+    <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(f.nome)}"></div><strong>${escH(f.nome)}</strong></div></td>
+    <td>${f.rate>0?('<strong>$'+f.rate+'/h</strong>'):('$'+getRate(f.nome)+'/h <small style="color:#b45309;font-weight:700" title="Sem rate na planilha — usando o valor padrão do sistema. Edite para fixar.">(padrão)</small>')}</td>
+    <td style="color:#7b8ea4;letter-spacing:2px">••••••</td>
+    <td class="td-actions">
+      <button class="row-act-btn edit" onclick="openEditFuncionario(${f._row})" title="Alterar rate / trocar senha"><i class="fas fa-pen"></i></button>
+      <button class="row-act-btn del" onclick="delFuncionario(${f._row},'${esc(f.nome)}')" title="Excluir"><i class="fas fa-trash"></i></button>
+    </td></tr>`).join('');
+  el.innerHTML=`
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-users-gear" style="color:var(--orange)"></i>Usuários do app de horas</div>
+      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Funcionários que acessam o app <strong>/funcionarios</strong>. Cada um entra apenas com a própria senha; o <strong>rate/h</strong> define o custo de mão de obra nas obras e o pagamento semanal.</p>
+      <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px" onclick="openNewFuncionario()"><i class="fas fa-user-plus"></i> Novo funcionário</button>
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Funcionários cadastrados</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Nome</th><th>Rate</th><th>Senha</th><th>Ações</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="4" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum funcionário cadastrado — clique em "Novo funcionário"</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+}
+function funcionarioModal(f){ // f = null → novo funcionário
+  EDIT_ROW_STATE={ type:'funcionario', rowNum:f?f._row:null, addr:null };
+  document.getElementById('rowEditModalTitle').innerHTML='<i class="fas fa-users-gear" style="color:var(--orange)"></i><span>'+(f?'Editar Funcionário':'Novo Funcionário')+'</span>';
+  document.getElementById('rowEditModalBody').innerHTML=`
+    <div class="row g-3">
+      <div class="col-12"><label class="f-label">Nome completo ${f?'':'<span class="f-req">*</span>'}</label>
+        <input id="fu_nome" class="f-input" value="${f?escH(f.nome):''}" ${f?'readonly style="background:#f4f7fb"':''} placeholder="Ex.: João da Silva">
+        ${f?'':'<small style="color:#7b8ea4;font-size:11px;display:block;margin-top:4px">Este nome aparecerá nos registros de horas e relatórios.</small>'}
+      </div>
+      <div class="col-md-6"><label class="f-label">Rate ($/h) ${f?'':'<span class="f-req">*</span>'}</label>
+        <div class="f-input-prefix"><span class="prefix">$</span><input id="fu_rate" class="f-input" inputmode="decimal" value="${f&&f.rate>0?f.rate:''}" placeholder="Ex.: 25"></div>
+      </div>
+      <div class="col-md-6"><label class="f-label">${f?'Nova senha <small style="text-transform:none;color:#7b8ea4">(em branco = manter a atual)</small>':'Senha de acesso <span class="f-req">*</span>'}</label>
+        <input id="fu_senha" class="f-input" autocomplete="new-password" placeholder="${f?'••••••':'Senha única do funcionário'}">
+        <small style="color:#7b8ea4;font-size:11px;display:block;margin-top:4px">A senha identifica o funcionário no login — não pode se repetir entre funcionários.</small>
+      </div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
+function openNewFuncionario(){ funcionarioModal(null); }
+function openEditFuncionario(rowNum){ const f=(PROC.funcionarios||[]).find(x=>x._row===rowNum); if(!f){ alert('Registro não encontrado. Atualize a página.'); return; } funcionarioModal(f); }
+async function delFuncionario(rowNum,nome){
+  if(!confirm('Excluir o funcionário "'+nome+'"?\n\nEle perde o acesso ao app de horas. Os registros de horas já lançados são mantidos.'))return;
+  try{ await apiWrite({action:'deleteFuncionario',rowNum}); showToast('Funcionário excluído'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
+}
 
 // ══ TAB 6: INSURANCE & W9 ═════════════════════════════════
 let INS_SUB='control';
@@ -1171,7 +1230,7 @@ function getPageEl(n) { return document.getElementById('t'+n+'page'); }
 function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 
 function activateTab(n) {
-  [1,2,3,4,5,6].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
+  [1,2,3,4,5,6,7].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
 }
 // Where the tab-nav should scroll to so button `n` is centered (clamped to valid range)
 function navScrollLeftFor(n) {
@@ -1269,7 +1328,7 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     navEl = document.querySelector('.tab-nav');
     curN = CURRENT_TAB;
     targetN = curN+dir;
-    if (targetN<1 || targetN>6) { phase='edge'; return; }
+    if (targetN<1 || targetN>7) { phase='edge'; return; }
     curEl = getPageEl(curN); targetEl = getPageEl(targetN);
     viewW = viewport.offsetWidth || window.innerWidth;
     const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
@@ -1470,7 +1529,15 @@ function parseDate(v) {
   return isNaN(d.getTime())?null:d;
 }
 function normAddr(v) { return String(v||'').trim().replace(/\s+/g,' '); }
-function getRate(n) { return CFG.RATES[n]||20; }
+// Rate/h: 1º o cadastro da aba Usuários (planilha), 2º o CFG.RATES legado, 3º $20
+function getRate(n) {
+  const name=String(n||'').trim();
+  const fs=PROC.funcionarios||[];
+  let f=fs.find(x=>x.nome===name);
+  if(!f&&name) f=fs.find(x=>x.nome.split(' ')[0]===name.split(' ')[0]&&x.nome.split(' ')[0]!=='');
+  if(f&&f.rate>0) return f.rate;
+  return CFG.RATES[name]||20;
+}
 function getColor(n) {
   for (const k of Object.keys(CFG.COLORS)) { if (n&&n.includes(k.split(' ')[0])) return CFG.COLORS[k]; }
   return '#95a5a6';
@@ -1486,6 +1553,8 @@ function laborReceipts(r) {
   return [];
 }
 function processAll() {
+  // Usuários primeiro: getRate() (usado no mapeamento de labor abaixo) lê daqui
+  PROC.funcionarios=(DB.funcionarios||[]).map(f=>({ _row:f._row, nome:String(f.nome||'').trim(), rate:Number(f.rate)||0 })).filter(f=>f.nome);
   PROC.labor=DB.labor.map(r=>{
     let hrs=parseHrs(r['Horas tabalhadas']||r['Horas trabalhadas']);
     if (!hrs){ const en=parseHrs(r['Hora de entrada']),ex=parseHrs(r['Hora de saída']); if(en>0&&ex>en)hrs=ex-en; }
@@ -3077,6 +3146,21 @@ async function saveRowEdit() {
       closeEditModal();
       renderInsurance();
       loadData(); // background sync
+      return;
+    } else if (EDIT_ROW_STATE.type === 'funcionario') {
+      const isNew = !EDIT_ROW_STATE.rowNum;
+      const nome = document.getElementById('fu_nome').value.trim();
+      const rateStr = document.getElementById('fu_rate').value.trim().replace(',', '.');
+      const senha = document.getElementById('fu_senha').value.trim();
+      if (!nome) throw new Error('Nome é obrigatório.');
+      if (isNew && !senha) throw new Error('Senha é obrigatória para funcionário novo.');
+      if (isNew && (!rateStr || isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0)) throw new Error('Informe o rate ($/h).');
+      if (!isNew && rateStr && (isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0)) throw new Error('Rate inválido.');
+      if (!isNew && !senha && !rateStr) throw new Error('Informe novo rate e/ou nova senha.');
+      await apiWrite({ action: 'saveFuncionario', nome, senha, rate: rateStr ? String(parseFloat(rateStr)) : '' });
+      closeEditModal();
+      showToast(isNew ? 'Funcionário criado' : 'Funcionário atualizado');
+      await loadData(); // recarrega rates (afeta custos de M.O. em toda parte)
       return;
     } else {
       const raw = document.getElementById('es_amount').value.replace(',', '.');
