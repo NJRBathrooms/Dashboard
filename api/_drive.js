@@ -80,4 +80,4 @@ async function uploadFile(params) {
   return { ok: true, fileUrl: created.data.webViewLink, fileId: created.data.id, name: fileName };
 }
 
-module.exports = { getOrCreateFolder, uploadFile };
+module.exports = { getOrCreateFolder, uploadFile, findOrCreateFolder, safeName, ROOT_NAME };
