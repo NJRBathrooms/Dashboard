@@ -203,7 +203,7 @@ function fileB64(file) {
   });
 }
 async function api(payload) {
-  const r = await fetch('/api/sub-form', {
+  const r = await fetch('/api/write', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({ key: KEY }, payload)),
   });
@@ -218,7 +218,7 @@ async function uploadDocs(kind, companyName, setStatus) {
     setStatus('Uploading ' + label + ' (' + (i + 1) + ' of ' + FILES[kind].length + ')…');
     const f = FILES[kind][i];
     const d = await api({
-      action: 'upload', kind, companyName,
+      action: 'subFormUpload', kind, companyName,
       fileBase64: await fileB64(f),
       mimeType: f.type || 'application/octet-stream',
       fileName: f.name,
@@ -255,7 +255,7 @@ async function submitForm() {
     const w9Urls = await uploadDocs('w9', companyName, setStatus);
     setStatus('Saving your information…');
     await api({
-      action: 'submit',
+      action: 'subFormSubmit',
       ownerName, companyName, companyAddress, email, phone,
       coiPolicyNumber, insuranceExpiration,
       coiUrl: coiUrls.join(' '),
