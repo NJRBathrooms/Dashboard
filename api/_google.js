@@ -153,6 +153,7 @@ async function readAll() {
   const cli   = findValues(byTitle, ['contato do cliente', 'email do cliente']);
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   const subp  = findValues(byTitle, ['company name', 'coi policy']);
+  const func  = findValues(byTitle, ['nome', 'senha']);
   return {
     labor:          labor ? rowsToObjects(labor)     : [],
     materials:      mats  ? rowsToObjects(mats)      : [],
@@ -161,6 +162,13 @@ async function readAll() {
     clients:        cli   ? rowsToObjects(cli)       : [],
     ajustes:        ajus  ? rowsToObjects(ajus)      : [],
     subProfiles:    subp  ? rowsToObjects(subp)      : [],
+    // Usuários/funcionários — a senha NUNCA vai para o navegador, só nome e rate
+    funcionarios:   func  ? rowsToObjects(func).map(r => ({
+      _row: r._row,
+      nome: String(r['Nome'] || '').trim(),
+      rate: Number(r['Rate ($/h)']) || 0,
+      temSenha: String(r['Senha'] || '').trim() !== '',
+    })).filter(f => f.nome) : [],
     lastUpdated:    new Date().toISOString(),
   };
 }
@@ -186,11 +194,14 @@ async function readEmpData() {
   const labor = findValues(byTitle, ['nome do funcionário', 'hora de entrada']);
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
+  const func  = findValues(byTitle, ['nome', 'senha']);
   return {
-    labor:       labor ? rowsToObjects(labor) : [],
-    obras:       obras ? rowsToObjects(obras) : [],
-    ajustes:     ajus  ? rowsToObjects(ajus)  : [],
-    lastUpdated: new Date().toISOString(),
+    labor:        labor ? rowsToObjects(labor) : [],
+    obras:        obras ? rowsToObjects(obras) : [],
+    ajustes:      ajus  ? rowsToObjects(ajus)  : [],
+    // consumido só no servidor (emp-data extrai o rate do funcionário logado)
+    funcionarios: func  ? rowsToObjects(func)  : [],
+    lastUpdated:  new Date().toISOString(),
   };
 }
 
