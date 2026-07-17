@@ -311,6 +311,15 @@ tbody tr:hover td { background:#fafbfe; }
 .modal-cancel-btn { background:#f0f4f8; border:none; border-radius:10px; padding:10px 20px; font-size:14px; font-weight:600; color:#7b8ea4; cursor:pointer; }
 .modal-cancel-btn:hover { background:#dde7f1; }
 
+/* INSURANCE & W9 */
+.ins-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+@media(max-width:560px){ .ins-tiles { grid-template-columns:1fr; } }
+.ins-badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:800; letter-spacing:.3px; white-space:nowrap; }
+.ins-badge.exp { background:rgba(224,49,49,.12); color:#c0392b; }
+.ins-badge.soon { background:rgba(230,126,34,.15); color:#b45309; }
+.ins-badge.ok { background:rgba(39,174,96,.13); color:#1e8449; }
+.ins-badge.unk { background:#eef3f8; color:#7b8ea4; }
+
 /* CUSTO TOTAL PARA O CLIENTE + INVOICE */
 .client-cost-card { display:flex; align-items:center; gap:18px; background:linear-gradient(135deg,#0d2137,#173651); border-radius:16px; padding:20px 24px; margin-bottom:18px; color:#fff; flex-wrap:wrap; box-shadow:0 8px 26px rgba(13,33,55,.18); }
 .ccc-info { flex:1 1 auto; min-width:0; }
@@ -374,6 +383,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t3btn" onclick="showTab(3)"><i class="fas fa-plus-circle"></i> Incluir Obra / Cliente</button>
     <button class="tab-btn" id="t4btn" onclick="showTab(4)"><i class="fas fa-clipboard-list"></i> Registros</button>
     <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
+    <button class="tab-btn" id="t6btn" onclick="showTab(6)"><i class="fas fa-shield-halved"></i> Insurance &amp; W9</button>
     <div id="tabIndicator" class="tab-indicator"></div>
   </div>
 
@@ -783,6 +793,15 @@ tbody tr:hover td { background:#fafbfe; }
 
   </div>
 
+  <!-- TAB 6: INSURANCE & W9 -->
+  <div id="t6page" class="page" style="display:none">
+    <div class="subtab-nav">
+      <button class="subtab-btn active" id="insCtrlBtn" onclick="showInsSub('control')"><i class="fas fa-shield-halved"></i> Insurance Control</button>
+      <button class="subtab-btn" id="insRegBtn" onclick="showInsSub('registry')"><i class="fas fa-folder-open"></i> Registry</button>
+    </div>
+    <div id="insBody"></div>
+  </div>
+
   </div>
 
   <!-- Edit Row Modal (material / subcontrato) -->
@@ -899,7 +918,7 @@ document.getElementById('pwdInput').addEventListener('keydown', e => { if (e.key
 fetch('/api/emp-warmup').catch(() => {});
 
 // DATA STORE
-let DB   = { labor:[],materials:[],subcontractors:[],obras:[],clients:[],lastUpdated:null };
+let DB   = { labor:[],materials:[],subcontractors:[],obras:[],clients:[],subProfiles:[],lastUpdated:null };
 let PROC = { labor:[],materials:[],subs:[],obras:[],clients:[],ajustes:{} };
 let wkOff = 0;
 const T1CH = { donut:null, budget:null, bar:null };
@@ -930,7 +949,156 @@ async function apiWrite(params) {
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); }
+
+// ══ TAB 6: INSURANCE & W9 ═════════════════════════════════
+let INS_SUB='control';
+function showInsSub(w){ INS_SUB=w; document.getElementById('insCtrlBtn').classList.toggle('active',w==='control'); document.getElementById('insRegBtn').classList.toggle('active',w==='registry'); renderInsurance(); }
+
+// data de vencimento do seguro: ISO texto, serial do Sheets ou outros formatos
+function insExpDate(v){
+  if(v==null||v==='') return null;
+  const s=String(v).trim();
+  if(/^\d+(\.\d+)?$/.test(s)){ const n=parseFloat(s); if(n>20000&&n<80000){ const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000); return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()); } }
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return parseDate(s)||null;
+}
+function fmtExp(v){ const d=insExpDate(v); if(!d)return '—'; const p=n=>String(n).padStart(2,'0'); return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(); }
+// status: vencido / vence em <=30 dias / ativo / sem data (dia do vencimento ainda conta como coberto)
+function insStatusOf(v){
+  const d=insExpDate(v); if(!d) return { key:'unknown', days:NaN };
+  const t=new Date(); t.setHours(0,0,0,0);
+  const days=Math.round((d-t)/86400000);
+  if(days<0) return { key:'expired', days };
+  if(days<=30) return { key:'expiring', days };
+  return { key:'ok', days };
+}
+// só o cadastro mais recente de cada empresa vale (reenvio = renovação de seguro)
+function insLatest(){
+  const by={};
+  (PROC.subProfiles||[]).forEach(p=>{
+    const k=p.companyName.toLowerCase().trim(); if(!k)return;
+    const prev=by[k];
+    if(!prev||((p.ts?p.ts.getTime():0)>(prev.ts?prev.ts.getTime():0))) by[k]=p;
+  });
+  return Object.values(by);
+}
+// um documento pode ter vários arquivos (URLs separadas por espaço)
+function insDocLinks(urls,label){
+  const list=String(urls||'').split(/\s+/).filter(Boolean);
+  if(!list.length) return '—';
+  if(list.length===1) return `<a href="${escH(list[0])}" target="_blank" style="color:var(--orange);font-weight:700;white-space:nowrap"><i class="fas fa-paperclip"></i> ${label}</a>`;
+  return `<span style="white-space:nowrap"><i class="fas fa-paperclip" style="color:var(--orange)"></i> <strong>${label}</strong> `+list.map((u,i)=>`<a href="${escH(u)}" target="_blank" style="color:var(--orange);font-weight:700;margin-right:4px">${i+1}</a>`).join('')+'</span>';
+}
+function renderInsurance(){
+  const el=document.getElementById('insBody'); if(!el)return;
+  el.innerHTML = INS_SUB==='control' ? insControlHTML() : insRegistryHTML();
+}
+function insControlHTML(){
+  const rows=insLatest().map(p=>Object.assign({p},insStatusOf(p.insuranceExpiration)))
+    .sort((a,b)=>{ if(isNaN(a.days))return 1; if(isNaN(b.days))return -1; return a.days-b.days; });
+  const cnt=k=>rows.filter(r=>r.key===k).length;
+  const badge={expired:'<span class="ins-badge exp">Vencido</span>',expiring:'<span class="ins-badge soon">Vence em breve</span>',ok:'<span class="ins-badge ok">Ativo</span>',unknown:'<span class="ins-badge unk">Sem data</span>'};
+  const trs=rows.map(r=>`<tr>
+    <td><strong>${escH(r.p.companyName)}</strong></td>
+    <td>${escH(r.p.ownerName||'—')}</td>
+    <td>${escH(r.p.coiPolicyNumber||'—')}</td>
+    <td>${fmtExp(r.p.insuranceExpiration)}</td>
+    <td style="font-weight:800">${isNaN(r.days)?'—':(r.days<0?('há '+(-r.days)+' dias'):(r.days+' dias'))}</td>
+    <td>${badge[r.key]}</td>
+    <td>${insDocLinks(r.p.coiUrl,'Ver')}</td>
+  </tr>`).join('');
+  return `
+    <div class="ins-tiles">
+      <div class="metric-card"><div class="m-label">Vencidos</div><div class="m-value" style="color:#c0392b">${cnt('expired')}</div><div class="m-sub">precisam de COI novo</div></div>
+      <div class="metric-card"><div class="m-label">Vencem ≤ 30 dias</div><div class="m-value" style="color:#b45309">${cnt('expiring')}</div><div class="m-sub">renovação próxima</div></div>
+      <div class="metric-card"><div class="m-label">Ativos</div><div class="m-value" style="color:#1e8449">${cnt('ok')}</div><div class="m-sub">seguro em dia</div></div>
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-shield-halved me-2" style="color:var(--orange)"></i>Controle de seguros — cadastro mais recente por empresa</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Empresa</th><th>Responsável</th><th>Apólice</th><th>Vencimento</th><th>Dias restantes</th><th>Status</th><th>COI</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="7" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum cadastro ainda — envie o link do formulário aos subcontratados (sub-aba Registry)</td></tr>`}</tbody>
+      </table></div>
+    </div>
+    <p style="font-size:12px;color:#7b8ea4;margin-top:10px"><i class="fas fa-info-circle"></i> Vale o cadastro mais recente de cada empresa. Um aviso diário por e-mail é enviado quando um seguro entra na janela de 30 dias e quando vence.</p>`;
+}
+function insRegistryHTML(){
+  const rows=[...(PROC.subProfiles||[])].sort((a,b)=>(b.ts?b.ts.getTime():0)-(a.ts?a.ts.getTime():0));
+  const trs=rows.map(p=>`<tr>
+    <td>${p.ts?p.ts.toLocaleDateString('pt-BR'):'—'}</td>
+    <td><strong>${escH(p.companyName)}</strong></td>
+    <td>${escH(p.ownerName||'—')}</td>
+    <td style="font-size:12px">${escH(p.email||'—')}<br><span style="color:#7b8ea4">${escH(p.phone||'')}</span></td>
+    <td>${escH(p.ein||'—')}</td>
+    <td>${escH(p.coiPolicyNumber||'—')}</td>
+    <td>${fmtExp(p.insuranceExpiration)}</td>
+    <td style="white-space:nowrap">${insDocLinks(p.coiUrl,'COI')} &nbsp; ${insDocLinks(p.w9Url,'W-9')}</td>
+    <td class="td-actions">
+      <button class="row-act-btn edit" onclick="openEditSubProfile(${p._row})" title="Editar"><i class="fas fa-pen"></i></button>
+      <button class="row-act-btn del" onclick="delSubProfile(${p._row})" title="Excluir"><i class="fas fa-trash"></i></button>
+    </td>
+  </tr>`).join('');
+  return `
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-paper-plane" style="color:var(--orange)"></i>Enviar formulário ao subcontratado</div>
+      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Envia um e-mail (em inglês) pedindo o Certificate of Insurance e o W-9 assinado, com o link seguro do formulário. O subcontratado preenche sem senha.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input type="email" id="insInviteEmail" class="f-input" placeholder="email@empresa.com" style="flex:1;min-width:220px">
+        <button class="submit-btn" id="insInviteBtn" style="margin-top:0;width:auto;padding:12px 20px" onclick="sendInsInvite()"><i class="fas fa-paper-plane"></i> Enviar</button>
+        <button class="submit-btn" id="insLinkBtn" style="margin-top:0;width:auto;padding:12px 20px;background:var(--navy)" onclick="copyInsLink()"><i class="fas fa-link"></i> Copiar link</button>
+      </div>
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-folder-open me-2" style="color:var(--orange)"></i>Registry — todos os envios (histórico)</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Enviado</th><th>Empresa</th><th>Responsável</th><th>Contato</th><th>EIN</th><th>Apólice</th><th>Vencimento</th><th>Docs</th><th>Ações</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="9" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum envio ainda — use o botão acima para convidar um subcontratado</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+}
+async function sendInsInvite(){
+  const inp=document.getElementById('insInviteEmail'); const email=(inp.value||'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Informe um e-mail válido',true); return; }
+  const btn=document.getElementById('insInviteBtn'); btn.disabled=true;
+  btn.innerHTML='<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;display:inline-block"></div> Enviando...';
+  try{ await apiWrite({action:'sendSubInvite',email,origin:location.origin}); showToast('Formulário enviado para '+email); inp.value=''; }
+  catch(e){ showToast(e.message,true); }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Enviar'; }
+}
+async function copyInsLink(){
+  try{
+    const r=await apiWrite({action:'getSubFormLink',origin:location.origin});
+    try{ await navigator.clipboard.writeText(r.url); showToast('Link do formulário copiado'); }
+    catch(_){ prompt('Copie o link do formulário:', r.url); }
+  }catch(e){ showToast(e.message,true); }
+}
+async function delSubProfile(rowNum){
+  if(!confirm('Excluir este cadastro? Esta ação não pode ser desfeita.'))return;
+  try{ await apiWrite({action:'deleteSubProfile',rowNum}); showToast('Cadastro excluído'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
+}
+function openEditSubProfile(rowNum){
+  const p=PROC.subProfiles.find(x=>x._row===rowNum);
+  if(!p){ alert('Registro não encontrado. Atualize a página.'); return; }
+  EDIT_ROW_STATE={ type:'subprofile', rowNum, addr:null };
+  const d=insExpDate(p.insuranceExpiration);
+  const iso=d?(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')):'';
+  document.getElementById('rowEditModalTitle').innerHTML='<i class="fas fa-shield-halved" style="color:var(--orange)"></i><span>Editar Cadastro — Insurance &amp; W9</span>';
+  document.getElementById('rowEditModalBody').innerHTML=`
+    <div class="row g-3">
+      <div class="col-md-6"><label class="f-label">Owner Full Name</label><input id="ei_owner" class="f-input" value="${escH(p.ownerName)}"></div>
+      <div class="col-md-6"><label class="f-label">Company Legal Name</label><input id="ei_company" class="f-input" value="${escH(p.companyName)}"></div>
+      <div class="col-12"><label class="f-label">Company Address</label><input id="ei_address" class="f-input" value="${escH(p.companyAddress)}"></div>
+      <div class="col-md-6"><label class="f-label">Business Email</label><input id="ei_email" class="f-input" value="${escH(p.email)}"></div>
+      <div class="col-md-6"><label class="f-label">Business Phone</label><input id="ei_phone" class="f-input" value="${escH(p.phone)}"></div>
+      <div class="col-md-6"><label class="f-label">COI Policy Number</label><input id="ei_policy" class="f-input" value="${escH(p.coiPolicyNumber)}"></div>
+      <div class="col-md-6"><label class="f-label">Insurance Expiration</label><input id="ei_exp" type="date" class="f-input" value="${iso}"></div>
+      <div class="col-md-6"><label class="f-label">EIN</label><input id="ei_ein" class="f-input" value="${escH(p.ein)}"></div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
 
 // Sub-abas da aba "Incluir Obra / Cliente" e "Registros"
 function showT3(w){ document.getElementById('st3obra').style.display=w==='obra'?'':'none'; document.getElementById('st3cli').style.display=w==='cli'?'':'none'; document.getElementById('st3obraBtn').classList.toggle('active',w==='obra'); document.getElementById('st3cliBtn').classList.toggle('active',w==='cli'); }
@@ -1003,7 +1171,7 @@ function getPageEl(n) { return document.getElementById('t'+n+'page'); }
 function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 
 function activateTab(n) {
-  [1,2,3,4,5].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
+  [1,2,3,4,5,6].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
 }
 // Where the tab-nav should scroll to so button `n` is centered (clamped to valid range)
 function navScrollLeftFor(n) {
@@ -1101,7 +1269,7 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     navEl = document.querySelector('.tab-nav');
     curN = CURRENT_TAB;
     targetN = curN+dir;
-    if (targetN<1 || targetN>5) { phase='edge'; return; }
+    if (targetN<1 || targetN>6) { phase='edge'; return; }
     curEl = getPageEl(curN); targetEl = getPageEl(targetN);
     viewW = viewport.offsetWidth || window.innerWidth;
     const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
@@ -1367,6 +1535,21 @@ function processAll() {
     email:String(r['Email do Cliente']||'').trim(),
     obs:String(r['Observação']||'').trim(),
   })).filter(c=>c.nome);
+  // Insurance & W9 — cadastros de compliance enviados pelo formulário público
+  PROC.subProfiles=(DB.subProfiles||[]).map(r=>({
+    _row:r['_row'],
+    ts:parseDate(r['Carimbo de data/hora']),
+    ownerName:String(r['Owner Name']||'').trim(),
+    companyName:String(r['Company Name']||'').trim(),
+    companyAddress:String(r['Company Address']||'').trim(),
+    email:String(r['Email']||'').trim(),
+    phone:String(r['Phone']||'').trim(),
+    coiPolicyNumber:String(r['COI Policy Number']||'').trim(),
+    insuranceExpiration:String(r['Insurance Expiration']||'').trim(),
+    coiUrl:String(r['COI URL']||'').trim(),
+    ein:String(r['EIN']||'').trim(),
+    w9Url:String(r['W9 URL']||'').trim(),
+  })).filter(p=>p.companyName);
   // Ajustes de pagamento (bonificação/desconto) keyed por funcionário + semana
   PROC.ajustes={};
   (DB.ajustes||[]).forEach(r=>{
@@ -2877,6 +3060,24 @@ async function saveRowEdit() {
         isExtra: params.isExtra === 'Sim',
         company: params.empresa,
       });
+    } else if (EDIT_ROW_STATE.type === 'subprofile') {
+      const vals = {
+        ownerName: document.getElementById('ei_owner').value.trim(),
+        companyName: document.getElementById('ei_company').value.trim(),
+        companyAddress: document.getElementById('ei_address').value.trim(),
+        email: document.getElementById('ei_email').value.trim(),
+        phone: document.getElementById('ei_phone').value.trim(),
+        coiPolicyNumber: document.getElementById('ei_policy').value.trim(),
+        insuranceExpiration: document.getElementById('ei_exp').value,
+        ein: document.getElementById('ei_ein').value.trim(),
+      };
+      await apiWrite(Object.assign({ action: 'updateSubProfile', rowNum: EDIT_ROW_STATE.rowNum }, vals));
+      const idx = PROC.subProfiles.findIndex(x => x._row === EDIT_ROW_STATE.rowNum);
+      if (idx >= 0) Object.assign(PROC.subProfiles[idx], vals);
+      closeEditModal();
+      renderInsurance();
+      loadData(); // background sync
+      return;
     } else {
       const raw = document.getElementById('es_amount').value.replace(',', '.');
       const newAmount = raw ? parseFloat(raw) : null;
