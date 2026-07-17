@@ -20,6 +20,8 @@ const HANDLERS = {
   deleteSubProfile: A.deleteSubProfile,
   saveFuncionario: A.saveFuncionario,
   deleteFuncionario: A.deleteFuncionario,
+  updateLabor: A.updateLabor,
+  deleteLabor: A.deleteLabor,
   getSubFormLink: A.getSubFormLink,
   sendSubInvite: A.sendSubInvite,
   getOrCreateFolder,

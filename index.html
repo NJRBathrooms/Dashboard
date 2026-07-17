@@ -1565,7 +1565,7 @@ function processAll() {
     // Material comprado e pago pela NJR (Nilmar) → entra como custo de material da obra
     const isNjrPaid=bought&&(paid.includes('njr')||paid.includes('nilmar')||paid.includes('bathrooms'));
     const amt=parseAmt(r['Valor total gasto']);
-    return { ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
+    return { _row:r['_row'], ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
       emp:String(r['Nome do funcionário']||'').trim(), hrs,rate, laborCost:hrs*rate,
       isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, receipts:laborReceipts(r),
       entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
@@ -1799,17 +1799,52 @@ function dayTableHTML(rows) {
     <td>${ft(r.entryRaw)}</td><td>${ft(r.exitRaw)}</td>
     <td><strong>${fhm(r.hrs)}</strong></td>
     <td>${r.reimb>0?'<span style="color:#27ae60;font-weight:700">'+$$(r.reimb)+'</span>':'—'}</td>
+    <td class="td-actions">${r._row?`
+      <button class="row-act-btn edit" onclick="openEditLabor(${r._row})" title="Editar registro"><i class="fas fa-pen"></i></button>
+      <button class="row-act-btn del" onclick="delLabor(${r._row})" title="Excluir registro"><i class="fas fa-trash"></i></button>`:'—'}
+    </td>
   </tr>`).join('');
   return `
     <div class="data-table" style="margin-top:14px">
       <div class="table-head"><i class="fas fa-list me-2" style="color:var(--orange)"></i>Detalhamento diário</div>
       <div class="table-responsive">
         <table>
-          <thead><tr><th>Data</th><th>Dia</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Reembolso</th></tr></thead>
+          <thead><tr><th>Data</th><th>Dia</th><th>Endereço</th><th>Entrada</th><th>Saída</th><th>Horas</th><th>Reembolso</th><th>Ações</th></tr></thead>
           <tbody>${trs}</tbody>
         </table>
       </div>
     </div>`;
+}
+// Edição/exclusão de registro de horas — SOMENTE no app admin (o app do
+// funcionário não tem essas ações; o backend exige o cookie de admin)
+function openEditLabor(rowNum){
+  const r=(PROC.labor||[]).find(x=>x._row===rowNum);
+  if(!r){ alert('Registro não encontrado. Atualize a página.'); return; }
+  EDIT_ROW_STATE={ type:'labor', rowNum, addr:null };
+  const iso=r.ts?(r.ts.getFullYear()+'-'+String(r.ts.getMonth()+1).padStart(2,'0')+'-'+String(r.ts.getDate()).padStart(2,'0')):'';
+  const t=v=>{ const s=ft(v); return s==='—'?'':s; };
+  const addrs=[...new Set(PROC.obras.map(o=>o.addr).concat(r.addr?[r.addr]:[]))].sort();
+  document.getElementById('rowEditModalTitle').innerHTML='<i class="fas fa-user-clock" style="color:var(--orange)"></i><span>Editar Horas — '+escH(r.emp)+'</span>';
+  document.getElementById('rowEditModalBody').innerHTML=`
+    <div class="row g-3">
+      <div class="col-md-6"><label class="f-label">Data do registro</label>
+        <input type="date" id="el_data" class="f-input" value="${iso}"></div>
+      <div class="col-md-6"><label class="f-label">Endereço da obra</label>
+        <select id="el_addr" class="f-input">${addrs.map(a=>`<option${a===r.addr?' selected':''}>${escH(a)}</option>`).join('')}</select></div>
+      <div class="col-md-6"><label class="f-label">Hora de entrada</label>
+        <input id="el_entry" class="f-input" inputmode="numeric" placeholder="08:00" value="${escH(t(r.entryRaw))}"></div>
+      <div class="col-md-6"><label class="f-label">Hora de saída</label>
+        <input id="el_exit" class="f-input" inputmode="numeric" placeholder="17:00" value="${escH(t(r.exitRaw))}"></div>
+      <div class="col-12"><small style="color:#7b8ea4;font-size:11.5px"><i class="fas fa-info-circle"></i> Formato 24h (HH:MM). As horas trabalhadas são recalculadas automaticamente a partir de entrada/saída.</small></div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
+async function delLabor(rowNum){
+  const r=(PROC.labor||[]).find(x=>x._row===rowNum);
+  const quem=r?(r.emp+' — '+(r.ts?r.ts.toLocaleDateString('pt-BR'):'')):'este registro';
+  if(!confirm('Excluir o registro de horas de '+quem+'?\n\nEsta ação não pode ser desfeita e afeta o pagamento da semana e o custo da obra.'))return;
+  try{ await apiWrite({action:'deleteLabor',rowNum}); showToast('Registro excluído'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
 }
 
 // Tabela "Bonificações e Descontos" (Visão Detalhada)
@@ -3146,6 +3181,20 @@ async function saveRowEdit() {
       closeEditModal();
       renderInsurance();
       loadData(); // background sync
+      return;
+    } else if (EDIT_ROW_STATE.type === 'labor') {
+      const data = document.getElementById('el_data').value;
+      const laddr = document.getElementById('el_addr').value.trim();
+      const entry = document.getElementById('el_entry').value.trim();
+      const exit = document.getElementById('el_exit').value.trim();
+      const tRx = /^\d{1,2}:\d{2}$/;
+      if (!data) throw new Error('Data é obrigatória.');
+      if (!laddr) throw new Error('Endereço é obrigatório.');
+      if (!tRx.test(entry) || !tRx.test(exit)) throw new Error('Horas inválidas — use o formato HH:MM (ex.: 08:00).');
+      await apiWrite({ action: 'updateLabor', rowNum: EDIT_ROW_STATE.rowNum, data, addr: laddr, entryTime: entry, exitTime: exit });
+      closeEditModal();
+      showToast('Registro de horas atualizado');
+      await loadData(); // recalcula pagamento da semana e custo da obra
       return;
     } else if (EDIT_ROW_STATE.type === 'funcionario') {
       const isNew = !EDIT_ROW_STATE.rowNum;

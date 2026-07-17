@@ -389,6 +389,51 @@ async function emailReport(params) {
   return { ok: true, to };
 }
 
+// ── HORAS: edição/exclusão pelo ADMIN (nunca pelo funcionário) ──
+function timeToDec(s) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const h = +m[1], min = +m[2];
+  if (h > 23 || min > 59) return null;
+  return h + min / 60;
+}
+
+async function updateLabor(params) {
+  const { index } = await G.loadSheetIndex();
+  const sh = G.findSheetEntry(index, KW.labor);
+  if (!sh) return { error: 'Aba de registro de trabalho não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+
+  const updates = [];
+  if (params.addr !== undefined) updates.push({ key: 'Endereço da obra', val: String(params.addr || '').trim() });
+  if (params.entryTime !== undefined) updates.push({ key: 'Hora de entrada', val: String(params.entryTime || '').trim() });
+  if (params.exitTime !== undefined) updates.push({ key: 'Hora de saída', val: String(params.exitTime || '').trim() });
+  // data do registro (mantém 12:00 para não mudar de dia por fuso)
+  if (params.data && /^\d{4}-\d{2}-\d{2}$/.test(params.data)) {
+    updates.push({ key: 'Carimbo de data/hora', val: params.data + ' 12:00:00' });
+  }
+  // a coluna "horas trabalhadas" tem prioridade no dashboard — recalcula junto
+  const en = timeToDec(params.entryTime), ex = timeToDec(params.exitTime);
+  if (en != null && ex != null) {
+    if (ex <= en) return { error: 'Hora de saída deve ser depois da entrada.' };
+    updates.push({ key: 'horas trab', fuzzy: true, val: Math.round((ex - en) * 100) / 100 });
+  }
+  if (!updates.length) return { error: 'Nada para atualizar.' };
+  await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
+  return { ok: true };
+}
+
+async function deleteLabor(params) {
+  const { index } = await G.loadSheetIndex();
+  const sh = G.findSheetEntry(index, KW.labor);
+  if (!sh) return { error: 'Aba de registro de trabalho não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
 // ── USUÁRIOS / FUNCIONÁRIOS (nome, senha de login, rate/h) ──
 const FUNC_RATE_COL = 'Rate ($/h)';
 
@@ -587,7 +632,7 @@ module.exports = {
   addObra, closeObra, updateObra, saveAjuste, emailReport, emailInvoice,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
-  addCliente, addLabor,
+  addCliente, addLabor, updateLabor, deleteLabor,
   saveFuncionario, deleteFuncionario,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
