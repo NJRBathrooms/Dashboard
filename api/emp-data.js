@@ -38,7 +38,11 @@ module.exports = async function handler(req, res) {
         justDesc: String(r['Justificativa Desconto'] || ''),
       }));
 
-    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs, ajustes: myAdj });
+    // Rate/h cadastrado na aba Funcionários (a senha nunca sai do servidor)
+    const me = (data.funcionarios || []).find(f => String(f['Nome'] || '').trim() === empName);
+    const rate = me ? (Number(me['Rate ($/h)']) || 0) : 0;
+
+    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs, ajustes: myAdj, rate });
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao buscar dados: ' + err.message });
   }
