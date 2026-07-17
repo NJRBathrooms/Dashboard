@@ -102,7 +102,18 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, checked: checks.length, alertas: results });
+    // Insurance & W9 (subcontratados da NJR Bathrooms) — roda no mesmo cron
+    // diário para não gastar outra função serverless (limite de 12 no Hobby).
+    // Falha aqui não derruba os alertas de aluguel.
+    let insurance = null;
+    try {
+      const { runInsuranceCheck } = require('./_insurance-check');
+      insurance = await runInsuranceCheck();
+    } catch (e) {
+      insurance = { error: e.message };
+    }
+
+    return res.status(200).json({ ok: true, checked: checks.length, alertas: results, insurance });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
