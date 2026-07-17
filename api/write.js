@@ -27,13 +27,29 @@ const HANDLERS = {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  const body = await readBody(req);
+  const { action, ...params } = body;
+
+  // Formulário PÚBLICO de subcontratados (Insurance & W9): sem login —
+  // valida a chave que vai no link (?key=) em vez do cookie de sessão.
+  if (action === 'subFormUpload' || action === 'subFormSubmit') {
+    const { checkSubFormKey } = require('./_subform');
+    if (!checkSubFormKey(params.key)) {
+      return res.status(403).json({ error: 'Invalid or expired link. Please ask NJR Bathrooms for a new one.' });
+    }
+    try {
+      const SF = require('./_subform-api');
+      const fn = action === 'subFormUpload' ? SF.subFormUpload : SF.subFormSubmit;
+      return res.status(200).json(await fn(params));
+    } catch (err) {
+      return res.status(500).json({ error: 'Error: ' + err.message });
+    }
+  }
+
   const token = getCookieValue(req.headers.cookie, 'njr_token');
   if (!verifyToken(token, process.env.JWT_SECRET)) {
     return res.status(401).json({ error: 'Não autorizado.' });
   }
-
-  const body = await readBody(req);
-  const { action, ...params } = body;
   const fn = HANDLERS[action];
   if (!fn) return res.status(400).json({ error: 'Ação desconhecida: ' + action });
 
