@@ -16,6 +16,10 @@ const HANDLERS = {
   saveAjuste: A.saveAjuste,
   emailReport: A.emailReport,
   emailInvoice: A.emailInvoice,
+  updateSubProfile: A.updateSubProfile,
+  deleteSubProfile: A.deleteSubProfile,
+  getSubFormLink: A.getSubFormLink,
+  sendSubInvite: A.sendSubInvite,
   getOrCreateFolder,
   uploadFile,
 };
