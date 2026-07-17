@@ -18,6 +18,8 @@ const HANDLERS = {
   emailInvoice: A.emailInvoice,
   updateSubProfile: A.updateSubProfile,
   deleteSubProfile: A.deleteSubProfile,
+  saveFuncionario: A.saveFuncionario,
+  deleteFuncionario: A.deleteFuncionario,
   getSubFormLink: A.getSubFormLink,
   sendSubInvite: A.sendSubInvite,
   getOrCreateFolder,
