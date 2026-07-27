@@ -947,7 +947,7 @@ function renderFin(){
     +'<div class="metric green"><div class="lbl">Receitas '+fmtComp(comp)+'</div><div class="val">'+$$(totRec)+'</div></div>'
     +'<div class="metric red"><div class="lbl">Custos '+fmtComp(comp)+'</div><div class="val">'+$$(totCus)+'</div></div>'
     +'<div class="metric '+(totRec-totCus>=0?'green':'red')+'"><div class="lbl">Resultado</div><div class="val">'+$$(totRec-totCus)+'</div></div>'
-    +'<div class="metric"><div class="lbl">Provisões (depósitos)</div><div class="val">'+$$(deposits)+'</div></div>'
+    +'<div class="metric"><div class="lbl">Depósitos de segurança (Security Deposit)</div><div class="val">'+$$(deposits)+'</div></div>'
     +'</div>'
     +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Receita</th><th>Custos</th><th>Resultado</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="empty">Sem casas</td></tr>')
     +'<tr style="background:#f8fafd;font-weight:800"><td>TOTAL</td><td style="color:#27ae60">'+$$(totRec)+'</td><td style="color:#e74c3c">'+$$(totCus)+'</td><td style="color:'+(totRec-totCus>=0?'#27ae60':'#e74c3c')+'">'+$$(totRec-totCus)+'</td></tr>'
