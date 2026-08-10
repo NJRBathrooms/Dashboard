@@ -475,10 +475,14 @@ async function saveFuncionario(params) {
   }
 
   if (rowNum) {
+    // Reajuste de rate em funcionário existente NÃO passa por aqui: alteraria o
+    // custo de todas as horas já lançadas. Use addRateChange (com data de vigência).
+    if (rate !== undefined) {
+      return { error: 'Para alterar o rate use "Alterar rate" (botão $), informando a data de vigência — assim os registros anteriores não são recalculados.' };
+    }
     const updates = [];
     if (senha) updates.push({ key: 'Senha', val: senha, forceText: true });
-    if (rate !== undefined) updates.push({ key: FUNC_RATE_COL, val: rate });
-    if (!updates.length) return { error: 'Nada para atualizar — informe nova senha e/ou rate.' };
+    if (!updates.length) return { error: 'Nada para atualizar — informe a nova senha.' };
     await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
     return { ok: true, updated: true };
   }

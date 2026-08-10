@@ -967,7 +967,7 @@ function renderUsuarios(){
     <td style="color:#7b8ea4;letter-spacing:2px">••••••</td>
     <td class="td-actions">
       <button class="row-act-btn edit" onclick="openRateChange('${esc(f.nome)}')" title="Alterar rate a partir de uma data"><i class="fas fa-dollar-sign"></i></button>
-      <button class="row-act-btn edit" onclick="openEditFuncionario(${f._row})" title="Trocar senha / rate base"><i class="fas fa-pen"></i></button>
+      <button class="row-act-btn edit" onclick="openEditFuncionario(${f._row})" title="Trocar senha"><i class="fas fa-pen"></i></button>
       <button class="row-act-btn del" onclick="delFuncionario(${f._row},'${esc(f.nome)}')" title="Excluir"><i class="fas fa-trash"></i></button>
     </td></tr>`).join('');
   el.innerHTML=`
@@ -1047,10 +1047,16 @@ function funcionarioModal(f){ // f = null → novo funcionário
         <input id="fu_nome" class="f-input" value="${f?escH(f.nome):''}" ${f?'readonly style="background:#f4f7fb"':''} placeholder="Ex.: João da Silva">
         ${f?'':'<small style="color:#7b8ea4;font-size:11px;display:block;margin-top:4px">Este nome aparecerá nos registros de horas e relatórios.</small>'}
       </div>
-      <div class="col-md-6"><label class="f-label">Rate ($/h) ${f?'':'<span class="f-req">*</span>'}</label>
-        <div class="f-input-prefix"><span class="prefix">$</span><input id="fu_rate" class="f-input" inputmode="decimal" value="${f&&f.rate>0?f.rate:''}" placeholder="Ex.: 25"></div>
-      </div>
-      <div class="col-md-6"><label class="f-label">${f?'Nova senha <small style="text-transform:none;color:#7b8ea4">(em branco = manter a atual)</small>':'Senha de acesso <span class="f-req">*</span>'}</label>
+      ${f?`
+      <div class="col-12"><div style="background:#f4f7fb;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e">
+        <i class="fas fa-lock" style="margin-right:6px;color:#7b8ea4"></i>Rate vigente: <strong>$${currentRate(f.nome)}/h</strong>.
+        Para alterar, use o botão <i class="fas fa-dollar-sign"></i> na tabela — ele pede a <strong>data de vigência</strong> e preserva o histórico já lançado.
+      </div></div>`:`
+      <div class="col-md-6"><label class="f-label">Rate inicial ($/h) <span class="f-req">*</span></label>
+        <div class="f-input-prefix"><span class="prefix">$</span><input id="fu_rate" class="f-input" inputmode="decimal" placeholder="Ex.: 25"></div>
+        <small style="color:#7b8ea4;font-size:11px;display:block;margin-top:4px">Reajustes futuros são feitos pelo botão <i class="fas fa-dollar-sign"></i>, com data de vigência.</small>
+      </div>`}
+      <div class="${f?'col-12':'col-md-6'}"><label class="f-label">${f?'Nova senha <small style="text-transform:none;color:#7b8ea4">(em branco = manter a atual)</small>':'Senha de acesso <span class="f-req">*</span>'}</label>
         <input id="fu_senha" class="f-input" autocomplete="new-password" placeholder="${f?'••••••':'Senha única do funcionário'}">
         <small style="color:#7b8ea4;font-size:11px;display:block;margin-top:4px">A senha identifica o funcionário no login — não pode se repetir entre funcionários.</small>
       </div>
@@ -3312,17 +3318,18 @@ async function saveRowEdit() {
     } else if (EDIT_ROW_STATE.type === 'funcionario') {
       const isNew = !EDIT_ROW_STATE.rowNum;
       const nome = document.getElementById('fu_nome').value.trim();
-      const rateStr = document.getElementById('fu_rate').value.trim().replace(',', '.');
+      // rate só existe no cadastro novo — reajuste é sempre pelo fluxo com data de vigência
+      const rateEl = document.getElementById('fu_rate');
+      const rateStr = rateEl ? rateEl.value.trim().replace(',', '.') : '';
       const senha = document.getElementById('fu_senha').value.trim();
       if (!nome) throw new Error('Nome é obrigatório.');
       if (isNew && !senha) throw new Error('Senha é obrigatória para funcionário novo.');
-      if (isNew && (!rateStr || isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0)) throw new Error('Informe o rate ($/h).');
-      if (!isNew && rateStr && (isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0)) throw new Error('Rate inválido.');
-      if (!isNew && !senha && !rateStr) throw new Error('Informe novo rate e/ou nova senha.');
-      await apiWrite({ action: 'saveFuncionario', nome, senha, rate: rateStr ? String(parseFloat(rateStr)) : '' });
+      if (isNew && (!rateStr || isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0)) throw new Error('Informe o rate inicial ($/h).');
+      if (!isNew && !senha) throw new Error('Informe a nova senha. Para alterar o rate, use o botão $ na tabela (com data de vigência).');
+      await apiWrite({ action: 'saveFuncionario', nome, senha, rate: (isNew && rateStr) ? String(parseFloat(rateStr)) : '' });
       closeEditModal();
-      showToast(isNew ? 'Funcionário criado' : 'Funcionário atualizado');
-      await loadData(); // recarrega rates (afeta custos de M.O. em toda parte)
+      showToast(isNew ? 'Funcionário criado' : 'Senha atualizada');
+      await loadData();
       return;
     } else {
       const raw = document.getElementById('es_amount').value.replace(',', '.');
