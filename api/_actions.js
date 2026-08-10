@@ -502,6 +502,52 @@ async function deleteFuncionario(params) {
   return { ok: true };
 }
 
+// ── HISTÓRICO DE RATES (rate/h com data de vigência) ───────
+// Cada linha = "a partir de <Vigente Desde>, <Nome> passa a ganhar <Rate>".
+// Registros de horas ANTERIORES à data continuam valendo o rate antigo.
+const RATEHIST_SHEET = 'Histórico de Rates';
+const RATEHIST_HEADERS = ['Carimbo de data/hora', 'Nome', 'Rate ($/h)', 'Vigente Desde'];
+
+async function ensureRateHistSheet() {
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === RATEHIST_SHEET);
+  if (!sh) {
+    await G.createSheet(RATEHIST_SHEET, RATEHIST_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === RATEHIST_SHEET);
+  }
+  return sh;
+}
+
+async function addRateChange(params) {
+  const nome = (params.nome || '').trim();
+  if (!nome) return { error: 'Nome do funcionário obrigatório.' };
+  const rate = round2(params.rate);
+  if (!(rate > 0)) return { error: 'Rate deve ser maior que zero.' };
+  const desde = String(params.vigenteDesde || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return { error: 'Data de vigência inválida (use AAAA-MM-DD).' };
+
+  const sh = await ensureRateHistSheet();
+  if (!sh) return { error: 'Não foi possível criar a aba "Histórico de Rates".' };
+  const row = G.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: G.nowInTz() },
+    { key: 'Nome', val: nome },
+    { key: 'Rate ($/h)', val: rate },
+    { key: 'Vigente Desde', val: desde, forceText: true },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true };
+}
+
+async function deleteRateChange(params) {
+  const sh = await ensureRateHistSheet();
+  if (!sh) return { error: 'Aba "Histórico de Rates" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
 // ── INSURANCE & W9 (compliance de subcontratados) ──────────
 const SUBPROF_SHEET = 'Insurance & W9';
 const SUBPROF_HEADERS = ['Carimbo de data/hora', 'Owner Name', 'Company Name', 'Company Address', 'Email', 'Phone', 'COI Policy Number', 'Insurance Expiration', 'COI URL', 'EIN', 'W9 URL', 'Alerted30', 'AlertedExpired'];
@@ -634,6 +680,7 @@ module.exports = {
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor, updateLabor, deleteLabor,
   saveFuncionario, deleteFuncionario,
+  addRateChange, deleteRateChange,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
 };

@@ -42,7 +42,13 @@ module.exports = async function handler(req, res) {
     const me = (data.funcionarios || []).find(f => String(f['Nome'] || '').trim() === empName);
     const rate = me ? (Number(me['Rate ($/h)']) || 0) : 0;
 
-    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs, ajustes: myAdj, rate });
+    // Histórico de rate deste funcionário (cada item vale a partir de "desde")
+    const myRates = (data.rateHistory || [])
+      .filter(r => r.nome === empName)
+      .map(r => ({ rate: r.rate, desde: r.desde }))
+      .sort((a, b) => a.desde.localeCompare(b.desde));
+
+    return res.status(200).json({ emp: empName, labor: myLabor, allAddrs, ajustes: myAdj, rate, rateHistory: myRates });
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao buscar dados: ' + err.message });
   }

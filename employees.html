@@ -440,6 +440,11 @@ async function loadData() {
     ALL_ADDRS = data.allAddrs || [];
     MY_LABOR  = data.labor   || [];
     if (typeof data.rate === 'number' && data.rate > 0) EMP_RATE = data.rate; // rate vindo da aba Usuários
+    // alterações de rate com data de vigência (horas antigas mantêm o rate antigo)
+    EMP_RATE_HIST = (data.rateHistory || [])
+      .filter(r => r && r.rate > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(r.desde || '')))
+      .map(r => ({ rate: Number(r.rate), desde: String(r.desde) }))
+      .sort((a, b) => a.desde.localeCompare(b.desde));
     MY_ADJ = {};
     (data.ajustes || []).forEach(a => {
       if (a.week) MY_ADJ[a.week] = { bonif:a.bonif||0, justBonif:a.justBonif||'', desc:a.desc||0, justDesc:a.justDesc||'' };
@@ -910,12 +915,28 @@ function parseAmt(v) {
   const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n;
 }
 let EMP_RATE = null; // rate/h vindo do servidor (aba Usuários do admin) — tem prioridade
-function getRate(name) {
+let EMP_RATE_HIST = []; // [{rate, desde:'yyyy-MM-dd'}] ordenado por data
+// Data (Date) → 'yyyy-MM-dd' para comparar com a vigência do histórico de rates
+function isoDay(d) {
+  if (!(d instanceof Date)||isNaN(d.getTime())) return '';
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function baseRate(name) {
   if (EMP_RATE && EMP_RATE > 0) return EMP_RATE;
   for (const k of Object.keys(RATES)) {
     if (name&&(name===k||name.startsWith(k.split(' ')[0]))) return RATES[k];
   }
   return 20;
+}
+// Rate/h na data do registro: vale a última alteração com vigência <= data
+function getRate(name, when) {
+  const day=(when instanceof Date)?isoDay(when):(typeof when==='string'?when.slice(0,10):'');
+  if (day && EMP_RATE_HIST.length) {
+    const h=EMP_RATE_HIST.filter(x=>x.desde<=day);
+    if (h.length) return h[h.length-1].rate;
+  }
+  return baseRate(name);
 }
 function $$(v) { return '$'+(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtHrs(h) {
@@ -933,13 +954,17 @@ function buildWeekBlock(offset) {
     return ts && ts >= sun && ts <= sat;
   });
 
-  let totalHrs = 0, totalReim = 0;
-  const daySet = new Set();
+  let totalHrs = 0, totalReim = 0, laborPayCalc = 0;
+  const daySet = new Set(); const rateSet = new Set();
   const processed = rows.map(r => {
     let hrs = parseHrs(r['Horas tabalhadas'] || r['Horas trabalhadas']);
     if (!hrs) { const en = parseHrs(r['Hora de entrada']), ex = parseHrs(r['Hora de saída']); if (en > 0 && ex > en) hrs = ex - en; }
     totalHrs += hrs;
     const ts = parseDate(r['Carimbo de data/hora']);
+    // rate vigente na data do registro — mudanças de rate não alteram semanas passadas
+    const rowRate = getRate(EMP_NAME, ts);
+    laborPayCalc += hrs * rowRate;
+    if (hrs > 0) rateSet.add(rowRate);
     if (ts) daySet.add(ts.toDateString());
     const bought = String(r['Comprou materiais hoje?'] || '').toLowerCase() === 'sim';
     const paid = String(r['Quem pagou?'] || '').toLowerCase();
@@ -957,7 +982,13 @@ function buildWeekBlock(offset) {
     return `<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Nenhum registro nesta semana</strong></div>`;
   }
 
-  const rate = getRate(EMP_NAME), laborPay = totalHrs * rate, gasoline = daySet.size * 10;
+  const rateList = [...rateSet].sort((a,b)=>a-b);
+  const rate = rateList.length === 1 ? rateList[0] : getRate(EMP_NAME, sat);
+  const laborPay = laborPayCalc, gasoline = daySet.size * 10;
+  // se a semana tiver mais de um rate vigente, mostra os dois em vez de "× $R/h"
+  const moLbl = rateList.length > 1
+    ? `${fmtHrs(totalHrs)} — rates ${rateList.map(r=>'$'+r+'/h').join(' e ')}`
+    : `${fmtHrs(totalHrs)} × $${rate}/h`;
   const total = laborPay + totalReim + gasoline + (adj.bonif||0) - (adj.desc||0);
   const adjRows = `
       <div class="pay-row"><span class="pay-row-lbl">Bonificação (Extras)</span><span class="pay-row-val">${$$(adj.bonif||0)}</span></div>
@@ -966,7 +997,7 @@ function buildWeekBlock(offset) {
     <div class="pay-card">
       <div class="pay-card-title"><i class="fas fa-dollar-sign"></i> Demonstrativo de Pagamento</div>
       <div class="pay-row"><span class="pay-row-lbl">Horas trabalhadas</span><span class="pay-row-val">${fmtHrs(totalHrs)}</span></div>
-      <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fmtHrs(totalHrs)} × $${rate}/h)</span><span class="pay-row-val">${$$(laborPay)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${moLbl})</span><span class="pay-row-val">${$$(laborPay)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Reembolso de materiais</span><span class="pay-row-val">${$$(totalReim)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Adicional gasolina (${daySet.size} dia${daySet.size!==1?'s':''} × $10)</span><span class="pay-row-val">${$$(gasoline)}</span></div>
       ${adjRows}

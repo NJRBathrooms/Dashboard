@@ -154,7 +154,15 @@ async function readAll() {
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   const subp  = findValues(byTitle, ['company name', 'coi policy']);
   const func  = findValues(byTitle, ['nome', 'senha']);
+  const rateh = findValues(byTitle, ['nome', 'vigente desde']);
   return {
+    // Histórico de rate/h: cada linha vale a partir de "Vigente Desde"
+    rateHistory:    rateh ? rowsToObjects(rateh).map(r => ({
+      _row: r._row,
+      nome: String(r['Nome'] || '').trim(),
+      rate: Number(r['Rate ($/h)']) || 0,
+      desde: String(r['Vigente Desde'] || '').trim().slice(0, 10),
+    })).filter(r => r.nome && r.rate > 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.desde)) : [],
     labor:          labor ? rowsToObjects(labor)     : [],
     materials:      mats  ? rowsToObjects(mats)      : [],
     subcontractors: subs  ? rowsToObjects(subs, 11)  : [],
@@ -195,12 +203,18 @@ async function readEmpData() {
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   const func  = findValues(byTitle, ['nome', 'senha']);
+  const rateh = findValues(byTitle, ['nome', 'vigente desde']);
   return {
     labor:        labor ? rowsToObjects(labor) : [],
     obras:        obras ? rowsToObjects(obras) : [],
     ajustes:      ajus  ? rowsToObjects(ajus)  : [],
     // consumido só no servidor (emp-data extrai o rate do funcionário logado)
     funcionarios: func  ? rowsToObjects(func)  : [],
+    rateHistory:  rateh ? rowsToObjects(rateh).map(r => ({
+      nome: String(r['Nome'] || '').trim(),
+      rate: Number(r['Rate ($/h)']) || 0,
+      desde: String(r['Vigente Desde'] || '').trim().slice(0, 10),
+    })).filter(r => r.nome && r.rate > 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.desde)) : [],
     lastUpdated:  new Date().toISOString(),
   };
 }

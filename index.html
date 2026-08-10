@@ -963,10 +963,11 @@ function renderUsuarios(){
   const fs=[...(PROC.funcionarios||[])].sort((a,b)=>a.nome.localeCompare(b.nome));
   const trs=fs.map(f=>`<tr>
     <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(f.nome)}"></div><strong>${escH(f.nome)}</strong></div></td>
-    <td>${f.rate>0?('<strong>$'+f.rate+'/h</strong>'):('$'+getRate(f.nome)+'/h <small style="color:#b45309;font-weight:700" title="Sem rate na planilha — usando o valor padrão do sistema. Edite para fixar.">(padrão)</small>')}</td>
+    <td>${rateCellHTML(f)}</td>
     <td style="color:#7b8ea4;letter-spacing:2px">••••••</td>
     <td class="td-actions">
-      <button class="row-act-btn edit" onclick="openEditFuncionario(${f._row})" title="Alterar rate / trocar senha"><i class="fas fa-pen"></i></button>
+      <button class="row-act-btn edit" onclick="openRateChange('${esc(f.nome)}')" title="Alterar rate a partir de uma data"><i class="fas fa-dollar-sign"></i></button>
+      <button class="row-act-btn edit" onclick="openEditFuncionario(${f._row})" title="Trocar senha / rate base"><i class="fas fa-pen"></i></button>
       <button class="row-act-btn del" onclick="delFuncionario(${f._row},'${esc(f.nome)}')" title="Excluir"><i class="fas fa-trash"></i></button>
     </td></tr>`).join('');
   el.innerHTML=`
@@ -975,13 +976,67 @@ function renderUsuarios(){
       <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Funcionários que acessam o app <strong>/funcionarios</strong>. Cada um entra apenas com a própria senha; o <strong>rate/h</strong> define o custo de mão de obra nas obras e o pagamento semanal.</p>
       <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px" onclick="openNewFuncionario()"><i class="fas fa-user-plus"></i> Novo funcionário</button>
     </div>
-    <div class="data-table">
+    <div class="data-table mb-4">
       <div class="table-head"><i class="fas fa-users me-2" style="color:var(--orange)"></i>Funcionários cadastrados</div>
       <div class="table-responsive"><table>
-        <thead><tr><th>Nome</th><th>Rate</th><th>Senha</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Rate vigente</th><th>Senha</th><th>Ações</th></tr></thead>
         <tbody>${trs||`<tr><td colspan="4" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum funcionário cadastrado — clique em "Novo funcionário"</td></tr>`}</tbody>
       </table></div>
+    </div>
+    ${rateHistoryTableHTML()}`;
+}
+// Célula "Rate vigente" da tabela de usuários
+function rateCellHTML(f){
+  const hist=(PROC.rateHistory||[]).filter(h=>h.nome===f.nome);
+  const vig=currentRate(f.nome);
+  if(hist.length) {
+    const ult=hist[hist.length-1];
+    return '<strong>$'+vig+'/h</strong> <small style="color:#7b8ea4">desde '+fmtDay(ult.desde)+'</small>';
+  }
+  if(f.rate>0) return '<strong>$'+f.rate+'/h</strong>';
+  return '$'+vig+'/h <small style="color:#b45309;font-weight:700" title="Sem rate na planilha — usando o valor padrão do sistema.">(padrão)</small>';
+}
+// Tabela do histórico de alterações de rate
+function rateHistoryTableHTML(){
+  const hist=[...(PROC.rateHistory||[])].sort((a,b)=>b.desde.localeCompare(a.desde)||a.nome.localeCompare(b.nome));
+  const trs=hist.map(h=>`<tr>
+    <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(h.nome)}"></div>${escH(h.nome)}</div></td>
+    <td><strong>$${h.rate}/h</strong></td>
+    <td>${fmtDay(h.desde)}</td>
+    <td class="td-actions"><button class="row-act-btn del" onclick="delRateChange(${h._row},'${esc(h.nome)}','${esc(h.desde)}')" title="Excluir alteração"><i class="fas fa-trash"></i></button></td>
+  </tr>`).join('');
+  return `<div class="data-table">
+      <div class="table-head"><i class="fas fa-clock-rotate-left me-2" style="color:var(--orange)"></i>Histórico de alterações de rate</div>
+      <p style="font-size:12.5px;color:#7b8ea4;padding:12px 16px 0;margin:0">Cada alteração vale <strong>somente para as horas lançadas a partir da data de vigência</strong>. Os registros anteriores continuam com o rate antigo.</p>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Funcionário</th><th>Novo rate</th><th>Vigente desde</th><th>Ações</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="4" style="text-align:center;color:#7b8ea4;padding:26px">Nenhuma alteração registrada — use o botão <i class="fas fa-dollar-sign"></i> na tabela acima</td></tr>`}</tbody>
+      </table></div>
     </div>`;
+}
+function openRateChange(nome){
+  EDIT_ROW_STATE={ type:'ratechange', rowNum:null, addr:null, nome };
+  document.getElementById('rowEditModalTitle').innerHTML='<i class="fas fa-dollar-sign" style="color:var(--orange)"></i><span>Alterar rate — '+escH(nome)+'</span>';
+  const hoje=new Date(), p=n=>String(n).padStart(2,'0');
+  const hojeISO=hoje.getFullYear()+'-'+p(hoje.getMonth()+1)+'-'+p(hoje.getDate());
+  document.getElementById('rowEditModalBody').innerHTML=`
+    <div class="row g-3">
+      <div class="col-12"><div style="background:#eef6ff;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e">
+        Rate atual: <strong>$${currentRate(nome)}/h</strong>. O novo valor passa a valer <strong>apenas para as horas lançadas a partir da data de vigência</strong> — os registros anteriores ficam inalterados.
+      </div></div>
+      <div class="col-md-6"><label class="f-label">Novo rate ($/h) <span class="f-req">*</span></label>
+        <div class="f-input-prefix"><span class="prefix">$</span><input id="rc_rate" class="f-input" inputmode="decimal" placeholder="Ex.: 25"></div>
+      </div>
+      <div class="col-md-6"><label class="f-label">Vigente a partir de <span class="f-req">*</span></label>
+        <input id="rc_desde" class="f-input" type="date" value="${hojeISO}">
+      </div>
+    </div>`;
+  document.getElementById('rowEditModal').classList.add('open');
+}
+async function delRateChange(rowNum,nome,desde){
+  if(!confirm('Excluir a alteração de rate de "'+nome+'" a partir de '+fmtDay(desde)+'?\n\nOs cálculos voltam a usar o rate anterior a essa data.'))return;
+  try{ await apiWrite({action:'deleteRateChange',rowNum}); showToast('Alteração de rate excluída'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
 }
 function funcionarioModal(f){ // f = null → novo funcionário
   EDIT_ROW_STATE={ type:'funcionario', rowNum:f?f._row:null, addr:null };
@@ -1529,14 +1584,45 @@ function parseDate(v) {
   return isNaN(d.getTime())?null:d;
 }
 function normAddr(v) { return String(v||'').trim().replace(/\s+/g,' '); }
-// Rate/h: 1º o cadastro da aba Usuários (planilha), 2º o CFG.RATES legado, 3º $20
-function getRate(n) {
+// Data (Date) → 'yyyy-MM-dd' para comparar com a vigência do histórico de rates
+function isoDay(d) {
+  if(!(d instanceof Date)||isNaN(d.getTime())) return '';
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+// Rate/h "de base" (sem data): cadastro da aba Usuários → CFG.RATES legado → $20
+function baseRate(n) {
   const name=String(n||'').trim();
   const fs=PROC.funcionarios||[];
   let f=fs.find(x=>x.nome===name);
   if(!f&&name) f=fs.find(x=>x.nome.split(' ')[0]===name.split(' ')[0]&&x.nome.split(' ')[0]!=='');
   if(f&&f.rate>0) return f.rate;
   return CFG.RATES[name]||20;
+}
+// Rate/h na data informada: vale a última alteração com "Vigente Desde" <= data.
+// Sem data (ou antes da 1ª alteração) → rate de base, preservando o histórico.
+function getRate(n, when) {
+  const name=String(n||'').trim();
+  const day=(when instanceof Date)?isoDay(when):(typeof when==='string'?when.slice(0,10):'');
+  if(day){
+    const hist=(PROC.rateHistory||[]).filter(h=>h.nome===name&&h.desde<=day);
+    if(hist.length) return hist[hist.length-1].rate;
+  }
+  return baseRate(name);
+}
+// Formata 'yyyy-MM-dd' como dd/MM/yyyy sem passar por Date (evita deslocamento de fuso)
+function fmtDay(iso) {
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||'').trim());
+  return m?(m[3]+'/'+m[2]+'/'+m[1]):String(iso||'');
+}
+// Rate vigente hoje (para exibição em telas sem contexto de data)
+function currentRate(n) { return getRate(n, new Date()); }
+// Rótulo de taxa/h de um funcionário numa obra: um só rate, ou vários (mudança de rate no meio)
+function ratesLabel(nome, e) {
+  const list=(e&&e.rates)?[...e.rates].sort((a,b)=>a-b):[];
+  if (list.length>1) return list.map(r=>'$'+r).join(' / ')+'/h';
+  if (list.length===1) return '$'+list[0]+'/h';
+  return '$'+currentRate(nome)+'/h';
 }
 function getColor(n) {
   for (const k of Object.keys(CFG.COLORS)) { if (n&&n.includes(k.split(' ')[0])) return CFG.COLORS[k]; }
@@ -1555,17 +1641,23 @@ function laborReceipts(r) {
 function processAll() {
   // Usuários primeiro: getRate() (usado no mapeamento de labor abaixo) lê daqui
   PROC.funcionarios=(DB.funcionarios||[]).map(f=>({ _row:f._row, nome:String(f.nome||'').trim(), rate:Number(f.rate)||0 })).filter(f=>f.nome);
+  // Histórico de rates ordenado por data — getRate() lê daqui
+  PROC.rateHistory=(DB.rateHistory||[]).map(h=>({ _row:h._row, nome:String(h.nome||'').trim(), rate:Number(h.rate)||0, desde:String(h.desde||'').slice(0,10) }))
+    .filter(h=>h.nome&&h.rate>0&&/^\d{4}-\d{2}-\d{2}$/.test(h.desde))
+    .sort((a,b)=>a.desde.localeCompare(b.desde));
   PROC.labor=DB.labor.map(r=>{
     let hrs=parseHrs(r['Horas tabalhadas']||r['Horas trabalhadas']);
     if (!hrs){ const en=parseHrs(r['Hora de entrada']),ex=parseHrs(r['Hora de saída']); if(en>0&&ex>en)hrs=ex-en; }
-    const rate=getRate(r['Nome do funcionário']);
+    const ts=parseDate(r['Carimbo de data/hora']);
+    // rate vigente na data do registro (alterações de rate não mexem no passado)
+    const rate=getRate(r['Nome do funcionário'], ts);
     const paid=String(r['Quem pagou?']||'').toLowerCase();
     const bought=String(r['Comprou materiais hoje?']||'').toLowerCase()==='sim';
     const isReimb=bought&&(paid.includes('employee')||paid.includes('funcionário')||paid.includes('funcionario'));
     // Material comprado e pago pela NJR (Nilmar) → entra como custo de material da obra
     const isNjrPaid=bought&&(paid.includes('njr')||paid.includes('nilmar')||paid.includes('bathrooms'));
     const amt=parseAmt(r['Valor total gasto']);
-    return { _row:r['_row'], ts:parseDate(r['Carimbo de data/hora']), addr:normAddr(r['Endereço da obra']),
+    return { _row:r['_row'], ts, addr:normAddr(r['Endereço da obra']),
       emp:String(r['Nome do funcionário']||'').trim(), hrs,rate, laborCost:hrs*rate,
       isReimb, reimb:isReimb?amt:0, njrMat:isNjrPaid?amt:0, receipts:laborReceipts(r),
       entryRaw:r['Hora de entrada'], exitRaw:r['Hora de saída'] };
@@ -1646,8 +1738,9 @@ function calcAddr(addr) {
   const empMap={};
   lc.forEach(r=>{
     if (!r.emp) return;
-    if (!empMap[r.emp]) empMap[r.emp]={lc:0,hrs:0,reimb:0,days:new Set(),receipts:[]};
+    if (!empMap[r.emp]) empMap[r.emp]={lc:0,hrs:0,reimb:0,days:new Set(),receipts:[],rates:new Set()};
     empMap[r.emp].lc+=r.laborCost; empMap[r.emp].hrs+=r.hrs;
+    if (r.hrs>0) empMap[r.emp].rates.add(r.rate);
     empMap[r.emp].reimb+=r.reimb; if(r.ts)empMap[r.emp].days.add(r.ts.toDateString());
     if (r.receipts&&r.receipts.length) empMap[r.emp].receipts.push(...r.receipts);
   });
@@ -1708,10 +1801,19 @@ function escH(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</
 
 // Calcula o demonstrativo (mesmo do app de funcionário) a partir de registros PROC.labor
 function computeStats(rows, emp) {
-  let totalHrs=0, totalReim=0; const days=new Set();
-  rows.forEach(r=>{ totalHrs+=r.hrs; totalReim+=r.reimb; if(r.ts)days.add(r.ts.toDateString()); });
-  const rate=getRate(emp), laborPay=totalHrs*rate, gasoline=days.size*10;
-  return { totalHrs, totalReim, days:days.size, rate, laborPay, gasoline, total:laborPay+totalReim+gasoline };
+  let totalHrs=0, totalReim=0, laborPay=0; const days=new Set(); const rates=new Set();
+  rows.forEach(r=>{
+    totalHrs+=r.hrs; totalReim+=r.reimb;
+    // soma linha a linha: dentro do período pode haver mais de um rate vigente
+    laborPay+=(r.laborCost!=null?r.laborCost:r.hrs*getRate(emp,r.ts));
+    if(r.hrs>0) rates.add(r.rate);
+    if(r.ts)days.add(r.ts.toDateString());
+  });
+  const gasoline=days.size*10;
+  const rateList=[...rates].sort((a,b)=>a-b);
+  // rate único no período → exibe "N h × $R/h"; vários → exibe a faixa
+  const rate=rateList.length===1?rateList[0]:(rateList.length?0:getRate(emp,new Date()));
+  return { totalHrs, totalReim, days:days.size, rate, rateList, laborPay, gasoline, total:laborPay+totalReim+gasoline };
 }
 
 // HTML do card de pagamento. opts:{ adj, editable, cid }
@@ -1745,7 +1847,7 @@ function payCardHTML(emp, s, opts) {
     <div class="pay-card">
       <div class="pay-card-title"><i class="fas fa-user" style="color:${getColor(emp)}"></i> ${emp}</div>
       <div class="pay-row"><span class="pay-row-lbl">Horas trabalhadas</span><span class="pay-row-val">${fhm(s.totalHrs)}</span></div>
-      <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fhm(s.totalHrs)} × $${s.rate}/h)</span><span class="pay-row-val">${$$(s.laborPay)}</span></div>
+      <div class="pay-row"><span class="pay-row-lbl">Valor M.O. (${fhm(s.totalHrs)}${(s.rateList&&s.rateList.length>1)?' — rates '+s.rateList.map(r=>'$'+r+'/h').join(' e '):' × $'+s.rate+'/h'})</span><span class="pay-row-val">${$$(s.laborPay)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Reembolso de materiais</span><span class="pay-row-val">${$$(s.totalReim)}</span></div>
       <div class="pay-row"><span class="pay-row-lbl">Adicional gasolina (${s.days} dia${s.days!==1?'s':''} × $10)</span><span class="pay-row-val">${$$(s.gasoline)}</span></div>
       ${adjRows}
@@ -2176,7 +2278,7 @@ function obraDetailHTML(addr, ids) {
           <tbody>
             ${emps.map(([n,e])=>`<tr>
               <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(n)}"></div>${n}</div></td>
-              <td>${fhm(e.hrs)}</td><td>$${getRate(n)}/h</td><td>${$$(e.lc)}</td>
+              <td>${fhm(e.hrs)}</td><td>${ratesLabel(n,e)}</td><td>${$$(e.lc)}</td>
               <td>${e.reimb>0?$$(e.reimb):'—'}</td><td><strong>${$$(e.lc+e.reimb)}</strong></td>
               <td>${(e.receipts&&e.receipts.length)?e.receipts.map((u,i)=>`<a href="${u}" target="_blank" class="receipt-link"><i class="fas fa-receipt"></i> ${i+1}</a>`).join(' '):'—'}</td>
             </tr>`).join('')}
@@ -3195,6 +3297,17 @@ async function saveRowEdit() {
       closeEditModal();
       showToast('Registro de horas atualizado');
       await loadData(); // recalcula pagamento da semana e custo da obra
+      return;
+    } else if (EDIT_ROW_STATE.type === 'ratechange') {
+      const nome = EDIT_ROW_STATE.nome;
+      const rateStr = document.getElementById('rc_rate').value.trim().replace(',', '.');
+      const desde = document.getElementById('rc_desde').value;
+      if (!rateStr || isNaN(parseFloat(rateStr)) || parseFloat(rateStr) <= 0) throw new Error('Informe o novo rate ($/h).');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) throw new Error('Informe a data de vigência.');
+      await apiWrite({ action: 'addRateChange', nome, rate: String(parseFloat(rateStr)), vigenteDesde: desde });
+      closeEditModal();
+      showToast('Rate alterado a partir de ' + fmtDay(desde));
+      await loadData(); // recalcula só as horas a partir da vigência
       return;
     } else if (EDIT_ROW_STATE.type === 'funcionario') {
       const isNew = !EDIT_ROW_STATE.rowNum;
