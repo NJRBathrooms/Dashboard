@@ -325,10 +325,29 @@ async function loadData(){
     renderAll();
   }catch(e){ document.getElementById('hdrSub').textContent='Erro ao carregar'; showToast('Erro: '+e.message,true); }
 }
+// Requisições de escrita em voo — evita que um 2º toque no botão (enquanto a 1ª
+// chamada ainda não voltou) grave o mesmo lançamento duas vezes na planilha.
+const _inFlight=new Map();
 async function apiWrite(params){
-  const r=await fetch('/api/rentals-write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
-  if(r.status===401){ doLogout(); throw new Error('Sessão expirada'); }
-  const d=await r.json(); if(d.error) throw new Error(d.error); return d;
+  const body=JSON.stringify(params);
+  if(_inFlight.has(body)) return _inFlight.get(body); // mesma gravação já em curso
+  const p=(async()=>{
+    const r=await fetch('/api/rentals-write',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(r.status===401){ doLogout(); throw new Error('Sessão expirada'); }
+    const d=await r.json(); if(d.error) throw new Error(d.error); return d;
+  })();
+  _inFlight.set(body,p);
+  try{ return await p; }
+  finally{ _inFlight.delete(body); }
+}
+// Executa uma ação de gravação travando o botão (evita duplo toque e dá feedback)
+async function runBtn(btn, fn, labelHTML){
+  if(!btn) return fn();
+  if(btn.disabled) return;
+  const orig=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> '+(labelHTML||'Salvando…');
+  try{ return await fn(); }
+  finally{ btn.disabled=false; btn.innerHTML=orig; }
 }
 function renderAll(){ renderDash(); renderCad(); renderCustos(); renderMan(); renderFin(); requestAnimationFrame(()=>positionTabIndicator(CURRENT_TAB,false)); }
 
@@ -612,7 +631,7 @@ function openReceb(addr,compArg){
     +'<div style="display:flex;gap:10px;justify-content:flex-end">'
     +(rec?'<button class="mini-btn danger" onclick="delReceb('+rec._row+')"><i class="fas fa-trash"></i> Excluir</button>':'')
     +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn-primary2" onclick="saveReceb(\''+esc(addr).replace(/'/g,"\\'")+'\')">Salvar</button></div>');
+    +'<button class="btn-primary2" onclick="saveReceb(\''+esc(addr).replace(/'/g,"\\'")+'\',this)">Salvar</button></div>');
   onRecebInput();
 }
 function onRecebInput(){
@@ -625,13 +644,15 @@ function onRecebInput(){
   else{ el.style.display='none'; }
 }
 function isoOf(v){ const d=parseDate(v); return d?d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()):todayISO(); }
-async function saveReceb(addr){
+async function saveReceb(addr,btn){
   const raw=parseFloat(document.getElementById('rcVal').value);
   if(isNaN(raw)){ showToast('Valor obrigatório',true); return; }
   const total=(_recebMode==='installment')?Math.round((_recebPrev+raw)*100)/100:raw;
-  try{ await apiWrite({action:'markRecebido',addr,competencia:document.getElementById('rcComp').value.trim(),valorAluguel:total,dataPagamento:document.getElementById('rcData').value,obs:document.getElementById('rcObs').value});
-    closeModal(); showToast(_recebMode==='installment'?'Pagamento somado ao recebido':'Recebimento salvo'); await loadData();
-  }catch(e){ showToast(e.message,true); }
+  await runBtn(btn, async()=>{
+    try{ await apiWrite({action:'markRecebido',addr,competencia:document.getElementById('rcComp').value.trim(),valorAluguel:total,dataPagamento:document.getElementById('rcData').value,obs:document.getElementById('rcObs').value});
+      closeModal(); showToast(_recebMode==='installment'?'Pagamento somado ao recebido':'Recebimento salvo'); await loadData();
+    }catch(e){ showToast(e.message,true); }
+  });
 }
 async function delReceb(rowNum){ if(!confirm('Excluir este recebimento?'))return; try{ await apiWrite({action:'deleteRecebimento',rowNum}); closeModal(); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
 
@@ -750,7 +771,7 @@ function editCasa(addr){
     +(addr&&occ0?'<button class="mini-btn" style="margin-right:auto;background:#fff3e6;color:#b45309;font-weight:700" onclick="removeInquilino(\''+esc(addr).replace(/'/g,"\\'")+'\')"><i class="fas fa-user-minus"></i> Remover inquilino</button>':'')
     +(addr?'<button class="mini-btn danger" onclick="delCasa(\''+esc(addr).replace(/'/g,"\\'")+'\')"><i class="fas fa-trash"></i> Excluir casa</button>':'')
     +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn-primary2" onclick="saveCasa()">Salvar</button></div>');
+    +'<button class="btn-primary2" onclick="saveCasa(this)">Salvar</button></div>');
 }
 async function removeInquilino(addr){
   if(!confirm('Remover o inquilino desta casa?\n\nO endereço e os dados da casa serão mantidos, o inquilino vai para o "Histórico de inquilinos" e a casa passa a Vacância.'))return;
@@ -759,7 +780,7 @@ async function removeInquilino(addr){
   }catch(e){ showToast(e.message,true); }
 }
 function updCasaStatus(){ const el=document.getElementById('cStatusHint'); if(!el)return; const occ=document.getElementById('cInq').value.trim()!==''; el.className='badge2 '+(occ?'b-paid':'b-vac'); el.innerHTML=occ?'<i class="fas fa-user-check"></i> Ocupada':'<i class="fas fa-door-open"></i> Vacância'; }
-async function saveCasa(){
+async function saveCasa(btn){
   const inq=document.getElementById('cInq').value;
   const p={ action:'saveCasa', addr:document.getElementById('cAddr').value.trim(), status:(inq.trim()?'Ocupada':'Vacância'),
     inquilino:inq, contato:document.getElementById('cCont').value,
@@ -768,7 +789,9 @@ async function saveCasa(){
     seguradora:document.getElementById('cSeg').value, vigenciaSeguro:document.getElementById('cVig').value,
     obs:document.getElementById('cObs').value };
   if(!p.addr){ showToast('Endereço obrigatório',true); return; }
-  try{ await apiWrite(p); closeModal(); showToast('Casa salva'); await loadData(); }catch(e){ showToast(e.message,true); }
+  await runBtn(btn, async()=>{
+    try{ await apiWrite(p); closeModal(); showToast('Casa salva'); await loadData(); }catch(e){ showToast(e.message,true); }
+  });
 }
 async function delCasa(addr){ if(!confirm('Excluir a casa '+addr+'? (os lançamentos ficam na base)'))return; try{ await apiWrite({action:'deleteCasa',addr}); closeModal(); showToast('Casa excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
 
@@ -798,7 +821,7 @@ function addCusto(){
       +'</div>'
       +'<div style="font-size:11px;color:#7b8ea4;margin-top:8px">Lança o mesmo valor a partir de '+fmtComp(custComp)+', um por mês. Use 1 para só este mês.</div>'
     +'</div>'
-    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="mini-btn sec" onclick="closeModal()">Cancelar</button><button class="btn-primary2" onclick="saveCusto()">Salvar</button></div>');
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="mini-btn sec" onclick="closeModal()">Cancelar</button><button class="btn-primary2" onclick="saveCusto(this)">Salvar</button></div>');
   custTipoChange();
 }
 function custTipoChange(){
@@ -818,15 +841,17 @@ function ktVigFill(){
   if(months<1){ showToast('Vigência do seguro já passou',true); return; }
   document.getElementById('ktMeses').value=months; showToast(months+' meses até a vigência');
 }
-async function saveCusto(){
+async function saveCusto(btn){
   const tipo=document.getElementById('ktTipo').value, valor=document.getElementById('ktVal').value;
   if(!valor||isNaN(parseFloat(valor))){ showToast('Valor obrigatório',true); return; }
   const wrap=document.getElementById('ktRepeatWrap');
   let meses=1; if(wrap&&wrap.style.display!=='none'){ meses=parseInt(document.getElementById('ktMeses').value)||1; if(meses<1)meses=1; }
   const pagador=(tipo==='Água')?(document.getElementById('ktPagador').value||'Proprietário'):'';
-  try{ const r=await apiWrite({action:'lancarCusto',addr:document.getElementById('ktCasa').value,competencia:custComp,tipo,valor,dataPagamento:document.getElementById('ktData').value,desc:document.getElementById('ktDesc').value,meses,pagador});
-    closeModal(); showToast(meses>1?('Custo lançado em '+(r.count||meses)+' meses'):'Custo lançado'); await loadData();
-  }catch(e){ showToast(e.message,true); }
+  await runBtn(btn, async()=>{
+    try{ const r=await apiWrite({action:'lancarCusto',addr:document.getElementById('ktCasa').value,competencia:custComp,tipo,valor,dataPagamento:document.getElementById('ktData').value,desc:document.getElementById('ktDesc').value,meses,pagador});
+      closeModal(); showToast(meses>1?('Custo lançado em '+(r.count||meses)+' meses'):'Custo lançado'); await loadData();
+    }catch(e){ showToast(e.message,true); }
+  });
 }
 async function delCusto(rowNum){ if(!confirm('Excluir custo?'))return; try{ await apiWrite({action:'deleteCusto',rowNum}); showToast('Excluído'); await loadData(); }catch(e){ showToast(e.message,true); } }
 function editCusto(row){
@@ -851,17 +876,19 @@ function editCusto(row){
     +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">'
     +'<button class="mini-btn danger" style="margin-right:auto" onclick="delCusto('+row+')"><i class="fas fa-trash"></i> Excluir</button>'
     +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn-primary2" onclick="saveCustoEdit('+row+')">Salvar</button></div>');
+    +'<button class="btn-primary2" onclick="saveCustoEdit('+row+',this)">Salvar</button></div>');
 }
 function ecTipoChange(){ const t=document.getElementById('ecTipo').value, w=document.getElementById('ecAguaWrap'); if(w)w.style.display=(t==='Água')?'':'none'; }
-async function saveCustoEdit(row){
+async function saveCustoEdit(row,btn){
   const k=DB.custos.find(x=>x._row===row); if(!k)return;
   const tipo=document.getElementById('ecTipo').value, valor=document.getElementById('ecVal').value;
   if(!valor||isNaN(parseFloat(valor))){ showToast('Valor obrigatório',true); return; }
   const pagador=(tipo==='Água')?document.getElementById('ecPagador').value:'';
-  try{ await apiWrite({action:'saveCusto',rowNum:row,addr:document.getElementById('ecCasa').value,competencia:String(k['Competência']),tipo,valor,dataPagamento:document.getElementById('ecData').value,desc:document.getElementById('ecDesc').value,pagador});
-    closeModal(); showToast('Custo atualizado'); await loadData();
-  }catch(e){ showToast(e.message,true); }
+  await runBtn(btn, async()=>{
+    try{ await apiWrite({action:'saveCusto',rowNum:row,addr:document.getElementById('ecCasa').value,competencia:String(k['Competência']),tipo,valor,dataPagamento:document.getElementById('ecData').value,desc:document.getElementById('ecDesc').value,pagador});
+      closeModal(); showToast('Custo atualizado'); await loadData();
+    }catch(e){ showToast(e.message,true); }
+  });
 }
 
 // ══ TAB 3 — MANUTENÇÃO ══
@@ -931,14 +958,16 @@ function editMan(row){
     +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">'
     +'<button class="mini-btn danger" style="margin-right:auto" onclick="delMan('+row+')"><i class="fas fa-trash"></i> Excluir</button>'
     +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
-    +'<button class="btn-primary2" onclick="saveManEdit('+row+')">Salvar</button></div>');
+    +'<button class="btn-primary2" onclick="saveManEdit('+row+',this)">Salvar</button></div>');
 }
-async function saveManEdit(row){
+async function saveManEdit(row,btn){
   const m=DB.manutencao.find(x=>x._row===row); if(!m)return;
   const addr=document.getElementById('emAddr').value; if(!addr){ showToast('Endereço obrigatório',true); return; }
-  try{ await apiWrite({action:'saveManutencao',rowNum:row,addr,dataConclusao:document.getElementById('emData').value,tipo:document.getElementById('emTipo').value,desc:document.getElementById('emDesc').value,empresa:document.getElementById('emEmp').value,contato:document.getElementById('emCont').value,valor:document.getElementById('emVal').value,status:document.getElementById('emStatus').value,invoiceUrl:m['Anexar Invoice']||''});
-    closeModal(); showToast('Manutenção atualizada'); await loadData();
-  }catch(e){ showToast(e.message,true); }
+  await runBtn(btn, async()=>{
+    try{ await apiWrite({action:'saveManutencao',rowNum:row,addr,dataConclusao:document.getElementById('emData').value,tipo:document.getElementById('emTipo').value,desc:document.getElementById('emDesc').value,empresa:document.getElementById('emEmp').value,contato:document.getElementById('emCont').value,valor:document.getElementById('emVal').value,status:document.getElementById('emStatus').value,invoiceUrl:m['Anexar Invoice']||''});
+      closeModal(); showToast('Manutenção atualizada'); await loadData();
+    }catch(e){ showToast(e.message,true); }
+  });
 }
 
 // ══ TAB 4 — FINANCEIRO ══
