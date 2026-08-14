@@ -552,6 +552,114 @@ async function deleteRateChange(params) {
   return { ok: true };
 }
 
+// ── DRYWALL (lançamentos rápidos) ──────────────────────────
+// Aba única e desnormalizada: cada linha = 1 lançamento (pessoa + dia + serviço).
+// O "Valor Cobrado" é gravado só na 1ª linha de cada endereço — ver addDrywall.
+const DRYWALL_SHEET = 'Drywall';
+const DRYWALL_HEADERS = ['Carimbo de data/hora', 'Data', 'Cliente', 'Endereço', 'Valor Cobrado ($)', 'Pessoa', 'Companhia', 'Diária ($)', 'Observações'];
+
+async function ensureDrywallSheet() {
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === DRYWALL_SHEET);
+  if (!sh) {
+    await G.createSheet(DRYWALL_SHEET, DRYWALL_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === DRYWALL_SHEET);
+  }
+  return sh;
+}
+
+// true se o endereço já tem um "Valor Cobrado" preenchido em alguma linha
+async function drywallJaTemReceita(sh, addr) {
+  const addrIdx = sh.headers.indexOf('Endereço');
+  const valIdx = sh.headers.indexOf('Valor Cobrado ($)');
+  if (addrIdx < 0 || valIdx < 0) return false;
+  const addrCol = await G.readColumn(sh.title, addrIdx);
+  const valCol = await G.readColumn(sh.title, valIdx);
+  for (let i = 1; i < addrCol.length; i++) {
+    if (G.normStr(addrCol[i]) === G.normStr(addr) && String(valCol[i] == null ? '' : valCol[i]).trim() !== '') return true;
+  }
+  return false;
+}
+
+async function addDrywall(params) {
+  const addr = (params.addr || '').trim();
+  if (!addr) return { error: 'Endereço obrigatório.' };
+  const data = String(params.data || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { error: 'Data inválida (use AAAA-MM-DD).' };
+  const pessoa = (params.pessoa || '').trim();
+  const temDiaria = params.diaria !== undefined && params.diaria !== null && params.diaria !== '';
+  const diaria = temDiaria ? round2(params.diaria) : 0;
+  if (pessoa && !(diaria > 0)) return { error: 'Informe a diária da pessoa.' };
+  if (!pessoa && temDiaria) return { error: 'Informe a pessoa para lançar uma diária.' };
+
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Não foi possível criar a aba "Drywall".' };
+
+  // Receita grava só uma vez por endereço — se já existe, ignora o valor recebido.
+  let valorFinal = '';
+  const temValor = params.valorCobrado !== undefined && params.valorCobrado !== null && String(params.valorCobrado).trim() !== '';
+  if (temValor && !(await drywallJaTemReceita(sh, addr))) valorFinal = round2(params.valorCobrado);
+
+  const row = G.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: G.nowInTz() },
+    { key: 'Data', val: data, forceText: true },
+    { key: 'Cliente', val: (params.cliente || '').trim() },
+    { key: 'Endereço', val: addr },
+    { key: 'Valor Cobrado ($)', val: valorFinal },
+    { key: 'Pessoa', val: pessoa },
+    { key: 'Companhia', val: (params.companhia || '').trim() },
+    { key: 'Diária ($)', val: pessoa ? diaria : '' },
+    { key: 'Observações', val: (params.obs || '').trim() },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true };
+}
+
+async function updateDrywall(params) {
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+
+  const updates = [];
+  if (params.data !== undefined) {
+    const d = String(params.data || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { error: 'Data inválida (use AAAA-MM-DD).' };
+    updates.push({ key: 'Data', val: d, forceText: true });
+  }
+  if (params.cliente !== undefined) updates.push({ key: 'Cliente', val: String(params.cliente || '').trim() });
+  if (params.addr !== undefined) {
+    const a = String(params.addr || '').trim();
+    if (!a) return { error: 'Endereço não pode ficar vazio.' };
+    updates.push({ key: 'Endereço', val: a });
+  }
+  if (params.valorCobrado !== undefined) {
+    const v = String(params.valorCobrado).trim();
+    updates.push({ key: 'Valor Cobrado ($)', val: v === '' ? '' : round2(v) });
+  }
+  if (params.pessoa !== undefined) updates.push({ key: 'Pessoa', val: String(params.pessoa || '').trim() });
+  if (params.companhia !== undefined) updates.push({ key: 'Companhia', val: String(params.companhia || '').trim() });
+  if (params.diaria !== undefined) {
+    const v = String(params.diaria).trim();
+    updates.push({ key: 'Diária ($)', val: v === '' ? '' : round2(v) });
+  }
+  if (params.obs !== undefined) updates.push({ key: 'Observações', val: String(params.obs || '').trim() });
+  if (!updates.length) return { error: 'Nada para atualizar.' };
+
+  await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
+  return { ok: true };
+}
+
+async function deleteDrywall(params) {
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
 // ── INSURANCE & W9 (compliance de subcontratados) ──────────
 const SUBPROF_SHEET = 'Insurance & W9';
 const SUBPROF_HEADERS = ['Carimbo de data/hora', 'Owner Name', 'Company Name', 'Company Address', 'Email', 'Phone', 'COI Policy Number', 'Insurance Expiration', 'COI URL', 'EIN', 'W9 URL', 'Alerted30', 'AlertedExpired'];
@@ -685,6 +793,7 @@ module.exports = {
   addCliente, addLabor, updateLabor, deleteLabor,
   saveFuncionario, deleteFuncionario,
   addRateChange, deleteRateChange,
+  addDrywall, updateDrywall, deleteDrywall,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
 };

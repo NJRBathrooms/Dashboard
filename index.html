@@ -385,6 +385,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t5btn" onclick="showTab(5)"><i class="fas fa-flag-checkered"></i> Fechar / Consultar</button>
     <button class="tab-btn" id="t6btn" onclick="showTab(6)"><i class="fas fa-shield-halved"></i> Insurance &amp; W9</button>
     <button class="tab-btn" id="t7btn" onclick="showTab(7)"><i class="fas fa-users-gear"></i> Usuários</button>
+    <button class="tab-btn" id="t8btn" onclick="showTab(8)"><i class="fas fa-trowel-bricks"></i> Drywall</button>
     <div id="tabIndicator" class="tab-indicator"></div>
   </div>
 
@@ -392,6 +393,11 @@ tbody tr:hover td { background:#fafbfe; }
 
   <!-- TAB 1 -->
   <div id="t1page" class="page">
+    <div class="subtab-nav">
+      <button class="subtab-btn active" id="st1bathBtn" onclick="showObrasSub('bath')"><i class="fas fa-bath"></i> Obras Bathroom/Tile</button>
+      <button class="subtab-btn" id="st1dwBtn" onclick="showObrasSub('dw')"><i class="fas fa-trowel-bricks"></i> Obras Drywall</button>
+    </div>
+    <div id="st1bath">
     <div class="toolbar">
       <i class="fas fa-map-marker-alt toolbar-icon"></i>
       <div class="addr-wrap">
@@ -403,6 +409,8 @@ tbody tr:hover td { background:#fafbfe; }
       <button class="refresh-btn" onclick="loadData()"><i class="fas fa-sync-alt"></i> Atualizar</button>
     </div>
     <div id="t1body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+    </div>
+    <div id="st1dw" style="display:none"></div>
   </div>
 
   <!-- TAB 2 -->
@@ -808,6 +816,11 @@ tbody tr:hover td { background:#fafbfe; }
     <div id="usrBody"></div>
   </div>
 
+  <!-- TAB 8 — DRYWALL -->
+  <div id="t8page" class="page" style="display:none">
+    <div id="t8body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+  </div>
+
   </div>
 
   <!-- Edit Row Modal (material / subcontrato) -->
@@ -941,21 +954,41 @@ let EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
 let ORC_EDIT_ADDR = '';
 
 // ── API HELPERS ────────────────────────────────────────────
+// Requisições de escrita em voo — evita que um 2º toque no botão (enquanto a 1ª
+// chamada ainda não voltou) grave o mesmo lançamento duas vezes na planilha.
+const _inFlight = new Map();
 async function apiWrite(params) {
-  const res = await fetch('/api/write', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
-  });
-  if (res.status === 401) { doLogout(); throw new Error('Sessão expirada. Faça login novamente.'); }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
+  const body = JSON.stringify(params);
+  if (_inFlight.has(body)) return _inFlight.get(body); // mesma gravação já em curso
+  const p = (async () => {
+    const res = await fetch('/api/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    });
+    if (res.status === 401) { doLogout(); throw new Error('Sessão expirada. Faça login novamente.'); }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  })();
+  _inFlight.set(body, p);
+  try { return await p; }
+  finally { _inFlight.delete(body); }
+}
+// Executa uma ação de gravação travando o botão (evita duplo toque e dá feedback)
+async function runBtn(btn, fn, labelHTML) {
+  if (!btn) return fn();
+  if (btn.disabled) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-right:6px"></div>' + (labelHTML || 'Salvando...');
+  try { return await fn(); }
+  finally { btn.disabled = false; btn.innerHTML = orig; }
 }
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); renderDrywall(); }
 
 // ══ TAB 7: USUÁRIOS (funcionários do app de horas) ════════
 function renderUsuarios(){
@@ -1291,7 +1324,7 @@ function getPageEl(n) { return document.getElementById('t'+n+'page'); }
 function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 
 function activateTab(n) {
-  [1,2,3,4,5,6,7].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
+  [1,2,3,4,5,6,7,8].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
 }
 // Where the tab-nav should scroll to so button `n` is centered (clamped to valid range)
 function navScrollLeftFor(n) {
@@ -1389,7 +1422,7 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     navEl = document.querySelector('.tab-nav');
     curN = CURRENT_TAB;
     targetN = curN+dir;
-    if (targetN<1 || targetN>7) { phase='edge'; return; }
+    if (targetN<1 || targetN>8) { phase='edge'; return; }
     curEl = getPageEl(curN); targetEl = getPageEl(targetN);
     viewW = viewport.offsetWidth || window.innerWidth;
     const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
@@ -1644,10 +1677,272 @@ function laborReceipts(r) {
   }
   return [];
 }
+// ══ TAB 1 — SUB-ABAS: Bathroom/Tile x Drywall ═════════════
+let OBRAS_SUB = 'bath';
+let DW_MES = '';   // 'YYYY-MM' exibido na lista de Obras Drywall
+function showObrasSub(w) {
+  OBRAS_SUB = w;
+  document.getElementById('st1bathBtn').classList.toggle('active', w === 'bath');
+  document.getElementById('st1dwBtn').classList.toggle('active', w === 'dw');
+  document.getElementById('st1bath').style.display = w === 'bath' ? '' : 'none';
+  document.getElementById('st1dw').style.display = w === 'dw' ? '' : 'none';
+  if (w === 'dw') renderObrasDrywall();
+}
+function dwMesNav(delta) {
+  const [y, m] = DW_MES.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1), p = n => String(n).padStart(2, '0');
+  DW_MES = d.getFullYear() + '-' + p(d.getMonth() + 1);
+  renderObrasDrywall();
+}
+const DW_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function renderObrasDrywall() {
+  const el = document.getElementById('st1dw'); if (!el) return;
+  if (!DW_MES) { const d = new Date(), p = n => String(n).padStart(2, '0'); DW_MES = d.getFullYear() + '-' + p(d.getMonth() + 1); }
+  const servicos = dwServicosDoMes(PROC.drywall || [], DW_MES);
+  const t = dwTotais(servicos);
+  const [yy, mm] = DW_MES.split('-');
+
+  const linhas = servicos.map(s => `<tr>
+      <td>${escH(s.cliente || '—')}</td>
+      <td><strong>${escH(s.addr)}</strong></td>
+      <td style="color:#16a085;font-weight:700">${$$(s.receita)}</td>
+      <td style="color:#e74c3c;font-weight:700">${$$(s.custo)}</td>
+      <td style="font-weight:800;color:${s.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$$(s.lucro)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--navy);border-radius:14px;padding:10px 12px;margin-bottom:16px">
+      <button class="orc-edit-btn" style="font-size:18px;padding:6px 12px" onclick="dwMesNav(-1)" aria-label="Mês anterior">&lsaquo;</button>
+      <div style="flex:1;text-align:center;color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${DW_MESES[+mm-1]} <b style="color:var(--orange)">${yy}</b></div>
+      <button class="orc-edit-btn" style="font-size:18px;padding:6px 12px" onclick="dwMesNav(1)" aria-label="Próximo mês">&rsaquo;</button>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-xl-3"><div class="metric-card c-mat"><div class="m-label">Receita</div><div class="m-value">${$$(t.receita)}</div><div class="m-sub">${servicos.length} serviço${servicos.length===1?'':'s'}</div></div></div>
+      <div class="col-6 col-xl-3"><div class="metric-card c-labor"><div class="m-label">Custo (diárias)</div><div class="m-value">${$$(t.custo)}</div><div class="m-sub">rateado por dia</div></div></div>
+      <div class="col-6 col-xl-3"><div class="metric-card c-total"><div class="m-label">Lucro</div><div class="m-value">${$$(t.lucro)}</div><div class="m-sub">receita − custo</div></div></div>
+      <div class="col-6 col-xl-3"><div class="metric-card c-extra"><div class="m-label">Margem</div><div class="m-value">${t.margem.toFixed(1)}%</div><div class="m-sub">sobre a receita</div></div></div>
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-trowel-bricks me-2" style="color:var(--orange)"></i>Serviços de drywall</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Cliente</th><th>Endereço</th><th>Receita</th><th>Custo</th><th>Lucro</th></tr></thead>
+        <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum serviço de drywall neste mês</td></tr>`}</tbody>
+        ${servicos.length ? `<tfoot><tr class="tr-total"><td colspan="2">TOTAL</td><td>${$$(t.receita)}</td><td>${$$(t.custo)}</td><td>${$$(t.lucro)}</td></tr></tfoot>` : ''}
+      </table></div>
+    </div>
+    <p style="font-size:11.5px;color:#7b8ea4;margin-top:12px">Um serviço aparece no mês em que começou, com receita e custo integrais — mesmo que alguma diária tenha caído no mês seguinte.</p>`;
+}
+
+// ══ TAB 8: DRYWALL — LANÇAMENTOS RÁPIDOS ══════════════════
+let DW_DATA = '';        // data selecionada no formulário (YYYY-MM-DD)
+function dwHojeISO() { const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+
+function renderDrywall() {
+  const el = document.getElementById('t8body'); if (!el) return;
+  if (!DW_DATA) DW_DATA = dwHojeISO();
+  const raw = PROC.drywall || [];
+  const pessoas = dwPessoas(raw);
+  const servicos = dwServicos(raw).slice().sort((a,b)=>a.addr.localeCompare(b.addr));
+  const doDia = dwLancamentos(raw).filter(l => l.data === DW_DATA);
+  const totalDia = dwRound2(doDia.reduce((s,l)=>s+l.custo,0));
+
+  const optPessoas = ['<option value="">— escolha —</option>']
+    .concat(pessoas.map(p=>`<option value="${escH(p.nome)}" data-comp="${escH(p.companhia)}" data-diaria="${p.diaria}">${escH(p.nome)}${p.companhia?' ('+escH(p.companhia)+')':''} — $${p.diaria}/dia</option>`))
+    .concat(['<option value="__nova__">+ nova pessoa</option>']).join('');
+  const optServicos = ['<option value="">— escolha —</option>']
+    .concat(servicos.map(s=>`<option value="${escH(s.addr)}">${escH(s.addr)}${s.cliente?' — '+escH(s.cliente):''}</option>`))
+    .concat(['<option value="__novo__">+ novo serviço</option>']).join('');
+
+  const linhas = doDia.map(l=>`<tr>
+      <td>${escH(l.pessoa)}</td>
+      <td>${escH(l.addr)}</td>
+      <td><strong>${$$(l.custo)}</strong></td>
+      <td style="color:#7b8ea4">1/${l.divisor} da diária ($${l.diaria})</td>
+      <td class="td-actions"><button class="row-act-btn del" onclick="dwDelete(${l._row})" title="Excluir lançamento"><i class="fas fa-trash"></i></button></td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-bolt" style="color:var(--orange)"></i>Lançamentos Rápidos — Drywall</div>
+      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:14px">Cada lançamento é uma pessoa num serviço num dia. A diária é rateada automaticamente entre os serviços que a pessoa atendeu naquele dia.</p>
+      <div class="row g-3">
+        <div class="col-md-3"><label class="f-label">Data</label>
+          <input id="dw_data" class="f-input" type="date" value="${DW_DATA}" onchange="DW_DATA=this.value;renderDrywall()"></div>
+        <div class="col-md-4"><label class="f-label">Pessoa</label>
+          <select id="dw_pessoa" class="f-input" onchange="dwPessoaChange()">${optPessoas}</select></div>
+        <div class="col-md-2"><label class="f-label">Diária ($)</label>
+          <div class="f-input-prefix"><span class="prefix">$</span><input id="dw_diaria" class="f-input" inputmode="decimal" placeholder="200"></div></div>
+        <div class="col-md-3" id="dw_compWrap" style="display:none"><label class="f-label">Companhia</label>
+          <input id="dw_companhia" class="f-input" placeholder="Ex.: Drywall Pro"></div>
+        <div class="col-12" id="dw_nomeWrap" style="display:none"><label class="f-label">Nome da pessoa <span class="f-req">*</span></label>
+          <input id="dw_nome" class="f-input" placeholder="Ex.: Carlos"></div>
+
+        <div class="col-md-6"><label class="f-label">Serviço</label>
+          <select id="dw_serv" class="f-input" onchange="dwServChange()">${optServicos}</select></div>
+        <div class="col-md-6" id="dw_cliWrap" style="display:none"><label class="f-label">Cliente <span class="f-req">*</span></label>
+          <input id="dw_cliente" class="f-input" placeholder="Ex.: Maria Silva"></div>
+        <div class="col-md-6" id="dw_addrWrap" style="display:none"><label class="f-label">Endereço <span class="f-req">*</span></label>
+          <input id="dw_addr" class="f-input" placeholder="Ex.: 12 Oak St"></div>
+        <div class="col-md-6" id="dw_valWrap" style="display:none"><label class="f-label">Valor cobrado do cliente ($) <span class="f-req">*</span></label>
+          <div class="f-input-prefix"><span class="prefix">$</span><input id="dw_valor" class="f-input" inputmode="decimal" placeholder="800"></div></div>
+
+        <div class="col-12"><label class="f-label">Observações <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+          <input id="dw_obs" class="f-input" placeholder="Anotação livre"></div>
+      </div>
+      <button class="submit-btn" style="margin-top:14px;width:auto;padding:12px 22px" id="dwAddBtn" onclick="dwAdd(this)"><i class="fas fa-plus"></i> Lançar</button>
+    </div>
+
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-list me-2" style="color:var(--orange)"></i>Lançamentos de ${fmtDay(DW_DATA)}</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Pessoa</th><th>Serviço</th><th>Custo rateado</th><th>Rateio</th><th>Ações</th></tr></thead>
+        <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum lançamento nesta data</td></tr>`}</tbody>
+        ${doDia.length ? `<tfoot><tr class="tr-total"><td colspan="2">CUSTO DO DIA</td><td colspan="3"><strong>${$$(totalDia)}</strong></td></tr></tfoot>` : ''}
+      </table></div>
+    </div>`;
+}
+
+function dwPessoaChange() {
+  const sel=document.getElementById('dw_pessoa'), nova=sel.value==='__nova__';
+  document.getElementById('dw_nomeWrap').style.display=nova?'':'none';
+  document.getElementById('dw_compWrap').style.display=nova?'':'none';
+  const opt=sel.options[sel.selectedIndex];
+  document.getElementById('dw_diaria').value = (!nova && opt && opt.dataset.diaria) ? opt.dataset.diaria : '';
+  if (!nova && opt && opt.dataset.comp !== undefined) document.getElementById('dw_companhia').value = opt.dataset.comp;
+}
+function dwServChange() {
+  const novo=document.getElementById('dw_serv').value==='__novo__';
+  ['dw_cliWrap','dw_addrWrap','dw_valWrap'].forEach(id=>{ document.getElementById(id).style.display=novo?'':'none'; });
+}
+
+async function dwAdd(btn) {
+  const data=document.getElementById('dw_data').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(data)) { showToast('Informe a data.', true); return; }
+
+  const selP=document.getElementById('dw_pessoa').value;
+  let pessoa='', companhia='';
+  if(selP==='__nova__'){ pessoa=document.getElementById('dw_nome').value.trim(); companhia=document.getElementById('dw_companhia').value.trim(); }
+  else { pessoa=selP; const o=document.getElementById('dw_pessoa').selectedOptions[0]; companhia=(o&&o.dataset.comp)||''; }
+  if(!pessoa){ showToast('Escolha a pessoa (ou cadastre uma nova).', true); return; }
+
+  const diariaStr=document.getElementById('dw_diaria').value.trim().replace(',','.');
+  if(!diariaStr||isNaN(parseFloat(diariaStr))||parseFloat(diariaStr)<=0){ showToast('Informe a diária.', true); return; }
+
+  const selS=document.getElementById('dw_serv').value;
+  let addr='', cliente='', valorCobrado='';
+  if(selS==='__novo__'){
+    addr=document.getElementById('dw_addr').value.trim();
+    cliente=document.getElementById('dw_cliente').value.trim();
+    const v=document.getElementById('dw_valor').value.trim().replace(',','.');
+    if(!addr){ showToast('Informe o endereço do serviço.', true); return; }
+    if(!cliente){ showToast('Informe o cliente.', true); return; }
+    if(!v||isNaN(parseFloat(v))||parseFloat(v)<=0){ showToast('Informe o valor cobrado do cliente.', true); return; }
+    valorCobrado=String(parseFloat(v));
+  } else {
+    addr=selS;
+    if(!addr){ showToast('Escolha o serviço (ou cadastre um novo).', true); return; }
+    const s=dwServicos(PROC.drywall||[]).find(x=>dwNorm(x.addr)===dwNorm(addr));
+    cliente=(s&&s.cliente)||'';
+  }
+
+  await runBtn(btn, async()=>{
+    try{
+      await apiWrite({ action:'addDrywall', data, cliente, addr, valorCobrado, pessoa, companhia,
+        diaria:String(parseFloat(diariaStr)), obs:document.getElementById('dw_obs').value.trim() });
+      DW_DATA=data;
+      showToast('Lançamento registrado');
+      await loadData();
+    }catch(e){ showToast(e.message, true); }
+  }, 'Lançando...');
+}
+
+async function dwDelete(rowNum) {
+  if(!confirm('Excluir este lançamento?\n\nO rateio dos outros lançamentos do mesmo dia será recalculado.')) return;
+  try{ await apiWrite({action:'deleteDrywall',rowNum}); showToast('Lançamento excluído'); await loadData(); }
+  catch(e){ showToast(e.message, true); }
+}
+
+// ══ DRYWALL — CÁLCULO (bloco puro, sem DOM; testado por scripts/test-drywall-calc.js) ══
+function dwNorm(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' '); }
+function dwRound2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+// Lançamentos com o custo rateado: a diária de uma pessoa num dia é dividida
+// entre os lançamentos dela naquele dia. O resto em centavos é distribuído nos
+// primeiros, para a soma bater exatamente com a diária.
+function dwLancamentos(raw) {
+  const rows = (raw || []).filter(r => r && dwNorm(r.addr) && dwNorm(r.pessoa));
+  const grupos = {};
+  rows.forEach(r => { const k = dwNorm(r.pessoa) + '|' + String(r.data || ''); (grupos[k] = grupos[k] || []).push(r); });
+  const out = [];
+  Object.keys(grupos).forEach(k => {
+    const g = grupos[k].slice().sort((a, b) => (a._row || 0) - (b._row || 0));
+    const diaria = Number(g[0].diaria) || 0;      // snapshot: a diária daquele dia
+    const cents = Math.round(diaria * 100);
+    const per = Math.floor(cents / g.length);
+    const resto = cents - per * g.length;
+    g.forEach((r, i) => out.push({
+      _row: r._row, data: r.data, pessoa: r.pessoa, companhia: r.companhia || '',
+      addr: r.addr, diaria, divisor: g.length,
+      custo: (per + (i < resto ? 1 : 0)) / 100,
+    }));
+  });
+  return out.sort((a, b) => String(a.data || '').localeCompare(String(b.data || ''))
+    || dwNorm(a.pessoa).localeCompare(dwNorm(b.pessoa))
+    || (a._row || 0) - (b._row || 0));
+}
+
+// Um serviço por endereço: receita (nunca somada), custo rateado e lucro.
+function dwServicos(raw) {
+  const rows = (raw || []).filter(r => r && dwNorm(r.addr)).slice().sort((a, b) => (a._row || 0) - (b._row || 0));
+  const byAddr = {};
+  rows.forEach(r => {
+    const k = dwNorm(r.addr);
+    if (!byAddr[k]) byAddr[k] = { addr: r.addr, cliente: '', receita: 0, _receitaSet: false, custo: 0, inicio: '', lancamentos: [] };
+    const s = byAddr[k];
+    if (!s.cliente && r.cliente) s.cliente = r.cliente;
+    // receita = primeiro "Valor Cobrado" não-vazio do endereço
+    if (!s._receitaSet && String(r.valorCobrado == null ? '' : r.valorCobrado).trim() !== '') {
+      s.receita = Number(r.valorCobrado) || 0; s._receitaSet = true;
+    }
+    if (r.data && (!s.inicio || String(r.data) < s.inicio)) s.inicio = String(r.data);
+  });
+  dwLancamentos(raw).forEach(l => {
+    const s = byAddr[dwNorm(l.addr)];
+    if (s) { s.custo = dwRound2(s.custo + l.custo); s.lancamentos.push(l); }
+  });
+  return Object.keys(byAddr).map(k => {
+    const s = byAddr[k];
+    return { addr: s.addr, cliente: s.cliente, receita: s.receita, custo: s.custo, lucro: dwRound2(s.receita - s.custo), inicio: s.inicio, lancamentos: s.lancamentos };
+  });
+}
+
+// Pessoas conhecidas (dropdown), com a companhia e a diária do lançamento mais recente
+function dwPessoas(raw) {
+  const by = {};
+  (raw || []).filter(r => r && dwNorm(r.pessoa)).slice().sort((a, b) => (a._row || 0) - (b._row || 0))
+    .forEach(r => { by[dwNorm(r.pessoa)] = { nome: r.pessoa, companhia: r.companhia || '', diaria: Number(r.diaria) || 0 }; });
+  return Object.keys(by).map(k => by[k]).sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
+// Serviços do mês (pelo mês do 1º lançamento), com receita e custo integrais
+function dwServicosDoMes(raw, ym) {
+  return dwServicos(raw).filter(s => String(s.inicio || '').slice(0, 7) === ym)
+    .sort((a, b) => String(a.inicio || '').localeCompare(String(b.inicio || '')) || a.addr.localeCompare(b.addr));
+}
+
+function dwTotais(servicos) {
+  const receita = dwRound2((servicos || []).reduce((s, x) => s + (x.receita || 0), 0));
+  const custo = dwRound2((servicos || []).reduce((s, x) => s + (x.custo || 0), 0));
+  const lucro = dwRound2(receita - custo);
+  return { receita, custo, lucro, margem: receita > 0 ? dwRound2(lucro / receita * 100) : 0 };
+}
+// ══ FIM DRYWALL — CÁLCULO ══
+
 function processAll() {
   // Usuários primeiro: getRate() (usado no mapeamento de labor abaixo) lê daqui
   PROC.funcionarios=(DB.funcionarios||[]).map(f=>({ _row:f._row, nome:String(f.nome||'').trim(), rate:Number(f.rate)||0 })).filter(f=>f.nome);
   // Histórico de rates ordenado por data — getRate() lê daqui
+  PROC.drywall=(DB.drywall||[]);
   PROC.rateHistory=(DB.rateHistory||[]).map(h=>({ _row:h._row, nome:String(h.nome||'').trim(), rate:Number(h.rate)||0, desde:String(h.desde||'').slice(0,10) }))
     .filter(h=>h.nome&&h.rate>0&&/^\d{4}-\d{2}-\d{2}$/.test(h.desde))
     .sort((a,b)=>a.desde.localeCompare(b.desde));
@@ -1765,6 +2060,7 @@ function calcAddr(addr) {
 }
 
 function renderTab1() {
+  if (OBRAS_SUB === 'dw') renderObrasDrywall();
   const body=document.getElementById('t1body');
   if (!SEL_ADDR) {
     body.innerHTML=`<div class="empty-box"><i class="fas fa-map-marker-alt"></i>

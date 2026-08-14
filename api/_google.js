@@ -155,7 +155,22 @@ async function readAll() {
   const subp  = findValues(byTitle, ['company name', 'coi policy']);
   const func  = findValues(byTitle, ['nome', 'senha']);
   const rateh = findValues(byTitle, ['nome', 'vigente desde']);
+  const dryw  = findValues(byTitle, ['pessoa', 'diária']);
   return {
+    // Drywall: 1 linha = 1 lançamento. O rateio da diária é calculado no cliente.
+    drywall:        dryw  ? rowsToObjects(dryw).map(r => ({
+      _row: r._row,
+      ts: r['Carimbo de data/hora'] || '',
+      // aceita texto 'YYYY-MM-DD' e também data convertida pelo Sheets ('YYYY/MM/DD HH:mm:ss')
+      data: String(r['Data'] || '').trim().slice(0, 10).replace(/\//g, '-'),
+      cliente: String(r['Cliente'] || '').trim(),
+      addr: String(r['Endereço'] || '').trim(),
+      valorCobrado: String(r['Valor Cobrado ($)'] == null ? '' : r['Valor Cobrado ($)']).trim(),
+      pessoa: String(r['Pessoa'] || '').trim(),
+      companhia: String(r['Companhia'] || '').trim(),
+      diaria: Number(r['Diária ($)']) || 0,
+      obs: String(r['Observações'] || '').trim(),
+    })).filter(r => r.addr) : [],
     // Histórico de rate/h: cada linha vale a partir de "Vigente Desde"
     rateHistory:    rateh ? rowsToObjects(rateh).map(r => ({
       _row: r._row,
