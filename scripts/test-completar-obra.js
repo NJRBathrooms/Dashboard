@@ -1,4 +1,5 @@
-// Testa completarObra contra uma planilha simulada (mesmos cabeçalhos da produção).
+// Testa completarObra / updateObra (reabrir) / closeObra contra uma planilha
+// simulada, com os mesmos cabeçalhos da produção.
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const HEADERS = ['Endereço','Nome do Cliente','Contato','Escopo','Orçamento','Data Início Prevista','Data Fim Prevista','Link Fotos Antes','Finalizada','Data Finalização','Link Fotos Depois'];
@@ -91,6 +92,36 @@ const eq=(name,a,b)=>{ const ok=JSON.stringify(a)===JSON.stringify(b);
 
   // 10. endereço vazio → recusa
   eq('10 recusa sem endereço', !!(await A.completarObra({ cliente:'X' })).error, true);
+  // ── reabrir obra: updateObra escrevendo Finalizada/Data Finalização ──
+  // (esse caminho do updateObra nunca tinha sido usado — só o de orçamento)
+  reset();
+  r = await A.updateObra({ addr:'66 Knotty way Belmont NH', finalizada:'Não', dtFinal:'' });
+  eq('11 reabrir retorno', r, { ok:true });
+  eq('11 marcada como não finalizada', SHEET[1][8], 'Não');
+  eq('11 data de finalização limpa', SHEET[1][9], '');
+  eq('11 nada foi criado', appended.length, 0);
+
+  // 12. reabrir não mexe em cliente, estimate nem fotos
+  reset();
+  SHEET[1][1]='Bob'; SHEET[1][4]=5200; SHEET[1][10]='http://drive/depois';
+  await A.updateObra({ addr:'66 Knotty way Belmont NH', finalizada:'Não', dtFinal:'' });
+  eq('12 cliente preservado', SHEET[1][1], 'Bob');
+  eq('12 estimate preservado', SHEET[1][4], 5200);
+  eq('12 fotos preservadas', SHEET[1][10], 'http://drive/depois');
+
+  // 13. encerrar de volta restaura o estado anterior
+  reset();
+  await A.updateObra({ addr:'66 Knotty way Belmont NH', finalizada:'Não', dtFinal:'' });
+  await A.closeObra({ addr:'66 Knotty way Belmont NH', dtFinal:'2026-01-10' });
+  eq('13 volta a finalizada', [SHEET[1][8], SHEET[1][9]], ['Sim','2026-01-10']);
+  eq('13 sem linha duplicada', appended.length, 0);
+
+  // 14. encerrar endereço sem cadastro cria a linha mínima (comportamento do closeObra)
+  reset();
+  r = await A.closeObra({ addr:'14 Bradford road Hamilton', dtFinal:'2026-04-01' });
+  eq('14 criada', r, { ok:true, created:true });
+  eq('14 conteúdo', [appended[0][0], appended[0][8], appended[0][9]], ['14 Bradford road Hamilton','Sim','2026-04-01']);
+
 
   console.log('\n' + pass + ' asserções passaram, ' + fail + ' falharam.');
   process.exit(fail ? 1 : 0);
