@@ -125,6 +125,56 @@ async function updateObra(params) {
   return { error: 'Obra não encontrada para esse endereço.' };
 }
 
+// Completa o cadastro das obras do modelo antigo, quando o app ainda não pedia
+// cliente nem estimate. Se a obra existe só através dos lançamentos de custo
+// (sem linha em "Cadastro de Obras"), cria a linha — nenhum lançamento é tocado.
+async function completarObra(params) {
+  const { index } = await G.loadSheetIndex();
+  const sh = G.findSheetEntry(index, KW.obras);
+  if (!sh) return { error: 'Aba "Cadastro de Obras" não encontrada.' };
+  const addr = (params.addr || '').trim();
+  if (!addr) return { error: 'Endereço obrigatório.' };
+
+  const cliente = params.cliente === undefined ? '' : String(params.cliente).trim();
+  let orcamento;
+  if (params.orcamento !== undefined && String(params.orcamento).trim() !== '') {
+    orcamento = round2(params.orcamento);
+    if (!(orcamento > 0)) return { error: 'Estimate inválido — informe um valor maior que zero.' };
+  }
+  if (!cliente && orcamento === undefined) {
+    return { error: 'Informe ao menos o nome do cliente ou o estimate.' };
+  }
+
+  const aIdx = addrColIndex(sh.headers);
+  const col = await G.readColumn(sh.title, aIdx);
+  for (let i = 1; i < col.length; i++) {
+    if (G.normStr(col[i]) === G.normStr(addr)) {
+      const updates = [];
+      if (cliente) updates.push({ key: 'Nome do Cliente', val: cliente });
+      if (orcamento !== undefined) updates.push({ key: 'Orçamento', val: orcamento });
+      await G.updateRowCells(sh.title, i + 1, sh.headers, updates);
+      return { ok: true, created: false };
+    }
+  }
+
+  // Sem linha na aba: obra antiga que nunca foi cadastrada. O status vem do
+  // formulário porque a maioria dessas obras já foi concluída há tempo.
+  const finalizada = String(params.finalizada || '').trim().toLowerCase() === 'sim';
+  const dtFinal = String(params.dtFinal || '').trim();
+  if (finalizada && !/^\d{4}-\d{2}-\d{2}$/.test(dtFinal)) {
+    return { error: 'Informe a data de finalização da obra.' };
+  }
+  const row = G.buildRow(sh.headers, [
+    { key: sh.headers[aIdx], val: addr },
+    { key: 'Nome do Cliente', val: cliente },
+    { key: 'Orçamento', val: orcamento !== undefined ? orcamento : '' },
+    { key: 'Finalizada', val: finalizada ? 'Sim' : 'Não' },
+    { key: 'Data Finalização', val: finalizada ? dtFinal : '' },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true, created: true };
+}
+
 // ── MATERIAIS ─────────────────────────────────────────────
 const COL_COBRADO = 'Valor Cobrado do Cliente ($)';
 
@@ -787,7 +837,7 @@ async function emailInvoice(params) {
 }
 
 module.exports = {
-  addObra, closeObra, updateObra, saveAjuste, emailReport, emailInvoice,
+  addObra, closeObra, updateObra, completarObra, saveAjuste, emailReport, emailInvoice,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor, updateLabor, deleteLabor,

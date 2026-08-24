@@ -301,6 +301,18 @@ tbody tr:hover td { background:#fafbfe; }
 .td-actions { white-space:nowrap; vertical-align:middle; }
 .orc-edit-btn { border:none; background:rgba(255,255,255,.2); border-radius:6px; padding:3px 7px; color:inherit; cursor:pointer; font-size:11px; margin-left:8px; opacity:.7; vertical-align:middle; }
 .orc-edit-btn:hover { opacity:1; background:rgba(255,255,255,.35); }
+/* CADASTRO INCOMPLETO — obras do modelo antigo (sem cliente / sem estimate) */
+.cad-inc-banner { display:flex; align-items:center; gap:16px; background:#fff8ec; border:1px solid #f6d9a8; border-left:4px solid var(--orange); border-radius:14px; padding:16px 20px; margin-bottom:18px; flex-wrap:wrap; }
+.cib-icon { font-size:22px; color:var(--orange); flex:0 0 auto; }
+.cib-txt { flex:1 1 auto; min-width:200px; }
+.cib-title { font-size:13.5px; font-weight:700; color:var(--navy); }
+.cib-sub { font-size:12px; color:#7b8ea4; margin-top:3px; line-height:1.45; }
+.cib-btn { flex:0 0 auto; border:none; border-radius:10px; padding:11px 18px; font-size:13px; font-weight:700; cursor:pointer; background:var(--orange); color:#fff; display:inline-flex; align-items:center; gap:7px; }
+.cib-btn:hover { filter:brightness(.95); }
+.comp-obra-addr { display:flex; align-items:center; gap:8px; background:var(--bg); border-radius:10px; padding:11px 14px; font-size:13px; font-weight:700; color:var(--navy); margin-bottom:16px; word-break:break-word; }
+.comp-obra-addr i { color:var(--orange); flex:0 0 auto; }
+.comp-obra-note { font-size:12px; color:#7b8ea4; line-height:1.5; margin-bottom:16px; background:#f7fafc; border-radius:8px; padding:10px 13px; }
+
 
 /* MODALS */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:center; justify-content:center; padding:16px; }
@@ -853,6 +865,45 @@ tbody tr:hover td { background:#fafbfe; }
         </button>
       </div>
       <div id="orcModalMsg" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Completar Cadastro da Obra (obras do modelo antigo) -->
+  <div id="compObraModal" class="modal-overlay">
+    <div class="modal-card" style="max-width:440px">
+      <div class="modal-title"><i class="fas fa-file-circle-plus" style="color:var(--orange)"></i>Completar Cadastro da Obra</div>
+      <div class="comp-obra-addr"><i class="fas fa-map-marker-alt"></i><span id="compObraAddr"></span></div>
+      <div class="comp-obra-note" id="compObraNote"></div>
+
+      <label class="f-label">Nome do Cliente</label>
+      <input type="text" id="compObraCliente" class="f-input" placeholder="Ex.: John Smith" autocomplete="off">
+
+      <label class="f-label" style="margin-top:14px">Estimate <small style="text-transform:none;color:#7b8ea4">(valor contratado com o cliente)</small></label>
+      <div class="f-input-prefix">
+        <span class="prefix">$</span>
+        <input type="text" id="compObraOrc" class="f-input" inputmode="decimal" placeholder="0.00">
+      </div>
+
+      <!-- Status só aparece quando a obra ainda não tem linha em Cadastro de Obras -->
+      <div id="compObraStatusBox" style="display:none">
+        <label class="f-label" style="margin-top:14px">Esta obra já foi concluída? <span class="f-req">*</span></label>
+        <select id="compObraFin" class="f-input" onchange="compObraFinChange()">
+          <option value="Não">Não — ainda em andamento</option>
+          <option value="Sim">Sim — já concluída</option>
+        </select>
+        <div id="compObraDtBox" style="display:none;margin-top:12px">
+          <label class="f-label">Data de finalização <span class="f-req">*</span></label>
+          <input type="date" id="compObraDtFinal" class="f-input">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeCompObra()">Cancelar</button>
+        <button class="submit-btn" id="compObraSaveBtn" onclick="saveCompObra()" style="margin-top:0">
+          <i class="fas fa-check"></i> Salvar cadastro
+        </button>
+      </div>
+      <div id="compObraMsg" style="display:none;margin-top:12px"></div>
     </div>
   </div>
 
@@ -2474,6 +2525,26 @@ function obraDetailHTML(addr, ids) {
     </div>
   </div>` : '';
 
+  // ── Cadastro incompleto — obras do modelo antigo ──
+  // Antes o app não pedia cliente nem estimate. Sem estimate o card "Resultado
+  // Financeiro" nem é renderizado, e o lápis de editar mora dentro dele — por isso
+  // o botão de completar precisa viver aqui fora, senão a obra antiga não tem saída.
+  const semCadastro = !obra;
+  const faltando = [];
+  if (semCadastro || !obra.cliente) faltando.push('o cliente');
+  if (!hasOrc) faltando.push('o estimate');
+  const cadIncompletoHtml = faltando.length ? `
+  <div class="cad-inc-banner">
+    <div class="cib-icon"><i class="fas fa-circle-exclamation"></i></div>
+    <div class="cib-txt">
+      <div class="cib-title">Cadastro incompleto — falta ${faltando.join(' e ')}</div>
+      <div class="cib-sub">${semCadastro
+        ? 'Esta obra aparece no app só pelos lançamentos de custo — nunca foi cadastrada em "Obras". Complete o cadastro para acompanhar o Resultado Financeiro.'
+        : 'Obra do modelo antigo. Informe o que falta para ela ficar no mesmo padrão das obras novas.'}</div>
+    </div>
+    <button class="cib-btn" onclick="openCompObra('${esc(addr)}')"><i class="fas fa-file-circle-plus"></i> Completar cadastro</button>
+  </div>` : '';
+
   const noCosts = d.grand === 0;
   const lucroClass = saldo < 0 ? 'rb-prejuizo' : margem < 15 ? 'rb-risco' : 'rb-lucro';
   const lucroIcon  = saldo < 0 ? 'fa-times-circle' : margem < 15 ? 'fa-exclamation-triangle' : 'fa-check-circle';
@@ -2685,7 +2756,7 @@ function obraDetailHTML(addr, ids) {
       </div>
     </div>`;
 
-  return obraInfoHtml + clientCostHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
+  return cadIncompletoHtml + obraInfoHtml + clientCostHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
 }
 
 // ── INVOICE (consulta) para o cliente ─────────────────────
@@ -3703,6 +3774,95 @@ async function saveOrcamento() {
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Atualizar';
   }
+}
+
+// ── COMPLETAR CADASTRO — obras do modelo antigo ─────────────
+// Duas situações: a obra tem linha em "Cadastro de Obras" mas sem cliente/estimate,
+// ou não tem linha nenhuma (existe só pelos lançamentos de custo). No segundo caso
+// a linha é criada, e aí o status precisa ser informado.
+
+let COMP_OBRA_ADDR = '';
+
+function compObraMsg(type, msg) {
+  const el = document.getElementById('compObraMsg');
+  el.className = 'f-alert ' + type;
+  el.innerHTML = `<i class="fas ${type === 'ok' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${escH(msg)}`;
+  el.style.display = 'flex';
+}
+
+function openCompObra(addr) {
+  COMP_OBRA_ADDR = addr;
+  const obra = PROC.obras.find(o => o.addr === addr);
+  const semCadastro = !obra;
+  document.getElementById('compObraAddr').textContent = addr;
+  document.getElementById('compObraNote').textContent = semCadastro
+    ? 'Esta obra ainda não existe no "Cadastro de Obras" — ela será criada agora. Os lançamentos de horas, materiais e subcontratos já existentes não são alterados.'
+    : 'Preencha o que estiver faltando. Os lançamentos de custo da obra não são alterados.';
+  document.getElementById('compObraCliente').value = obra ? obra.cliente : '';
+  document.getElementById('compObraOrc').value = (obra && obra.orcamento) ? obra.orcamento : '';
+  document.getElementById('compObraStatusBox').style.display = semCadastro ? 'block' : 'none';
+  document.getElementById('compObraFin').value = 'Não';
+  document.getElementById('compObraDtBox').style.display = 'none';
+  document.getElementById('compObraDtFinal').value = '';
+  document.getElementById('compObraMsg').style.display = 'none';
+  document.getElementById('compObraModal').classList.add('open');
+  document.getElementById('compObraCliente').focus();
+}
+
+function compObraFinChange() {
+  document.getElementById('compObraDtBox').style.display =
+    document.getElementById('compObraFin').value === 'Sim' ? 'block' : 'none';
+}
+
+function closeCompObra() {
+  document.getElementById('compObraModal').classList.remove('open');
+  COMP_OBRA_ADDR = '';
+}
+
+async function saveCompObra() {
+  const addr = COMP_OBRA_ADDR;
+  const cliente = document.getElementById('compObraCliente').value.trim();
+  const raw = document.getElementById('compObraOrc').value.replace(',', '.').trim();
+  const val = raw ? parseFloat(raw) : null;
+  if (raw && (isNaN(val) || val <= 0)) return compObraMsg('err', 'Estimate inválido — informe um valor maior que zero.');
+  if (!cliente && val === null) return compObraMsg('err', 'Informe ao menos o nome do cliente ou o estimate.');
+
+  const semCadastro = document.getElementById('compObraStatusBox').style.display !== 'none';
+  const finalizada = document.getElementById('compObraFin').value;
+  const dtFinal = document.getElementById('compObraDtFinal').value;
+  if (semCadastro && finalizada === 'Sim' && !dtFinal) return compObraMsg('err', 'Informe a data de finalização da obra.');
+
+  const params = { action: 'completarObra', addr };
+  if (cliente) params.cliente = cliente;
+  if (val !== null) params.orcamento = String(val);
+  if (semCadastro) {
+    params.finalizada = finalizada;
+    if (finalizada === 'Sim') params.dtFinal = dtFinal;
+  }
+
+  await runBtn(document.getElementById('compObraSaveBtn'), async () => {
+    try {
+      await apiWrite(params);
+      // reflete na hora e sincroniza com a planilha em 2º plano
+      const idx = PROC.obras.findIndex(o => o.addr === addr);
+      if (idx >= 0) {
+        if (cliente) PROC.obras[idx].cliente = cliente;
+        if (val !== null) PROC.obras[idx].orcamento = val;
+      } else {
+        PROC.obras.push({
+          addr, cliente, contato: '', escopo: '', orcamento: val || 0,
+          dtInicio: '', dtFim: '', fotosBefore: '',
+          finalizada: finalizada === 'Sim', dtFinal: finalizada === 'Sim' ? dtFinal : '',
+          fotosAfter: '',
+        });
+      }
+      closeCompObra();
+      reRenderObra(addr);
+      loadData();
+    } catch (e) {
+      compObraMsg('err', 'Erro ao salvar: ' + e.message);
+    }
+  }, 'Salvando...');
 }
 
 // Password is always required — no auto-login from session cookie.

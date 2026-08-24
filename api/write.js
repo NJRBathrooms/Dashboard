@@ -6,6 +6,7 @@ const HANDLERS = {
   addObra: A.addObra,
   closeObra: A.closeObra,
   updateObra: A.updateObra,
+  completarObra: A.completarObra,
   addMaterial: A.addMaterial,
   updateMaterial: A.updateMaterial,
   deleteMaterial: A.deleteMaterial,
