@@ -11,8 +11,8 @@ if (!m) {
   process.exit(1);
 }
 const api = {};
-new Function('__out', m[0] + '\nObject.assign(__out,{dwNorm,dwRound2,dwLancamentos,dwServicos,dwPessoas,dwServicosDoMes,dwTotais});')(api);
-const { dwLancamentos, dwServicos, dwPessoas, dwServicosDoMes, dwTotais } = api;
+new Function('__out', m[0] + '\nObject.assign(__out,{dwNorm,dwRound2,dwLancamentos,dwServicos,dwPessoas,dwServicosDoMes,dwTotais,dwClientes});')(api);
+const { dwLancamentos, dwServicos, dwPessoas, dwServicosDoMes, dwTotais, dwClientes } = api;
 
 let n = 0;
 const t = (nome, fn) => { fn(); n++; console.log('  ok  ' + nome); };
@@ -106,6 +106,68 @@ t('serviço iniciado em agosto com diária em setembro continua em agosto, com c
   assert.ok(s, 'o serviço deve continuar aparecendo em agosto');
   assert.strictEqual(s.custo, 446.66, '66.66 + 200 (agosto) + 180 (setembro, custo integral)');
   assert.strictEqual(dwServicosDoMes(raw, '2026-09').some(x => x.addr === '8 Elm Rd'), false);
+});
+
+// ── dwClientes: uma linha por cliente, somando os endereços dele ──
+
+t('agrupa por cliente somando os serviços do mês', () => {
+  const c = dwClientes(base, '2026-08');
+  assert.strictEqual(c.length, 3, 'Maria, Joe e Ana');
+  const ana = c.find(x => x.cliente === 'Ana Costa');
+  assert.strictEqual(ana.servicos, 1);
+  assert.strictEqual(ana.receita, 950);
+  assert.strictEqual(ana.custo, 266.66);
+  assert.strictEqual(ana.lucro, 683.34);
+});
+
+t('mesmo cliente em dois endereços vira uma linha só', () => {
+  const raw = base.concat([
+    { _row: 7, data: '2026-08-14', cliente: 'Ana Costa', addr: '99 Cedar Ln', valorCobrado: '400', pessoa: 'Miguel', companhia: 'Drywall Pro', diaria: 150 },
+  ]);
+  const ana = dwClientes(raw, '2026-08').find(x => x.cliente === 'Ana Costa');
+  assert.strictEqual(ana.servicos, 2);
+  assert.strictEqual(ana.receita, 1350, '950 + 400');
+  assert.strictEqual(ana.custo, 416.66, '266.66 + 150');
+  assert.strictEqual(ana.lucro, 933.34);
+  assert.deepStrictEqual(ana.enderecos.slice().sort(), ['8 Elm Rd', '99 Cedar Ln']);
+});
+
+t('nome do cliente com caixa/espaçamento diferente cai no mesmo grupo', () => {
+  const raw = base.concat([
+    { _row: 7, data: '2026-08-14', cliente: 'ANA  costa', addr: '99 Cedar Ln', valorCobrado: '400', pessoa: 'Miguel', companhia: 'Drywall Pro', diaria: 150 },
+  ]);
+  const c = dwClientes(raw, '2026-08').filter(x => /ana/i.test(x.cliente));
+  assert.strictEqual(c.length, 1, 'não pode virar dois clientes');
+  assert.strictEqual(c[0].servicos, 2);
+});
+
+t('serviços sem cliente ficam num grupo próprio em vez de sumir do total', () => {
+  const raw = base.concat([
+    { _row: 7, data: '2026-08-14', cliente: '', addr: '99 Cedar Ln', valorCobrado: '400', pessoa: 'Miguel', companhia: 'Drywall Pro', diaria: 150 },
+    { _row: 8, data: '2026-08-15', cliente: '', addr: '17 Birch St', valorCobrado: '300', pessoa: 'Miguel', companhia: 'Drywall Pro', diaria: 150 },
+  ]);
+  const c = dwClientes(raw, '2026-08');
+  const sem = c.find(x => x.cliente === '');
+  assert.ok(sem, 'deve existir um grupo para os serviços sem cliente');
+  assert.strictEqual(sem.servicos, 2);
+  assert.strictEqual(sem.receita, 700);
+  const totC = dwTotais(c), totS = dwTotais(dwServicosDoMes(raw, '2026-08'));
+  assert.strictEqual(totC.receita, totS.receita);
+  assert.strictEqual(totC.custo, totS.custo);
+});
+
+t('o total por cliente bate exatamente com o total por serviço', () => {
+  assert.deepStrictEqual(dwTotais(dwClientes(base, '2026-08')), dwTotais(dwServicosDoMes(base, '2026-08')));
+});
+
+t('ordena do cliente que mais rendeu para o que menos rendeu', () => {
+  const r = dwClientes(base, '2026-08').map(x => x.receita);
+  assert.deepStrictEqual(r, r.slice().sort((a, b) => b - a));
+});
+
+t('filtra pelo mês pedido', () => {
+  assert.strictEqual(dwClientes(base, '2026-09').length, 0);
+  assert.strictEqual(dwClientes(base, '2026-08').length, 3);
 });
 
 console.log('\n' + n + ' testes passaram.');

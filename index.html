@@ -313,6 +313,18 @@ tbody tr:hover td { background:#fafbfe; }
 .comp-obra-addr i { color:var(--orange); flex:0 0 auto; }
 .comp-obra-note { font-size:12px; color:#7b8ea4; line-height:1.5; margin-bottom:16px; background:#f7fafc; border-radius:8px; padding:10px 13px; }
 
+/* AÇÕES DA OBRA — encerrar (obra ativa) / reabrir (obra finalizada) */
+.obra-act-bar { display:flex; justify-content:flex-end; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.obra-act-close { border:2px solid var(--navy); background:#fff; color:var(--navy); border-radius:10px; padding:10px 18px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition:all .2s; }
+.obra-act-close:hover { background:var(--navy); color:#fff; }
+.obra-act-close:disabled { opacity:.6; cursor:not-allowed; }
+.reabrir-bar { display:flex; align-items:center; gap:14px; background:#eaf7ef; border:1px solid #c3e6cb; border-left:4px solid #27ae60; border-radius:14px; padding:14px 20px; margin-bottom:18px; flex-wrap:wrap; }
+.reab-txt { flex:1 1 auto; min-width:180px; font-size:13px; font-weight:700; color:#155724; }
+.reab-txt i { margin-right:7px; }
+.reab-btn { flex:0 0 auto; border:2px solid #27ae60; background:#fff; color:#1e8449; border-radius:10px; padding:9px 17px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:all .2s; }
+.reab-btn:hover { background:#27ae60; color:#fff; }
+.reab-btn:disabled { opacity:.6; cursor:not-allowed; }
+
 
 /* MODALS */
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:center; justify-content:center; padding:16px; }
@@ -904,6 +916,49 @@ tbody tr:hover td { background:#fafbfe; }
         </button>
       </div>
       <div id="compObraMsg" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Encerrar Obra (a partir da própria obra, em Controle de Obras) -->
+  <div id="closeObraModal" class="modal-overlay">
+    <div class="modal-card" style="max-width:520px">
+      <div class="modal-title"><i class="fas fa-flag-checkered" style="color:var(--orange)"></i>Encerrar Obra</div>
+      <div class="comp-obra-addr"><i class="fas fa-map-marker-alt"></i><span id="closeObraAddr"></span></div>
+
+      <label class="f-label">Data de Finalização <span class="f-req">*</span></label>
+      <input type="date" id="coDtFinal" class="f-input">
+
+      <label class="f-label" style="margin-top:14px">Fotos "Depois" da Obra <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+      <div class="photo-upload-zone">
+        <input type="file" id="coPhotoInput" accept="image/*" multiple style="display:none"
+          onchange="handlePhotoUpload(this,'Depois',()=>CLOSE_OBRA_ADDR,'coPhotoStatus','coFotosAfter')">
+        <div class="upload-row">
+          <button type="button" class="upload-btn-main" id="coUploadBtn"
+            onclick="document.getElementById('coPhotoInput').click()">
+            <i class="fas fa-camera"></i> Tirar / Selecionar Fotos
+          </button>
+          <button type="button" class="drive-btn" id="coDriveBtn"
+            onclick="createDriveFolder(()=>CLOSE_OBRA_ADDR,'coFotosAfter','coDriveBtn','Depois')">
+            <i class="fab fa-google-drive"></i> Só criar pasta
+          </button>
+        </div>
+        <div id="coPhotoThumbs" class="photo-thumbs"></div>
+        <div id="coPhotoStatus"></div>
+        <div class="drive-link-row">
+          <span class="drive-link-row-lbl"><i class="fab fa-google-drive" style="color:#4285f4"></i> Link Drive:</span>
+          <input type="text" id="coFotosAfter" class="f-input"
+            style="flex:1;padding:8px 12px;font-size:13px"
+            placeholder="Preenchido automaticamente após o upload...">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeCloseObra()">Cancelar</button>
+        <button class="submit-btn" id="coSaveBtn" onclick="submitCloseObraModal()" style="margin-top:0">
+          <i class="fas fa-flag-checkered"></i> Marcar como Finalizada
+        </button>
+      </div>
+      <div id="coMsg" style="display:none;margin-top:12px"></div>
     </div>
   </div>
 
@@ -1786,6 +1841,13 @@ function renderObrasDrywall() {
 
 // ══ TAB 8: DRYWALL — LANÇAMENTOS RÁPIDOS ══════════════════
 let DW_DATA = '';        // data selecionada no formulário (YYYY-MM-DD)
+let DW_CLI_MES = '';     // 'YYYY-MM' exibido na tabela de clientes desta aba
+function dwCliMesNav(delta) {
+  const [y, m] = DW_CLI_MES.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1), p = n => String(n).padStart(2, '0');
+  DW_CLI_MES = d.getFullYear() + '-' + p(d.getMonth() + 1);
+  renderDrywall();
+}
 function dwHojeISO() { const d=new Date(), p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 
 function renderDrywall() {
@@ -1796,6 +1858,37 @@ function renderDrywall() {
   const servicos = dwServicos(raw).slice().sort((a,b)=>a.addr.localeCompare(b.addr));
   const doDia = dwLancamentos(raw).filter(l => l.data === DW_DATA);
   const totalDia = dwRound2(doDia.reduce((s,l)=>s+l.custo,0));
+
+  // Tabela de clientes do mês — uma linha por cliente, somando os endereços dele
+  if (!DW_CLI_MES) DW_CLI_MES = dwHojeISO().slice(0, 7);
+  const cliMes = dwClientes(raw, DW_CLI_MES);
+  const tCli = dwTotais(cliMes);
+  const [cy, cm] = DW_CLI_MES.split('-');
+  const cliLinhas = cliMes.map(c => `<tr>
+      <td><strong>${escH(c.cliente || '(sem cliente)')}</strong>
+        <div style="font-size:11px;color:#7b8ea4;margin-top:3px">${c.enderecos.map(a => escH(a)).join(' &middot; ')}</div></td>
+      <td>${c.servicos}</td>
+      <td style="color:#16a085;font-weight:700">${$(c.receita)}</td>
+      <td style="color:#e74c3c;font-weight:700">${$(c.custo)}</td>
+      <td style="font-weight:800;color:${c.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$(c.lucro)}</td>
+    </tr>`).join('');
+  const clientesHtml = `
+    <div class="data-table" style="margin-top:20px">
+      <div class="table-head"><i class="fas fa-user-group me-2" style="color:var(--orange)"></i>Clientes de drywall</div>
+      <div style="padding:16px 16px 0">
+        <div style="display:flex;align-items:center;gap:10px;background:var(--navy);border-radius:14px;padding:10px 12px">
+          <button class="orc-edit-btn" style="font-size:18px;padding:6px 12px" onclick="dwCliMesNav(-1)" aria-label="Mês anterior">&lsaquo;</button>
+          <div style="flex:1;text-align:center;color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${DW_MESES[+cm - 1]} <b style="color:var(--orange)">${cy}</b></div>
+          <button class="orc-edit-btn" style="font-size:18px;padding:6px 12px" onclick="dwCliMesNav(1)" aria-label="Próximo mês">&rsaquo;</button>
+        </div>
+      </div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>Cliente</th><th>Serviços</th><th>Receita</th><th>Custo</th><th>Lucro</th></tr></thead>
+        <tbody>${cliLinhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum cliente de drywall neste mês</td></tr>`}</tbody>
+        ${cliMes.length ? `<tfoot><tr class="tr-total"><td>TOTAL</td><td>${cliMes.reduce((a, c) => a + c.servicos, 0)}</td><td>${$(tCli.receita)}</td><td>${$(tCli.custo)}</td><td>${$(tCli.lucro)}</td></tr></tfoot>` : ''}
+      </table></div>
+    </div>
+    <p style="font-size:11.5px;color:#7b8ea4;margin-top:12px">O serviço entra no mês em que começou, com receita e custo integrais — igual à visão de Controle de Obras.</p>`;
 
   const optPessoas = ['<option value="">— escolha —</option>']
     .concat(pessoas.map(p=>`<option value="${escH(p.nome)}" data-comp="${escH(p.companhia)}" data-diaria="${p.diaria}">${escH(p.nome)}${p.companhia?' ('+escH(p.companhia)+')':''} — $${p.diaria}/dia</option>`))
@@ -1848,9 +1941,10 @@ function renderDrywall() {
       <div class="table-responsive"><table>
         <thead><tr><th>Pessoa</th><th>Serviço</th><th>Custo rateado</th><th>Rateio</th><th>Ações</th></tr></thead>
         <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum lançamento nesta data</td></tr>`}</tbody>
-        ${doDia.length ? `<tfoot><tr class="tr-total"><td colspan="2">CUSTO DO DIA</td><td colspan="3"><strong>${$$(totalDia)}</strong></td></tr></tfoot>` : ''}
+        ${doDia.length ? `<tfoot><tr class="tr-total"><td colspan="2">CUSTO DO DIA</td><td colspan="3"><strong>${$(totalDia)}</strong></td></tr></tfoot>` : ''}
       </table></div>
-    </div>`;
+    </div>
+    ${clientesHtml}`;
 }
 
 function dwPessoaChange() {
@@ -1987,6 +2081,34 @@ function dwTotais(servicos) {
   const lucro = dwRound2(receita - custo);
   return { receita, custo, lucro, margem: receita > 0 ? dwRound2(lucro / receita * 100) : 0 };
 }
+// Clientes do mês: uma linha por cliente, somando os serviços dele. Serviços sem
+// cliente preenchido caem todos num grupo próprio, em vez de sumirem da conta.
+function dwClientes(raw, ym) {
+  const servicos = ym ? dwServicosDoMes(raw, ym) : dwServicos(raw);
+  const SEM = '\u0000sem-cliente';
+  const by = {};
+  servicos.forEach(s => {
+    const nome = String(s.cliente == null ? '' : s.cliente).trim();
+    const k = dwNorm(nome) || SEM;
+    if (!by[k]) by[k] = { cliente: nome, servicos: 0, receita: 0, custo: 0, enderecos: [] };
+    const c = by[k];
+    if (!c.cliente && nome) c.cliente = nome;
+    c.servicos++;
+    c.receita = dwRound2(c.receita + (s.receita || 0));
+    c.custo = dwRound2(c.custo + (s.custo || 0));
+    c.enderecos.push(s.addr);
+  });
+  return Object.keys(by).map(k => {
+    const c = by[k];
+    return {
+      cliente: c.cliente, servicos: c.servicos, receita: c.receita, custo: c.custo,
+      lucro: dwRound2(c.receita - c.custo), enderecos: c.enderecos,
+    };
+  }).sort((a, b) => b.receita - a.receita
+    || b.lucro - a.lucro
+    || String(a.cliente).localeCompare(String(b.cliente)));
+}
+
 // ══ FIM DRYWALL — CÁLCULO ══
 
 function processAll() {
@@ -2113,14 +2235,15 @@ function calcAddr(addr) {
 function renderTab1() {
   if (OBRAS_SUB === 'dw') renderObrasDrywall();
   const body=document.getElementById('t1body');
+  const msg=transMsgHTML(T1_MSG); T1_MSG=null;
   if (!SEL_ADDR) {
-    body.innerHTML=`<div class="empty-box"><i class="fas fa-map-marker-alt"></i>
+    body.innerHTML=msg+`<div class="empty-box"><i class="fas fa-map-marker-alt"></i>
       <strong>Selecione um endereço</strong><br><small>Escolha a obra no menu acima</small></div>`;
     return;
   }
   ['donut','budget','bar'].forEach(k=>{ if(T1CH[k]){T1CH[k].destroy();T1CH[k]=null;} });
   const ids={donut:'donutCvs',budget:'budgetCvs',bar:'barCvs'};
-  document.getElementById('t1body').innerHTML=obraDetailHTML(SEL_ADDR,ids);
+  document.getElementById('t1body').innerHTML=msg+obraDetailHTML(SEL_ADDR,ids);
   const t1Visible = document.getElementById('t1page').style.display!=='none';
   if (t1Visible) {
     try { renderObraCharts(SEL_ADDR,ids,T1CH); T1_NEEDS_CHARTS=false; } catch(e) { console.error('Chart error:',e); T1_NEEDS_CHARTS=true; }
@@ -2545,6 +2668,13 @@ function obraDetailHTML(addr, ids) {
     <button class="cib-btn" onclick="openCompObra('${esc(addr)}')"><i class="fas fa-file-circle-plus"></i> Completar cadastro</button>
   </div>` : '';
 
+  // Encerrar a obra sem sair desta tela. Some quando ela já está finalizada — aí
+  // quem manda é o botão de reabrir, em "Fechar / Consultar" → Obras Finalizadas.
+  const obraActBarHtml = (obra && obra.finalizada) ? '' : `
+  <div class="obra-act-bar">
+    <button class="obra-act-close" onclick="openCloseObra('${esc(addr)}')"><i class="fas fa-flag-checkered"></i> Encerrar obra</button>
+  </div>`;
+
   const noCosts = d.grand === 0;
   const lucroClass = saldo < 0 ? 'rb-prejuizo' : margem < 15 ? 'rb-risco' : 'rb-lucro';
   const lucroIcon  = saldo < 0 ? 'fa-times-circle' : margem < 15 ? 'fa-exclamation-triangle' : 'fa-check-circle';
@@ -2756,7 +2886,7 @@ function obraDetailHTML(addr, ids) {
       </div>
     </div>`;
 
-  return cadIncompletoHtml + obraInfoHtml + clientCostHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
+  return obraActBarHtml + cadIncompletoHtml + obraInfoHtml + clientCostHtml + resultadoHtml + metricCards + charts + table + materialTable + subsTable + materialExtraTable;
 }
 
 // ── INVOICE (consulta) para o cliente ─────────────────────
@@ -3157,14 +3287,23 @@ function showT4Msg(type,msg) {
 function renderFinObraDetail() {
   ['donut','budget','bar'].forEach(k=>{ if(T4CH[k]){T4CH[k].destroy();T4CH[k]=null;} });
   const target=document.getElementById('t4DetailBody');
+  const msg=transMsgHTML(FIN_MSG); FIN_MSG=null;
   if (!SEL_FIN_ADDR) {
-    target.innerHTML=`<div class="empty-box" style="padding:30px 24px">
+    target.innerHTML=msg+`<div class="empty-box" style="padding:30px 24px">
       <i class="fas fa-check-circle" style="font-size:32px;color:#27ae60;opacity:.4"></i>
       <strong>Selecione uma obra finalizada acima</strong></div>`;
     return;
   }
   const ids={donut:'donutCvsF',budget:'budgetCvsF',bar:'barCvsF'};
-  target.innerHTML=`<div class="fin-detail-wrap">${obraDetailHTML(SEL_FIN_ADDR,ids)}</div>`;
+  const obraF=PROC.obras.find(o=>o.addr===SEL_FIN_ADDR);
+  // Reabrir: obra encerrada por engano, ou que precisou voltar. Só existe aqui —
+  // em Controle de Obras a obra finalizada nem aparece na lista de endereços.
+  const reabrirHtml=(obraF&&obraF.finalizada)?`
+    <div class="reabrir-bar">
+      <div class="reab-txt"><i class="fas fa-check-circle"></i>Obra finalizada${obraF.dtFinal?' em '+fmtDt(obraF.dtFinal):''}</div>
+      <button class="reab-btn" onclick="reabrirObra('${esc(SEL_FIN_ADDR)}',this)"><i class="fas fa-rotate-left"></i> Reabrir obra</button>
+    </div>`:'';
+  target.innerHTML=msg+`<div class="fin-detail-wrap">${reabrirHtml}${obraDetailHTML(SEL_FIN_ADDR,ids)}</div>`;
   renderObraCharts(SEL_FIN_ADDR,ids,T4CH);
 }
 
@@ -3774,6 +3913,103 @@ async function saveOrcamento() {
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Atualizar';
   }
+}
+
+// ── ENCERRAR / REABRIR OBRA a partir da própria obra ────────
+// Mensagens que sobrevivem a um re-render (a obra sai da lista depois da ação,
+// então o aviso precisa aparecer na tela vazia que fica no lugar dela).
+let T1_MSG = null, FIN_MSG = null;
+function transMsgHTML(m) {
+  if (!m) return '';
+  const ic = m.type === 'ok' ? 'fa-check-circle' : 'fa-exclamation-circle';
+  return `<div class="f-alert ${m.type}" style="margin-top:0;margin-bottom:16px"><i class="fas ${ic}"></i> ${escH(m.text)}</div>`;
+}
+
+let CLOSE_OBRA_ADDR = '';
+
+function openCloseObra(addr) {
+  CLOSE_OBRA_ADDR = addr;
+  document.getElementById('closeObraAddr').textContent = addr;
+  document.getElementById('coDtFinal').value = dwHojeISO();
+  document.getElementById('coFotosAfter').value = '';
+  document.getElementById('coPhotoThumbs').innerHTML = '';
+  document.getElementById('coPhotoInput').value = '';
+  setUploadStatus('coPhotoStatus', null);
+  // createDriveFolder troca o onclick do botão para "Abrir pasta" — repor ao reabrir o modal
+  const db = document.getElementById('coDriveBtn');
+  db.disabled = false;
+  db.innerHTML = '<i class="fab fa-google-drive"></i> Só criar pasta';
+  db.onclick = () => createDriveFolder(() => CLOSE_OBRA_ADDR, 'coFotosAfter', 'coDriveBtn', 'Depois');
+  document.getElementById('coMsg').style.display = 'none';
+  document.getElementById('closeObraModal').classList.add('open');
+}
+
+function closeCloseObra() {
+  document.getElementById('closeObraModal').classList.remove('open');
+  CLOSE_OBRA_ADDR = '';
+}
+
+async function submitCloseObraModal() {
+  const addr = CLOSE_OBRA_ADDR;
+  const dtFinal = document.getElementById('coDtFinal').value;
+  const msgEl = document.getElementById('coMsg');
+  const fail = t => { msgEl.className = 'f-alert err'; msgEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + escH(t); msgEl.style.display = 'flex'; };
+  if (!dtFinal) return fail('Data de finalização é obrigatória.');
+  const fotosAfter = document.getElementById('coFotosAfter').value.trim();
+
+  await runBtn(document.getElementById('coSaveBtn'), async () => {
+    try {
+      await apiWrite({ action: 'closeObra', addr, dtFinal, fotosAfter });
+      const idx = PROC.obras.findIndex(o => o.addr === addr);
+      if (idx >= 0) {
+        PROC.obras[idx].finalizada = true;
+        PROC.obras[idx].dtFinal = dtFinal;
+        if (fotosAfter) PROC.obras[idx].fotosAfter = fotosAfter;
+      } else {
+        // obra que só existia pelos lançamentos: closeObra cria a linha mínima
+        PROC.obras.push({
+          addr, cliente: '', contato: '', escopo: '', orcamento: 0,
+          dtInicio: '', dtFim: '', fotosBefore: '',
+          finalizada: true, dtFinal, fotosAfter,
+        });
+      }
+      closeCloseObra();
+      // a obra deixa de ser ativa: sai desta lista e passa para "Obras Finalizadas"
+      SEL_ADDR = '';
+      const inp = document.getElementById('addrInput');
+      if (inp) inp.value = '';
+      toggleClearBtn('clearAddr1', '');
+      T1_MSG = { type: 'ok', text: 'Obra "' + addr + '" encerrada. Ela agora está em "Fechar / Consultar" → Obras Finalizadas.' };
+      fillAddresses();
+      fillFinAddresses();
+      renderTab1();
+      loadData();
+    } catch (e) {
+      fail('Erro ao encerrar: ' + e.message);
+    }
+  }, 'Salvando...');
+}
+
+async function reabrirObra(addr, btn) {
+  if (!confirm('Reabrir a obra "' + addr + '"?\n\nEla volta para "Controle de Obras" como em andamento e a data de finalização é apagada.\nAs fotos e todos os lançamentos de custo são mantidos.')) return;
+  await runBtn(btn, async () => {
+    try {
+      await apiWrite({ action: 'updateObra', addr, finalizada: 'Não', dtFinal: '' });
+      const idx = PROC.obras.findIndex(o => o.addr === addr);
+      if (idx >= 0) { PROC.obras[idx].finalizada = false; PROC.obras[idx].dtFinal = ''; }
+      SEL_FIN_ADDR = '';
+      const inp = document.getElementById('addrInputFin');
+      if (inp) inp.value = '';
+      toggleClearBtn('clearAddrFin', '');
+      FIN_MSG = { type: 'ok', text: 'Obra "' + addr + '" reaberta. Ela voltou para "Controle de Obras" → Obras Bathroom/Tile.' };
+      fillAddresses();
+      fillFinAddresses();
+      renderFinObraDetail();
+      loadData();
+    } catch (e) {
+      alert('Erro ao reabrir a obra:\n' + e.message);
+    }
+  }, 'Reabrindo...');
 }
 
 // ── COMPLETAR CADASTRO — obras do modelo antigo ─────────────
