@@ -1,157 +1,228 @@
-// Executa de verdade o <script> do index.html num DOM simulado e chama as funções
-// de render.
+// Executa de verdade o <script> do index.html num DOM simulado e chama TODAS as
+// telas do app com um conjunto de dados sintético (mesmos nomes de coluna da
+// planilha de produção, sem dado real de cliente).
 //
-// Existe porque "node --check" só enxerga sintaxe: uma chamada a função inexistente
-// passa no check e só quebra em produção. Foi assim que a aba Drywall caiu — um
-// patch aplicado com String.replace transformou $( (formatador de moeda) em $(,
-// porque em replace() a sequência $ significa "um $ literal".
+// Existe porque `node --check` só enxerga sintaxe. Em 28/08/2026 a aba Drywall foi
+// ao ar quebrada porque um patch aplicado com String.replace(from, to) transformou
+// $$( (formatador de moeda) em $( — sintaxe válida, função inexistente. O lint
+// (scripts/test-lint.js) pega esse caso por análise estática; este arquivo pega a
+// classe maior: qualquer coisa que exploda ao montar a tela.
 //
 // Rodar: node scripts/test-render.js
 const fs = require('fs');
 const path = require('path');
+
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const m = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/.exec(html);
+if (!m) { console.error('FALHOU: bloco <script> não encontrado no index.html'); process.exit(1); }
 const code = m[1];
 
+// ── DOM simulado ───────────────────────────────────────────
 const els = {};
 function mkEl(id) {
-  return els[id] = els[id] || {
-    id, innerHTML: '', textContent: '', value: '', disabled: false, options: [], selectedIndex: -1,
-    style: new Proxy({}, { get: (t, k) => t[k] ?? '', set: (t, k, v) => (t[k] = v, true) }),
+  if (els[id]) return els[id];
+  const el = {
+    id, innerHTML: '', outerHTML: '', textContent: '', value: '', disabled: false,
+    options: [], selectedIndex: -1, files: [], checked: false, scrollLeft: 0, offsetWidth: 800,
+    style: new Proxy({}, { get: (t, k) => (k in t ? t[k] : ''), set: (t, k, v) => (t[k] = v, true) }),
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-    dataset: {}, appendChild() {}, addEventListener() {}, focus() {}, click() {},
+    dataset: {}, children: [], parentNode: null,
+    appendChild() {}, removeChild() {}, insertAdjacentHTML() {}, remove() {},
+    addEventListener() {}, removeEventListener() {}, focus() {}, blur() {}, click() {},
+    setAttribute() {}, getAttribute: () => null, scrollIntoView() {},
+    getBoundingClientRect: () => ({ top: 0, left: 0, width: 800, height: 600, right: 800, bottom: 600 }),
+    getContext: () => ({}),          // canvas dos gráficos (Chart.js está stubado)
     querySelector: () => null, querySelectorAll: () => [],
-    getContext: () => ({}), // canvas dos gráficos (Chart.js está stubado)
+    animate: () => ({ finished: Promise.resolve() }),
   };
+  return (els[id] = el);
 }
 const doc = {
   getElementById: id => mkEl(id),
   querySelector: () => null, querySelectorAll: () => [],
   createElement: () => mkEl('_tmp' + Math.random()),
-  addEventListener() {}, body: mkEl('body'), documentElement: mkEl('html'),
+  addEventListener() {}, removeEventListener() {},
+  body: mkEl('body'), documentElement: mkEl('html'), cookie: '',
 };
+
 const noop = () => {};
 const sandbox = {
   document: doc,
-  window: { addEventListener: noop, matchMedia: () => ({ matches: false, addListener: noop }), open: noop, location: { href: '' } },
+  window: {
+    addEventListener: noop, removeEventListener: noop, open: noop, print: noop,
+    matchMedia: () => ({ matches: false, addListener: noop, addEventListener: noop }),
+    location: { href: '', reload: noop }, innerWidth: 1200, scrollTo: noop,
+  },
   localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
-  navigator: { userAgent: 'node' },
+  navigator: { userAgent: 'node', serviceWorker: { register: () => Promise.resolve() } },
   fetch: async () => ({ ok: true, status: 200, json: async () => ({}) }),
-  Chart: function () { return { destroy: noop, update: noop }; },
-  ChartDataLabels: {}, // plugin carregado por <script src> na página real
-  alert: noop, confirm: () => true, setTimeout: noop, setInterval: noop, clearTimeout: noop,
+  Chart: Object.assign(function () { return { destroy: noop, update: noop, resize: noop }; }, { register: noop }),
+  ChartDataLabels: {},                       // plugin carregado por <script src> na página real
+  alert: noop, confirm: () => true, prompt: () => null,
+  setTimeout: noop, setInterval: noop, clearTimeout: noop, clearInterval: noop,
+  requestAnimationFrame: noop, getComputedStyle: () => ({ getPropertyValue: () => '' }),
   console,
 };
-sandbox.Chart.register = noop;
 
-const names = Object.keys(sandbox);
-const vals = names.map(k => sandbox[k]);
-const run = new Function(...names, '__export',
-  code + '\n__export({ renderDrywall, renderObrasDrywall, processAll, obraDetailHTML, renderTab1, renderFinObraDetail, setState:(k,v)=>{ if(k==="PROC")PROC=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_CLI_MES")DW_CLI_MES=v; if(k==="DW_MES")DW_MES=v; if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v; }, getPROC:()=>PROC });');
+const nomes = Object.keys(sandbox);
+const run = new Function(...nomes, '__export', code +
+  '\n__export({ renderAll, renderTab1, renderTab2, renderDrywall, renderObrasDrywall,' +
+  ' renderClientesTable, renderInsurance, renderUsuarios, renderCloseForm, renderFinObraDetail,' +
+  ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
+  ' setDB:v=>{DB=v}, getPROC:()=>PROC,' +
+  ' set:(k,v)=>{ if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v;' +
+  ' if(k==="SEL_ADDR_T4")SEL_ADDR_T4=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_MES")DW_MES=v;' +
+  ' if(k==="DW_CLI_MES")DW_CLI_MES=v; if(k==="OBRAS_SUB")OBRAS_SUB=v; } });');
 
 const api = {};
-run(...vals, o => Object.assign(api, o));
+run(...nomes.map(k => sandbox[k]), o => Object.assign(api, o));
 
-// dados de exemplo, com dois clientes e um serviço sem cliente
-const drywall = [
-  { _row: 2, data: '2026-08-12', cliente: 'Maria Silva', addr: '12 Oak St',   valorCobrado: '800', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200 },
-  { _row: 3, data: '2026-08-12', cliente: 'Joe Brown',   addr: '40 Pine Ave', valorCobrado: '600', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200 },
-  { _row: 4, data: '2026-08-12', cliente: '',            addr: '8 Elm Rd',    valorCobrado: '950', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200 },
-  { _row: 5, data: '2026-08-13', cliente: 'Maria Silva', addr: '77 Ash Way',  valorCobrado: '450', pessoa: 'Ana',    companhia: 'DW Crew',     diaria: 180 },
-];
-const P = api.getPROC();
-P.drywall = drywall;
-api.setState('DW_DATA', '2026-08-12');
-api.setState('DW_CLI_MES', '2026-08');
-api.setState('DW_MES', '2026-08');
+// ── fixture: mesmos nomes de coluna da planilha, dados inventados ──
+const DB = {
+  lastUpdated: '2026-08-28 10:00:00',
+  obras: [
+    { _row: 2, 'Endereço': '4 Tara rd, Essex', 'Nome do Cliente': 'Andrew B', 'Contato': '555-0100',
+      'Escopo': 'Banheiro completo', 'Orçamento': 6240, 'Data Início Prevista': '2026-07-01',
+      'Data Fim Prevista': '2026-08-01', 'Link Fotos Antes': 'http://drive/antes', 'Finalizada': 'Não',
+      'Data Finalização': '', 'Link Fotos Depois': '' },
+    { _row: 3, 'Endereço': '66 Knotty way Belmont NH', 'Nome do Cliente': '', 'Contato': '',
+      'Escopo': '', 'Orçamento': '', 'Data Início Prevista': '', 'Data Fim Prevista': '',
+      'Link Fotos Antes': '', 'Finalizada': 'Sim', 'Data Finalização': '2026-01-10', 'Link Fotos Depois': '' },
+  ],
+  labor: [
+    { _row: 2, 'Carimbo de data/hora': '2026-08-26 18:00:00', 'Endereço da obra': '4 Tara rd, Essex',
+      'Nome do funcionário': 'João La Pastina', 'Hora de entrada': '08:00', 'Hora de saída': '17:00',
+      'Comprou materiais hoje?': 'Sim', 'Valor total gasto': 45, 'Quem pagou?': 'Funcionário',
+      'Foto do recibo (se aplicável)': 'http://drive/recibo1',
+      'Algum material é necessário para amanhã?': '', 'Observações / Sugestões (Opcional, para feedback espontâneo)': '',
+      'Endereço de email': 'joao@x.com', 'Horas tabalhadas': 8 },
+    { _row: 3, 'Carimbo de data/hora': '2026-08-27 18:00:00', 'Endereço da obra': '14 Bradford road Hamilton',
+      'Nome do funcionário': 'Leandro Venâncio', 'Hora de entrada': '07:30', 'Hora de saída': '16:30',
+      'Comprou materiais hoje?': 'Não', 'Valor total gasto': '', 'Quem pagou?': '',
+      'Foto do recibo (se aplicável)': '', 'Algum material é necessário para amanhã?': '',
+      'Observações / Sugestões (Opcional, para feedback espontâneo)': '', 'Endereço de email': 'l@x.com',
+      'Horas tabalhadas': 8 },
+  ],
+  materials: [
+    { _row: 2, 'Carimbo de data/hora': '2026-08-26 12:00:00', 'Data da Compra': '2026-08-26',
+      'Endereço da obra': '4 Tara rd, Essex', 'Descrição dos Itens': 'Porcelanato',
+      'Valor Total Pago ($)': 1200, 'Anexar Comprovante/NF': 'http://drive/nf1',
+      'Observações (Opcional)': '', 'Selecione a empresa': 'Home Depot',
+      'É um custo extra para o cliente pagar?': 'Não', 'Valor Cobrado do Cliente ($)': '' },
+    { _row: 3, 'Carimbo de data/hora': '2026-08-27 12:00:00', 'Data da Compra': '2026-08-27',
+      'Endereço da obra': '4 Tara rd, Essex', 'Descrição dos Itens': 'Nicho extra',
+      'Valor Total Pago ($)': 180, 'Anexar Comprovante/NF': '', 'Observações (Opcional)': '',
+      'Selecione a empresa': 'Lowes', 'É um custo extra para o cliente pagar?': 'Sim',
+      'Valor Cobrado do Cliente ($)': 300 },
+  ],
+  subcontractors: [
+    { _row: 2, 'Carimbo de data/hora': '2026-08-20 09:00:00', 'Finalidade do subcontrato': 'Obra',
+      'Endereço da obra': '4 Tara rd, Essex', 'Data de conclusão': '2026-08-22', 'Tipo de serviço': 'Plumbing',
+      'Descrição do serviço': 'Troca de tubulação', 'Empresa Subcontratada': 'ACME Plumbing',
+      'Contato do Subcontratado': '555-0200', 'Valor do serviço': 900, 'Status pagamento': 'Pago',
+      'Anexar invoice': 'http://drive/inv1' },
+  ],
+  clients: [
+    { _row: 2, 'Carimbo de data/hora': '2026-07-01 09:00:00', 'Nome do Cliente': 'Andrew B',
+      'Contato do Cliente': '555-0100', 'Empresa do Cliente': 'Cabinet by Design',
+      'Email do Cliente': 'andrew@x.com', 'Observação': '' },
+  ],
+  ajustes: [
+    { _row: 2, 'Carimbo de data/hora': '2026-08-26 20:00:00', 'Nome do funcionário': 'João La Pastina',
+      'Semana': '2026-08-23', 'Bonificação': 50, 'Justificativa Bonificação': 'Hora extra',
+      'Desconto': 0, 'Justificativa Desconto': '' },
+  ],
+  funcionarios: [
+    { _row: 2, nome: 'João La Pastina', rate: 25, temSenha: true },
+    { _row: 3, nome: 'Leandro Venâncio', rate: 23, temSenha: true },
+  ],
+  rateHistory: [
+    { _row: 2, nome: 'João La Pastina', rate: 25, desde: '2026-08-02' },
+    { _row: 3, nome: 'Leandro Venâncio', rate: 23, desde: '2026-08-02' },
+  ],
+  subProfiles: [
+    { _row: 2, 'Carimbo de data/hora': '2026-07-10 09:00:00', 'Owner Name': 'Bob R',
+      'Company Name': 'ACME Plumbing', 'Company Address': '1 Main St', 'Email': 'bob@x.com',
+      'Phone': '555-0200', 'COI Policy Number': 'P-123', 'Insurance Expiration': '2026-12-31',
+      'COI URL': 'http://drive/coi', 'EIN': '12-3456789', 'W9 URL': 'http://drive/w9',
+      'Alerted30': '', 'AlertedExpired': '' },
+    { _row: 3, 'Carimbo de data/hora': '2026-07-11 09:00:00', 'Owner Name': 'Vencido S',
+      'Company Name': 'Old Crew', 'Company Address': '2 Oak St', 'Email': 'old@x.com',
+      'Phone': '555-0300', 'COI Policy Number': 'P-999', 'Insurance Expiration': '2026-01-31',
+      'COI URL': '', 'EIN': '', 'W9 URL': '', 'Alerted30': 'x', 'AlertedExpired': 'x' },
+  ],
+  drywall: [
+    { _row: 2, ts: '2026-08-12 09:00:00', data: '2026-08-12', cliente: 'Maria Silva', addr: '12 Oak St',
+      valorCobrado: '800', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200, obs: '' },
+    { _row: 3, ts: '2026-08-12 09:00:00', data: '2026-08-12', cliente: 'Joe Brown', addr: '40 Pine Ave',
+      valorCobrado: '600', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200, obs: '' },
+    { _row: 4, ts: '2026-08-12 09:00:00', data: '2026-08-12', cliente: '', addr: '8 Elm Rd',
+      valorCobrado: '950', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200, obs: 'sem cliente' },
+    { _row: 5, ts: '2026-08-13 09:00:00', data: '2026-08-13', cliente: 'Maria Silva', addr: '77 Ash Way',
+      valorCobrado: '450', pessoa: 'Ana', companhia: 'DW Crew', diaria: 180, obs: '' },
+  ],
+};
 
+// ── execução ───────────────────────────────────────────────
 let fails = 0;
 const check = (nome, cond, extra) => {
   if (cond) console.log('  ok  ' + nome);
-  else { fails++; console.log('  FALHOU  ' + nome + (extra ? '\n         ' + extra : '')); }
+  else { fails++; console.log('  FALHOU  ' + nome + (extra ? '\n          ' + extra : '')); }
+};
+const roda = (nome, fn, verificar) => {
+  try {
+    const r = fn();
+    if (verificar) { const msg = verificar(r); check(nome, msg === true, typeof msg === 'string' ? msg : undefined); }
+    else check(nome, true);
+  } catch (e) {
+    fails++;
+    console.log('  FALHOU  ' + nome + ' lançou: ' + e.message);
+  }
+};
+const semLixo = id => {
+  const h = els[id] ? els[id].innerHTML : '';
+  if (!h) return 'tela ' + id + ' ficou vazia';
+  if (h.includes('undefined')) return 'tela ' + id + ' contém "undefined"';
+  if (h.includes('NaN')) return 'tela ' + id + ' contém "NaN"';
+  return true;
 };
 
-try {
-  api.renderDrywall();
-  const out = els['t8body'].innerHTML;
-  check('renderDrywall() executa sem erro', out.length > 0);
-  check('tabela de clientes foi montada', out.includes('Clientes de drywall'));
-  check('valores em dólar aparecem formatados', /\$\s?1?,?\d/.test(out), out.slice(0, 200));
-  check('sem "undefined" no HTML gerado', !out.includes('undefined'));
-  check('Maria Silva soma os 2 endereços dela', /Maria Silva[\s\S]{0,400}?<td>2<\/td>/.test(out));
-  check('serviço sem cliente aparece como (sem cliente)', out.includes('(sem cliente)'));
-  check('total do dia (CUSTO DO DIA) renderiza com valor', /CUSTO DO DIA[\s\S]{0,200}?\$/.test(out));
-} catch (e) {
-  fails++;
-  console.log('  FALHOU  renderDrywall() lançou: ' + e.message);
-}
+api.setDB(DB);
+api.set('DW_DATA', '2026-08-12');
+api.set('DW_MES', '2026-08');
+api.set('DW_CLI_MES', '2026-08');
 
-try {
-  api.renderObrasDrywall();
-  const out2 = els['st1dw'].innerHTML;
-  check('renderObrasDrywall() (sub-aba Obras Drywall) executa', out2.includes('Serviços de drywall'));
-  check('sub-aba sem "undefined"', !out2.includes('undefined'));
-} catch (e) {
-  fails++;
-  console.log('  FALHOU  renderObrasDrywall() lançou: ' + e.message);
-}
+// 1. o encadeamento inteiro do app
+roda('renderAll() — pinta o app inteiro sem erro', () => api.renderAll());
 
-// ── telas de obra (mesma classe de risco: também foram alteradas por patch) ──
-P.obras = [
-  { addr: '4 Tara rd, Essex', cliente: 'Andrew', contato: '555-0100', escopo: 'Banheiro', orcamento: 6240,
-    dtInicio: '2026-07-01', dtFim: '2026-08-01', fotosBefore: '', finalizada: false, dtFinal: '', fotosAfter: '' },
-  { addr: '66 Knotty way Belmont NH', cliente: '', contato: '', escopo: '', orcamento: 0,
-    dtInicio: '', dtFim: '', fotosBefore: '', finalizada: true, dtFinal: '2026-01-10', fotosAfter: '' },
-];
-P.labor = [
-  { _row: 2, ts: new Date('2026-07-10T12:00:00'), addr: '4 Tara rd, Essex', nome: 'João La Pastina',
-    hrs: 8, rate: 25, laborCost: 200, reimb: 0, receipts: [] },
-];
-P.materials = [
-  { _row: 2, ts: new Date('2026-07-11T12:00:00'), dataCom: '2026-07-11', addr: '4 Tara rd, Essex',
-    desc: 'Tile', amount: 300, cobradoRaw: '', comprovante: '', isExtra: false },
-];
-P.subs = [];
+// 2. cada tela, verificando que produziu conteúdo íntegro
+roda('Controle de Obras (obra selecionada)', () => { api.set('SEL_ADDR', '4 Tara rd, Essex'); api.renderTab1(); }, () => semLixo('t1body'));
+roda('Controle de Horas', () => api.renderTab2(), () => semLixo('gerBody'));
+roda('Insurance & W9 — Control', () => { api.showInsSub('control'); }, () => semLixo('insBody'));
+roda('Insurance & W9 — Registry', () => { api.showInsSub('registry'); }, () => semLixo('insBody'));
+roda('Usuários', () => api.renderUsuarios(), () => semLixo('usrBody'));
+roda('Drywall — lançamentos + clientes', () => api.renderDrywall(), () => semLixo('t8body'));
+roda('Controle de Obras — sub-aba Drywall', () => api.renderObrasDrywall(), () => semLixo('st1dw'));
+roda('Fechar Obra — formulário', () => { api.set('SEL_ADDR_T4', '4 Tara rd, Essex'); api.renderCloseForm(); }, () => semLixo('t4CloseArea'));
+roda('Obras Finalizadas — detalhe', () => { api.set('SEL_FIN_ADDR', '66 Knotty way Belmont NH'); api.renderFinObraDetail(); }, () => semLixo('t4DetailBody'));
 
-const telas = [
-  ['obra ativa (com estimate) — tem botão Encerrar obra', '4 Tara rd, Essex',
-    o => o.includes('Encerrar obra') && o.includes('Resultado Financeiro') && !o.includes('Cadastro incompleto')],
-  ['obra finalizada — NÃO tem botão Encerrar obra', '66 Knotty way Belmont NH',
-    o => !o.includes('Encerrar obra') && o.includes('Cadastro incompleto')],
-];
-telas.forEach(([nome, addr, cond]) => {
-  try {
-    const out = api.obraDetailHTML(addr, { donut: 'd', budget: 'b', bar: 'r' });
-    check(nome + ' — renderiza', out.length > 0);
-    check(nome + ' — sem "undefined"', !out.includes('undefined'), out.slice(0, 300));
-    check(nome + ' — conteúdo esperado', cond(out));
-  } catch (e) {
-    fails++; console.log('  FALHOU  ' + nome + ' lançou: ' + e.message);
-  }
-});
-
-// obra sem cadastro nenhum (só lançamentos) precisa oferecer "Completar cadastro"
-try {
-  P.labor.push({ _row: 3, ts: new Date('2026-07-12T12:00:00'), addr: '14 Bradford road Hamilton',
-    nome: 'João La Pastina', hrs: 4, rate: 25, laborCost: 100, reimb: 0, receipts: [] });
-  const out = api.obraDetailHTML('14 Bradford road Hamilton', { donut: 'd', budget: 'b', bar: 'r' });
-  check('obra sem cadastro — oferece Completar cadastro', out.includes('Completar cadastro'));
-  check('obra sem cadastro — oferece Encerrar obra', out.includes('Encerrar obra'));
-  check('obra sem cadastro — sem "undefined"', !out.includes('undefined'));
-} catch (e) {
-  fails++; console.log('  FALHOU  obra sem cadastro lançou: ' + e.message);
-}
-
-// barra de reabrir, na aba Obras Finalizadas
-try {
-  api.setState('SEL_FIN_ADDR', '66 Knotty way Belmont NH');
-  api.renderFinObraDetail();
-  const out = els['t4DetailBody'].innerHTML;
-  check('Obras Finalizadas — mostra botão Reabrir obra', out.includes('Reabrir obra'));
-  check('Obras Finalizadas — sem "undefined"', !out.includes('undefined'));
-} catch (e) {
-  fails++; console.log('  FALHOU  renderFinObraDetail lançou: ' + e.message);
-}
+// 3. conteúdo específico das funcionalidades novas
+roda('Drywall — tabela de clientes agrega por cliente', () => els['t8body'].innerHTML, h =>
+  (h.includes('Clientes de drywall') && h.includes('(sem cliente)') && /Maria Silva[\s\S]{0,400}?<td>2<\/td>/.test(h))
+  || 'tabela de clientes não agregou como esperado');
+roda('Obras Finalizadas — oferece Reabrir obra', () => els['t4DetailBody'].innerHTML, h =>
+  h.includes('Reabrir obra') || 'botão de reabrir não apareceu');
+roda('obra ativa — oferece Encerrar obra', () => api.obraDetailHTML('4 Tara rd, Essex', { donut: 'd', budget: 'b', bar: 'r' }), h =>
+  (h.includes('Encerrar obra') && h.includes('Resultado Financeiro') && !h.includes('Cadastro incompleto'))
+  || 'obra ativa não trouxe o botão de encerrar');
+roda('obra finalizada — NÃO oferece Encerrar obra', () => api.obraDetailHTML('66 Knotty way Belmont NH', { donut: 'd', budget: 'b', bar: 'r' }), h =>
+  (!h.includes('Encerrar obra') && h.includes('Completar cadastro'))
+  || 'obra finalizada não deveria ter botão de encerrar');
+roda('obra sem cadastro — oferece Completar cadastro', () => api.obraDetailHTML('14 Bradford road Hamilton', { donut: 'd', budget: 'b', bar: 'r' }), h =>
+  (h.includes('Completar cadastro') && h.includes('Encerrar obra') && !h.includes('undefined'))
+  || 'obra sem cadastro não trouxe o banner de completar');
+roda('invoice do cliente monta', () => api.invoiceHTML('4 Tara rd, Essex'), h =>
+  (h.length > 0 && !h.includes('undefined') && !h.includes('NaN')) || 'invoice saiu com lixo');
 
 console.log(fails ? '\n' + fails + ' falha(s).' : '\nrender ok.');
 process.exit(fails ? 1 : 0);

@@ -8,5 +8,8 @@
   },
   "dependencies": {
     "googleapis": ">=120 <200"
+  },
+  "scripts": {
+    "test": "node scripts/test-all.js"
   }
 }
