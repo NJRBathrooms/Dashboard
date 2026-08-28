@@ -1868,9 +1868,9 @@ function renderDrywall() {
       <td><strong>${escH(c.cliente || '(sem cliente)')}</strong>
         <div style="font-size:11px;color:#7b8ea4;margin-top:3px">${c.enderecos.map(a => escH(a)).join(' &middot; ')}</div></td>
       <td>${c.servicos}</td>
-      <td style="color:#16a085;font-weight:700">${$(c.receita)}</td>
-      <td style="color:#e74c3c;font-weight:700">${$(c.custo)}</td>
-      <td style="font-weight:800;color:${c.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$(c.lucro)}</td>
+      <td style="color:#16a085;font-weight:700">${$$(c.receita)}</td>
+      <td style="color:#e74c3c;font-weight:700">${$$(c.custo)}</td>
+      <td style="font-weight:800;color:${c.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$$(c.lucro)}</td>
     </tr>`).join('');
   const clientesHtml = `
     <div class="data-table" style="margin-top:20px">
@@ -1885,7 +1885,7 @@ function renderDrywall() {
       <div class="table-responsive"><table>
         <thead><tr><th>Cliente</th><th>Serviços</th><th>Receita</th><th>Custo</th><th>Lucro</th></tr></thead>
         <tbody>${cliLinhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum cliente de drywall neste mês</td></tr>`}</tbody>
-        ${cliMes.length ? `<tfoot><tr class="tr-total"><td>TOTAL</td><td>${cliMes.reduce((a, c) => a + c.servicos, 0)}</td><td>${$(tCli.receita)}</td><td>${$(tCli.custo)}</td><td>${$(tCli.lucro)}</td></tr></tfoot>` : ''}
+        ${cliMes.length ? `<tfoot><tr class="tr-total"><td>TOTAL</td><td>${cliMes.reduce((a, c) => a + c.servicos, 0)}</td><td>${$$(tCli.receita)}</td><td>${$$(tCli.custo)}</td><td>${$$(tCli.lucro)}</td></tr></tfoot>` : ''}
       </table></div>
     </div>
     <p style="font-size:11.5px;color:#7b8ea4;margin-top:12px">O serviço entra no mês em que começou, com receita e custo integrais — igual à visão de Controle de Obras.</p>`;
@@ -1941,7 +1941,7 @@ function renderDrywall() {
       <div class="table-responsive"><table>
         <thead><tr><th>Pessoa</th><th>Serviço</th><th>Custo rateado</th><th>Rateio</th><th>Ações</th></tr></thead>
         <tbody>${linhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum lançamento nesta data</td></tr>`}</tbody>
-        ${doDia.length ? `<tfoot><tr class="tr-total"><td colspan="2">CUSTO DO DIA</td><td colspan="3"><strong>${$(totalDia)}</strong></td></tr></tfoot>` : ''}
+        ${doDia.length ? `<tfoot><tr class="tr-total"><td colspan="2">CUSTO DO DIA</td><td colspan="3"><strong>${$$(totalDia)}</strong></td></tr></tfoot>` : ''}
       </table></div>
     </div>
     ${clientesHtml}`;
