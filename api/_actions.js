@@ -632,6 +632,38 @@ async function drywallJaTemReceita(sh, addr) {
   return false;
 }
 
+// Índice das linhas do Drywall agrupadas por endereço. A aba é desnormalizada:
+// um "serviço" é o conjunto de linhas com o mesmo endereço, e a receita fica
+// gravada em UMA linha só (dwServicos lê o primeiro valor não-vazio).
+async function drywallIndicePorEndereco(sh) {
+  const aIdx = sh.headers.indexOf('Endereço');
+  const vIdx = sh.headers.indexOf('Valor Cobrado ($)');
+  if (aIdx < 0 || vIdx < 0) return new Map();
+  const aCol = await G.readColumn(sh.title, aIdx);
+  const vCol = await G.readColumn(sh.title, vIdx);
+  const por = new Map();
+  for (let i = 1; i < aCol.length; i++) {
+    const k = G.normStr(aCol[i]);
+    if (!k) continue;
+    if (!por.has(k)) por.set(k, { addr: String(aCol[i]).trim(), rows: [] });
+    por.get(k).rows.push({ rowNum: i + 1, valor: String(vCol[i] == null ? '' : vCol[i]).trim() });
+  }
+  return por;
+}
+
+// Deixa a receita do serviço numa linha só (a de menor número) e limpa as demais,
+// para não sobrar valor órfão que a tela ignora mas a planilha mostra.
+async function drywallFixarReceita(sh, rows, valor) {
+  // o valor pode chegar como texto (lido da planilha) — grava sempre como número
+  const num = String(valor).trim() === '' ? '' : round2(valor);
+  const ordenadas = rows.slice().sort((a, b) => a.rowNum - b.rowNum);
+  for (let i = 0; i < ordenadas.length; i++) {
+    const alvo = i === 0 ? num : '';
+    if (String(ordenadas[i].valor) === String(alvo)) continue;
+    await G.updateRowCells(sh.title, ordenadas[i].rowNum, sh.headers, [{ key: 'Valor Cobrado ($)', val: alvo }]);
+  }
+}
+
 async function addDrywall(params) {
   const addr = (params.addr || '').trim();
   if (!addr) return { error: 'Endereço obrigatório.' };
@@ -697,8 +729,88 @@ async function updateDrywall(params) {
   if (params.obs !== undefined) updates.push({ key: 'Observações', val: String(params.obs || '').trim() });
   if (!updates.length) return { error: 'Nada para atualizar.' };
 
+  // Mover o lançamento para outro serviço: a receita pertence ao serviço de origem,
+  // não ao lançamento. Se é justo esta linha que carrega o valor e sobram outras no
+  // endereço antigo, o valor passa para elas antes da mudança.
+  if (params.addr !== undefined && params.valorCobrado === undefined) {
+    const idx = await drywallIndicePorEndereco(sh);
+    const origem = [...idx.values()].find(s => s.rows.some(r => r.rowNum === rowNum));
+    if (origem && G.normStr(origem.addr) !== G.normStr(String(params.addr).trim())) {
+      const saindo = origem.rows.find(r => r.rowNum === rowNum);
+      const restantes = origem.rows.filter(r => r.rowNum !== rowNum);
+      if (saindo && saindo.valor !== '' && restantes.length) {
+        await drywallFixarReceita(sh, restantes, saindo.valor);
+      }
+      updates.push({ key: 'Valor Cobrado ($)', val: '' });
+    }
+  }
+
   await G.updateRowCells(sh.title, rowNum, sh.headers, updates);
   return { ok: true };
+}
+
+// Edita o serviço inteiro: cliente e endereço valem para todas as linhas do
+// endereço; a receita é gravada numa linha só.
+async function updateDrywallServico(params) {
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
+  const orig = String(params.addrOrig || '').trim();
+  if (!orig) return { error: 'Endereço do serviço é obrigatório.' };
+
+  const temValor = params.valorCobrado !== undefined;
+  const campos = [];
+  if (params.cliente !== undefined) campos.push({ key: 'Cliente', val: String(params.cliente || '').trim() });
+
+  let novoAddr = null;
+  if (params.addr !== undefined) {
+    novoAddr = String(params.addr).trim();
+    if (!novoAddr) return { error: 'Endereço não pode ficar vazio.' };
+  }
+  if (!campos.length && novoAddr === null && !temValor) return { error: 'Nada para atualizar.' };
+
+  let valor = '';
+  if (temValor) {
+    const v = String(params.valorCobrado).trim();
+    if (v !== '') {
+      valor = round2(v);
+      if (!(valor > 0)) return { error: 'Valor cobrado inválido — informe um número maior que zero.' };
+    }
+  }
+
+  const idx = await drywallIndicePorEndereco(sh);
+  const alvo = idx.get(G.normStr(orig));
+  if (!alvo) return { error: 'Serviço não encontrado para o endereço "' + orig + '".' };
+
+  if (novoAddr !== null) {
+    if (G.normStr(novoAddr) !== G.normStr(orig) && idx.has(G.normStr(novoAddr))) {
+      return { error: 'Já existe um serviço no endereço "' + novoAddr + '". Renomear juntaria os dois num só.' };
+    }
+    campos.push({ key: 'Endereço', val: novoAddr });
+  }
+
+  if (campos.length) {
+    for (const r of alvo.rows) await G.updateRowCells(sh.title, r.rowNum, sh.headers, campos);
+  }
+  if (temValor) await drywallFixarReceita(sh, alvo.rows, valor);
+
+  return { ok: true, linhas: alvo.rows.length };
+}
+
+// Apaga o serviço inteiro — todas as linhas daquele endereço.
+async function deleteDrywallServico(params) {
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
+  const addr = String(params.addr || '').trim();
+  if (!addr) return { error: 'Endereço obrigatório.' };
+
+  const idx = await drywallIndicePorEndereco(sh);
+  const alvo = idx.get(G.normStr(addr));
+  if (!alvo) return { error: 'Serviço não encontrado para o endereço "' + addr + '".' };
+
+  // de baixo para cima: apagar uma linha desloca todas as de baixo
+  const nums = alvo.rows.map(r => r.rowNum).sort((a, b) => b - a);
+  for (const n of nums) await G.deleteRow(sh.sheetId, n);
+  return { ok: true, apagadas: nums.length };
 }
 
 async function deleteDrywall(params) {
@@ -843,7 +955,7 @@ module.exports = {
   addCliente, addLabor, updateLabor, deleteLabor,
   saveFuncionario, deleteFuncionario,
   addRateChange, deleteRateChange,
-  addDrywall, updateDrywall, deleteDrywall,
+  addDrywall, updateDrywall, deleteDrywall, updateDrywallServico, deleteDrywallServico,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
 };

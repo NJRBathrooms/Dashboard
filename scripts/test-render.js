@@ -69,6 +69,7 @@ const run = new Function(...nomes, '__export', code +
   '\n__export({ renderAll, renderTab1, renderTab2, renderDrywall, renderObrasDrywall,' +
   ' renderClientesTable, renderInsurance, renderUsuarios, renderCloseForm, renderFinObraDetail,' +
   ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
+  ' dwToggleServ, openDwLanc, openDwServ,' +
   ' setDB:v=>{DB=v}, getPROC:()=>PROC,' +
   ' set:(k,v)=>{ if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v;' +
   ' if(k==="SEL_ADDR_T4")SEL_ADDR_T4=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_MES")DW_MES=v;' +
@@ -223,6 +224,43 @@ roda('obra sem cadastro — oferece Completar cadastro', () => api.obraDetailHTM
   || 'obra sem cadastro não trouxe o banner de completar');
 roda('invoice do cliente monta', () => api.invoiceHTML('4 Tara rd, Essex'), h =>
   (h.length > 0 && !h.includes('undefined') && !h.includes('NaN')) || 'invoice saiu com lixo');
+
+// ── editar/excluir lançamentos e serviços de drywall ──
+roda('Obras Drywall — serviço fechado não mostra os lançamentos', () => els['st1dw'].innerHTML, h =>
+  (h.includes('Editar serviço') && h.includes('Excluir serviço inteiro') && !h.includes('Editar lançamento'))
+  || 'a linha fechada não deveria listar lançamentos');
+
+roda('Obras Drywall — abrir o serviço lista os lançamentos com editar/excluir', () => {
+  api.dwToggleServ('8 Elm Rd');   // 1 lançamento do Carlos em 12/08
+  return els['st1dw'].innerHTML;
+}, h => (h.includes('Editar lançamento') && h.includes('Excluir lançamento') && h.includes('Carlos')
+  && !h.includes('undefined') && !h.includes('NaN')) || 'abrir o serviço não trouxe os lançamentos');
+
+roda('Obras Drywall — clicar de novo fecha o serviço', () => {
+  api.dwToggleServ('8 Elm Rd');
+  return els['st1dw'].innerHTML;
+}, h => !h.includes('Editar lançamento') || 'o serviço deveria ter fechado');
+
+roda('editor de lançamento carrega os dados da linha', () => {
+  api.openDwLanc(2);              // 12 Oak St, Carlos, $200, 12/08
+  return { data: els['dwl_data'].value, pessoa: els['dwl_pessoa'].value,
+    diaria: els['dwl_diaria'].value, serv: els['dwl_serv'].innerHTML, lista: els['dwPessoasList'].innerHTML };
+}, v => (v.data === '2026-08-12' && v.pessoa === 'Carlos' && String(v.diaria) === '200'
+  && v.serv.includes('selected') && v.serv.includes('12 Oak St') && v.lista.includes('Ana'))
+  || 'campos do editor de lançamento vieram errados: ' + JSON.stringify(v).slice(0, 200));
+
+roda('editor de serviço carrega cliente/endereço/valor e avisa quantas linhas mexe', () => {
+  api.openDwServ('12 Oak St');
+  return { cli: els['dws_cliente'].value, addr: els['dws_addr'].value,
+    val: els['dws_valor'].value, nota: els['dwsNote'].textContent };
+}, v => (v.cli === 'Maria Silva' && v.addr === '12 Oak St' && String(v.val) === '800'
+  && /1 lançamento/.test(v.nota))
+  || 'campos do editor de serviço vieram errados: ' + JSON.stringify(v).slice(0, 200));
+
+roda('editor de serviço de um endereço sem cliente abre vazio, sem "undefined"', () => {
+  api.openDwServ('8 Elm Rd');
+  return els['dws_cliente'].value + '|' + els['dws_addr'].value;
+}, v => v === '|8 Elm Rd' || 'esperado cliente vazio, veio: ' + v);
 
 console.log(fails ? '\n' + fails + ' falha(s).' : '\nrender ok.');
 process.exit(fails ? 1 : 0);
