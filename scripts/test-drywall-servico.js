@@ -138,7 +138,7 @@ const col = (addr, c) => linhasDe(addr).map(r => r[c]);
   await t('excluir o serviço apaga exatamente as linhas dele', async () => {
     reset();
     const r = await A.deleteDrywallServico({ addr: '111 exemplo' });
-    assert.deepStrictEqual(r, { ok: true, apagadas: 3 });
+    assert.deepStrictEqual(r, { ok: true, apagadas: 3, servicos: 1 });
     assert.strictEqual(SHEET.length - 1, 4, 'sobram 4 linhas');
     assert.strictEqual(linhasDe('111 exemplo').length, 0);
   });
@@ -165,6 +165,76 @@ const col = (addr, c) => linhasDe(addr).map(r => r[c]);
     assert.ok(r.error);
     assert.strictEqual(SHEET.length - 1, 7);
     assert.deepStrictEqual(deletadas, []);
+  });
+
+  // ── excluir vários serviços de uma vez (os de um cliente no mês) ──
+  await t('excluir dois serviços juntos apaga as linhas certas dos dois', async () => {
+    reset();
+    const r = await A.deleteDrywallServico({ addrs: ['111 exemplo', '222 exemplo novo'] });
+    assert.deepStrictEqual(r, { ok: true, apagadas: 5, servicos: 2 });
+    // rows 2,3,5,6,7 -> tem que sair da MAIOR para a MENOR no conjunto todo;
+    // ordenar serviço por serviço deslocaria os índices do segundo
+    assert.deepStrictEqual(deletadas, [7, 6, 5, 3, 2], 'ordem decrescente sobre o conjunto inteiro');
+    const restantes = SHEET.slice(1).map(r2 => r2[C.ADDR] + ' / ' + r2[C.PES]);
+    assert.deepStrictEqual(restantes, ['333 poneis malditos / Junin', '333 poneis malditos / Carlos']);
+    assert.deepStrictEqual(col('333 poneis malditos', C.VAL), [850, ''], 'receita do sobrevivente intacta');
+  });
+
+  await t('se um dos endereços não existe, nada é apagado', async () => {
+    reset();
+    const r = await A.deleteDrywallServico({ addrs: ['111 exemplo', 'não existe'] });
+    assert.ok(r.error);
+    assert.strictEqual(SHEET.length - 1, 7, 'a operação é tudo ou nada');
+    assert.deepStrictEqual(deletadas, []);
+  });
+
+  await t('lista vazia de endereços é recusada', async () => {
+    reset();
+    assert.ok((await A.deleteDrywallServico({ addrs: [] })).error);
+    assert.ok((await A.deleteDrywallServico({ addrs: ['', '  '] })).error);
+    assert.strictEqual(SHEET.length - 1, 7);
+  });
+
+  // ── renomear cliente (vale para todos os meses) ──
+  await t('renomear o cliente troca o nome em todas as linhas dele', async () => {
+    reset();
+    const r = await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: 'Maria Silva' });
+    assert.deepStrictEqual(r, { ok: true, linhas: 3 });
+    assert.deepStrictEqual(col('111 exemplo', C.CLI), ['Maria Silva', 'Maria Silva', 'Maria Silva']);
+    assert.deepStrictEqual(col('222 exemplo novo', C.CLI), ['exemplo 2', 'exemplo 2'], 'outro cliente intacto');
+  });
+
+  await t('renomear alcança linhas de meses diferentes', async () => {
+    reset();
+    SHEET.push(['t', '2026-09-05', 'cliente exemplo', '999 setembro', 100, 'Ana', 'DW', 150, '']);
+    const r = await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: 'Novo' });
+    assert.strictEqual(r.linhas, 4, 'as 3 de agosto + a de setembro');
+    assert.strictEqual(SHEET[SHEET.length - 1][C.CLI], 'Novo');
+  });
+
+  await t('renomear casa por caixa/espaçamento e não confunde clientes parecidos', async () => {
+    reset();
+    SHEET.push(['t', '2026-08-25', 'CLIENTE  Exemplo', '444 outro', 100, 'Ana', 'DW', 150, '']);
+    SHEET.push(['t', '2026-08-25', 'cliente exemplo 2', '555 outro', 100, 'Ana', 'DW', 150, '']);
+    const r = await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: 'X' });
+    assert.strictEqual(r.linhas, 4, '3 originais + a variante de caixa');
+    assert.strictEqual(SHEET[SHEET.length - 1][C.CLI], 'cliente exemplo 2', 'nome parecido não pode ser afetado');
+  });
+
+  await t('renomear recusa nome vazio, cliente inexistente e nome igual', async () => {
+    reset();
+    assert.ok((await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: '  ' })).error);
+    assert.ok((await A.renameDrywallCliente({ clienteOrig: '', cliente: 'X' })).error, 'grupo sem cliente não renomeia');
+    assert.ok((await A.renameDrywallCliente({ clienteOrig: 'ninguém', cliente: 'X' })).error);
+    assert.ok((await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: 'cliente exemplo' })).error);
+    assert.deepStrictEqual(col('111 exemplo', C.CLI), ['cliente exemplo', 'cliente exemplo', 'cliente exemplo']);
+  });
+
+  await t('corrigir só a caixa do nome é permitido', async () => {
+    reset();
+    const r = await A.renameDrywallCliente({ clienteOrig: 'cliente exemplo', cliente: 'Cliente Exemplo' });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(col('111 exemplo', C.CLI), ['Cliente Exemplo', 'Cliente Exemplo', 'Cliente Exemplo']);
   });
 
   // ── mover um lançamento entre serviços ──

@@ -956,6 +956,21 @@ tbody tr:hover td { background:#fafbfe; }
     </div>
   </div>
 
+  <!-- Renomear CLIENTE de drywall (vale para todos os meses) -->
+  <div id="dwCliModal" class="modal-overlay">
+    <div class="modal-card" style="max-width:420px">
+      <div class="modal-title"><i class="fas fa-user-pen" style="color:var(--orange)"></i>Renomear Cliente</div>
+      <div class="comp-obra-note" id="dwcNote"></div>
+      <label class="f-label">Nome do cliente <span class="f-req">*</span></label>
+      <input id="dwc_nome" class="f-input" autocomplete="off">
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeDwCli()">Cancelar</button>
+        <button class="submit-btn" id="dwcSaveBtn" onclick="saveDwCli()" style="margin-top:0"><i class="fas fa-save"></i> Renomear</button>
+      </div>
+      <div id="dwcMsg" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
   <!-- Editar SERVIÇO de drywall (vale para todas as linhas do endereço) -->
   <div id="dwServModal" class="modal-overlay">
     <div class="modal-card" style="max-width:440px">
@@ -1929,6 +1944,12 @@ function renderObrasDrywall() {
 // ══ TAB 8: DRYWALL — LANÇAMENTOS RÁPIDOS ══════════════════
 let DW_DATA = '';        // data selecionada no formulário (YYYY-MM-DD)
 let DW_CLI_MES = '';     // 'YYYY-MM' exibido na tabela de clientes desta aba
+let DW_CLI_ABERTO = '';  // cliente (normalizado) expandido na tabela; ' ' = grupo sem cliente
+function dwToggleCli(cliente) {
+  const k = dwNorm(cliente) || ' ';
+  DW_CLI_ABERTO = (DW_CLI_ABERTO === k) ? '' : k;
+  renderDrywall();
+}
 function dwCliMesNav(delta) {
   const [y, m] = DW_CLI_MES.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1), p = n => String(n).padStart(2, '0');
@@ -1951,14 +1972,41 @@ function renderDrywall() {
   const cliMes = dwClientes(raw, DW_CLI_MES);
   const tCli = dwTotais(cliMes);
   const [cy, cm] = DW_CLI_MES.split('-');
-  const cliLinhas = cliMes.map(c => `<tr>
+  const cliLinhas = cliMes.map(c => {
+    const chave = dwNorm(c.cliente) || ' ';
+    const aberto = chave === DW_CLI_ABERTO;
+    const detalhe = aberto ? `<tr class="dw-lanc-row"><td colspan="6" class="dw-lanc-wrap">
+        <table style="width:100%">
+          <thead><tr><th>Endereço</th><th>Receita</th><th>Custo</th><th>Lucro</th><th>Ações</th></tr></thead>
+          <tbody>${c.itens.map(s => `<tr>
+            <td><strong>${escH(s.addr)}</strong><div style="font-size:11px;color:#7b8ea4">${s.lancamentos.length} lançamento${s.lancamentos.length === 1 ? '' : 's'} · início ${fmtDay(s.inicio)}</div></td>
+            <td style="color:#16a085;font-weight:700">${$$(s.receita)}</td>
+            <td style="color:#e74c3c;font-weight:700">${$$(s.custo)}</td>
+            <td style="font-weight:800;color:${s.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$$(s.lucro)}</td>
+            <td class="td-actions">
+              <button class="row-act-btn edit" onclick="event.stopPropagation();openDwServ('${esc(s.addr)}')" title="Editar serviço"><i class="fas fa-pen"></i></button>
+              <button class="row-act-btn del" onclick="event.stopPropagation();dwServDelete('${esc(s.addr)}')" title="Excluir serviço"><i class="fas fa-trash"></i></button>
+            </td></tr>`).join('')}
+          </tbody>
+        </table></td></tr>` : '';
+    // "(sem cliente)" não é uma identidade — renomear em massa pegaria linhas em
+    // branco de outros meses. Nesse grupo o nome se preenche serviço a serviço.
+    const btnEditar = c.cliente
+      ? `<button class="row-act-btn edit" onclick="event.stopPropagation();openDwCli('${esc(c.cliente)}')" title="Renomear cliente"><i class="fas fa-pen"></i></button>`
+      : '';
+    return `<tr class="dw-serv-row${aberto ? ' open' : ''}" onclick="dwToggleCli('${esc(c.cliente)}')">
+      <td><i class="fas fa-chevron-right dw-serv-chev"></i></td>
       <td><strong>${escH(c.cliente || '(sem cliente)')}</strong>
         <div style="font-size:11px;color:#7b8ea4;margin-top:3px">${c.enderecos.map(a => escH(a)).join(' &middot; ')}</div></td>
       <td>${c.servicos}</td>
       <td style="color:#16a085;font-weight:700">${$$(c.receita)}</td>
       <td style="color:#e74c3c;font-weight:700">${$$(c.custo)}</td>
       <td style="font-weight:800;color:${c.lucro >= 0 ? '#16a085' : '#e74c3c'}">${$$(c.lucro)}</td>
-    </tr>`).join('');
+      <td class="td-actions">${btnEditar}
+        <button class="row-act-btn del" onclick="event.stopPropagation();dwCliDelete('${esc(c.cliente)}')" title="Excluir os serviços deste cliente no mês"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>${detalhe}`;
+  }).join('');
   const clientesHtml = `
     <div class="data-table" style="margin-top:20px">
       <div class="table-head"><i class="fas fa-user-group me-2" style="color:var(--orange)"></i>Clientes de drywall</div>
@@ -1970,9 +2018,9 @@ function renderDrywall() {
         </div>
       </div>
       <div class="table-responsive"><table>
-        <thead><tr><th>Cliente</th><th>Serviços</th><th>Receita</th><th>Custo</th><th>Lucro</th></tr></thead>
-        <tbody>${cliLinhas || `<tr><td colspan="5" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum cliente de drywall neste mês</td></tr>`}</tbody>
-        ${cliMes.length ? `<tfoot><tr class="tr-total"><td>TOTAL</td><td>${cliMes.reduce((a, c) => a + c.servicos, 0)}</td><td>${$$(tCli.receita)}</td><td>${$$(tCli.custo)}</td><td>${$$(tCli.lucro)}</td></tr></tfoot>` : ''}
+        <thead><tr><th style="width:26px"></th><th>Cliente</th><th>Serviços</th><th>Receita</th><th>Custo</th><th>Lucro</th><th>Ações</th></tr></thead>
+        <tbody>${cliLinhas || `<tr><td colspan="7" style="text-align:center;color:#7b8ea4;padding:26px">Nenhum cliente de drywall neste mês</td></tr>`}</tbody>
+        ${cliMes.length ? `<tfoot><tr class="tr-total"><td colspan="2">TOTAL</td><td>${cliMes.reduce((a, c) => a + c.servicos, 0)}</td><td>${$$(tCli.receita)}</td><td>${$$(tCli.custo)}</td><td>${$$(tCli.lucro)}</td><td></td></tr></tfoot>` : ''}
       </table></div>
     </div>
     <p style="font-size:11.5px;color:#7b8ea4;margin-top:12px">O serviço entra no mês em que começou, com receita e custo integrais — igual à visão de Controle de Obras.</p>`;
@@ -2180,19 +2228,20 @@ function dwClientes(raw, ym) {
   servicos.forEach(s => {
     const nome = String(s.cliente == null ? '' : s.cliente).trim();
     const k = dwNorm(nome) || SEM;
-    if (!by[k]) by[k] = { cliente: nome, servicos: 0, receita: 0, custo: 0, enderecos: [] };
+    if (!by[k]) by[k] = { cliente: nome, servicos: 0, receita: 0, custo: 0, enderecos: [], itens: [] };
     const c = by[k];
     if (!c.cliente && nome) c.cliente = nome;
     c.servicos++;
     c.receita = dwRound2(c.receita + (s.receita || 0));
     c.custo = dwRound2(c.custo + (s.custo || 0));
     c.enderecos.push(s.addr);
+    c.itens.push(s);   // os serviços em si, para a linha do cliente poder abrir
   });
   return Object.keys(by).map(k => {
     const c = by[k];
     return {
       cliente: c.cliente, servicos: c.servicos, receita: c.receita, custo: c.custo,
-      lucro: dwRound2(c.receita - c.custo), enderecos: c.enderecos,
+      lucro: dwRound2(c.receita - c.custo), enderecos: c.enderecos, itens: c.itens,
     };
   }).sort((a, b) => b.receita - a.receita
     || b.lucro - a.lucro
@@ -4112,6 +4161,72 @@ async function dwServDelete(addr) {
     const r = await apiWrite({ action: 'deleteDrywallServico', addr: s.addr });
     if (DW_SERV_ABERTO === dwNorm(s.addr)) DW_SERV_ABERTO = '';
     showToast('Serviço excluído (' + (r.apagadas || 0) + ' lançamentos)');
+    await loadData();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ── DRYWALL: cliente (agrupamento, não é registro na planilha) ──
+// Renomear vale para todos os meses, porque o nome do cliente não pertence a um
+// mês. Excluir vale só para o mês exibido, porque é o que está à vista na tabela.
+
+let DWC_ORIG = '';
+
+function openDwCli(cliente) {
+  const nome = String(cliente || '').trim();
+  if (!nome) { showToast('Preencha o cliente serviço a serviço neste grupo.', true); return; }
+  const linhas = (PROC.drywall || []).filter(r => dwNorm(r.cliente) === dwNorm(nome));
+  const meses = [...new Set(linhas.map(r => String(r.data || '').slice(0, 7)).filter(Boolean))].sort();
+  DWC_ORIG = nome;
+  document.getElementById('dwc_nome').value = nome;
+  document.getElementById('dwcNote').textContent =
+    'O nome será trocado em ' + linhas.length + ' lançamento' + (linhas.length === 1 ? '' : 's') +
+    (meses.length > 1 ? ', em ' + meses.length + ' meses (' + meses.join(', ') + ')' : '') + '.';
+  document.getElementById('dwcMsg').style.display = 'none';
+  document.getElementById('dwCliModal').classList.add('open');
+}
+function closeDwCli() { document.getElementById('dwCliModal').classList.remove('open'); DWC_ORIG = ''; }
+
+async function saveDwCli() {
+  const novo = document.getElementById('dwc_nome').value.trim();
+  if (!novo) return dwMsg('dwcMsg', 'err', 'O nome não pode ficar vazio.');
+  if (novo === DWC_ORIG) return dwMsg('dwcMsg', 'err', 'O nome é o mesmo que já está gravado.');
+  await runBtn(document.getElementById('dwcSaveBtn'), async () => {
+    try {
+      const r = await apiWrite({ action: 'renameDrywallCliente', clienteOrig: DWC_ORIG, cliente: novo });
+      if (DW_CLI_ABERTO === dwNorm(DWC_ORIG)) DW_CLI_ABERTO = dwNorm(novo);
+      closeDwCli();
+      showToast('Cliente renomeado em ' + (r.linhas || 0) + ' lançamentos');
+      await loadData();
+    } catch (e) { dwMsg('dwcMsg', 'err', 'Erro ao renomear: ' + e.message); }
+  }, 'Renomeando...');
+}
+
+async function dwCliDelete(cliente) {
+  const c = dwClientes(PROC.drywall || [], DW_CLI_MES)
+    .find(x => dwNorm(x.cliente) === dwNorm(cliente));
+  if (!c) { showToast('Cliente não encontrado — atualize a página.', true); return; }
+  const nome = c.cliente || '(sem cliente)';
+  const [yy, mm] = DW_CLI_MES.split('-');
+  const lancs = c.itens.reduce((s, x) => s + x.lancamentos.length, 0);
+  const lista = c.itens.map(s => '  ' + s.addr + '   ' + s.lancamentos.length + ' lanç.   ' + $$(s.receita)).join('\n');
+
+  // o cliente pode ter serviço em outro mês; a tabela mostra só este
+  const todos = dwClientes(PROC.drywall || [], '').find(x => dwNorm(x.cliente) === dwNorm(cliente));
+  const fora = todos ? todos.servicos - c.servicos : 0;
+
+  const aviso = 'Excluir os serviços de "' + nome + '" em ' + DW_MESES[+mm - 1].toUpperCase() + ' ' + yy + '?\n\n'
+    + lista + '\n\n'
+    + 'Total: ' + c.servicos + ' serviço' + (c.servicos === 1 ? '' : 's') + ', '
+    + lancs + ' lançamento' + (lancs === 1 ? '' : 's') + ', ' + $$(c.receita) + ' de receita.\n\n'
+    + (fora > 0
+      ? fora + ' serviço' + (fora === 1 ? '' : 's') + ' deste cliente em outros meses NÃO ' + (fora === 1 ? 'será apagado' : 'serão apagados') + '.\n\n'
+      : '')
+    + 'Essa ação não pode ser desfeita.';
+  if (!confirm(aviso)) return;
+  try {
+    const r = await apiWrite({ action: 'deleteDrywallServico', addrs: c.enderecos });
+    if (DW_CLI_ABERTO === (dwNorm(cliente) || ' ')) DW_CLI_ABERTO = '';
+    showToast('Excluídos ' + (r.apagadas || 0) + ' lançamentos de ' + nome);
     await loadData();
   } catch (e) { showToast(e.message, true); }
 }

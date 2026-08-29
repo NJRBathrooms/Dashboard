@@ -796,21 +796,55 @@ async function updateDrywallServico(params) {
   return { ok: true, linhas: alvo.rows.length };
 }
 
-// Apaga o serviço inteiro — todas as linhas daquele endereço.
+// Apaga um ou mais serviços inteiros — todas as linhas daqueles endereços.
+// Aceita `addr` (um) ou `addrs` (vários, para excluir os serviços de um cliente).
 async function deleteDrywallServico(params) {
   const sh = await ensureDrywallSheet();
   if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
-  const addr = String(params.addr || '').trim();
-  if (!addr) return { error: 'Endereço obrigatório.' };
+
+  const lista = Array.isArray(params.addrs) ? params.addrs : [params.addr];
+  const addrs = lista.map(a => String(a == null ? '' : a).trim()).filter(Boolean);
+  if (!addrs.length) return { error: 'Endereço obrigatório.' };
 
   const idx = await drywallIndicePorEndereco(sh);
-  const alvo = idx.get(G.normStr(addr));
-  if (!alvo) return { error: 'Serviço não encontrado para o endereço "' + addr + '".' };
+  const nums = [];
+  for (const a of addrs) {
+    const alvo = idx.get(G.normStr(a));
+    if (!alvo) return { error: 'Serviço não encontrado para o endereço "' + a + '".' };
+    alvo.rows.forEach(r => nums.push(r.rowNum));
+  }
 
-  // de baixo para cima: apagar uma linha desloca todas as de baixo
-  const nums = alvo.rows.map(r => r.rowNum).sort((a, b) => b - a);
-  for (const n of nums) await G.deleteRow(sh.sheetId, n);
-  return { ok: true, apagadas: nums.length };
+  // de baixo para cima: apagar uma linha desloca todas as de baixo. Ordenar o
+  // conjunto INTEIRO, não serviço por serviço, senão a 2ª remoção erra a linha.
+  const ordem = [...new Set(nums)].sort((a, b) => b - a);
+  for (const n of ordem) await G.deleteRow(sh.sheetId, n);
+  return { ok: true, apagadas: ordem.length, servicos: addrs.length };
+}
+
+// Renomeia o cliente em todas as linhas onde ele aparece — em qualquer mês,
+// porque o nome do cliente não pertence a um mês. Exige nome de origem: o grupo
+// "(sem cliente)" não é uma identidade e é preenchido serviço a serviço.
+async function renameDrywallCliente(params) {
+  const sh = await ensureDrywallSheet();
+  if (!sh) return { error: 'Aba "Drywall" não encontrada.' };
+  const orig = String(params.clienteOrig || '').trim();
+  if (!orig) return { error: 'Informe o cliente a renomear.' };
+  const novo = String(params.cliente == null ? '' : params.cliente).trim();
+  if (!novo) return { error: 'O novo nome do cliente não pode ficar vazio.' };
+  if (G.normStr(novo) === G.normStr(orig) && novo === orig) return { error: 'O nome informado é igual ao atual.' };
+
+  const cIdx = sh.headers.indexOf('Cliente');
+  if (cIdx < 0) return { error: 'Coluna "Cliente" não encontrada na aba Drywall.' };
+  const col = await G.readColumn(sh.title, cIdx);
+
+  let n = 0;
+  for (let i = 1; i < col.length; i++) {
+    if (G.normStr(col[i]) !== G.normStr(orig)) continue;
+    await G.updateRowCells(sh.title, i + 1, sh.headers, [{ key: 'Cliente', val: novo }]);
+    n++;
+  }
+  if (!n) return { error: 'Nenhum lançamento encontrado para o cliente "' + orig + '".' };
+  return { ok: true, linhas: n };
 }
 
 async function deleteDrywall(params) {
@@ -955,7 +989,7 @@ module.exports = {
   addCliente, addLabor, updateLabor, deleteLabor,
   saveFuncionario, deleteFuncionario,
   addRateChange, deleteRateChange,
-  addDrywall, updateDrywall, deleteDrywall, updateDrywallServico, deleteDrywallServico,
+  addDrywall, updateDrywall, deleteDrywall, updateDrywallServico, deleteDrywallServico, renameDrywallCliente,
   SUBPROF_SHEET, ensureSubProfSheet, addSubProfile, updateSubProfile, deleteSubProfile,
   getSubFormLink, sendSubInvite,
 };

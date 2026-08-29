@@ -27,6 +27,7 @@ const HANDLERS = {
   updateDrywall: A.updateDrywall,
   updateDrywallServico: A.updateDrywallServico,
   deleteDrywallServico: A.deleteDrywallServico,
+  renameDrywallCliente: A.renameDrywallCliente,
   deleteDrywall: A.deleteDrywall,
   updateLabor: A.updateLabor,
   deleteLabor: A.deleteLabor,

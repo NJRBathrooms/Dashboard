@@ -69,7 +69,7 @@ const run = new Function(...nomes, '__export', code +
   '\n__export({ renderAll, renderTab1, renderTab2, renderDrywall, renderObrasDrywall,' +
   ' renderClientesTable, renderInsurance, renderUsuarios, renderCloseForm, renderFinObraDetail,' +
   ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
-  ' dwToggleServ, openDwLanc, openDwServ,' +
+  ' dwToggleServ, openDwLanc, openDwServ, dwToggleCli, openDwCli,' +
   ' setDB:v=>{DB=v}, getPROC:()=>PROC,' +
   ' set:(k,v)=>{ if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v;' +
   ' if(k==="SEL_ADDR_T4")SEL_ADDR_T4=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_MES")DW_MES=v;' +
@@ -261,6 +261,42 @@ roda('editor de serviço de um endereço sem cliente abre vazio, sem "undefined"
   api.openDwServ('8 Elm Rd');
   return els['dws_cliente'].value + '|' + els['dws_addr'].value;
 }, v => v === '|8 Elm Rd' || 'esperado cliente vazio, veio: ' + v);
+
+// ── tabela "Clientes de drywall": renomear e excluir ──
+roda('Clientes — cliente nomeado tem renomear e excluir; grupo sem cliente só excluir', () => {
+  api.renderDrywall();
+  return els['t8body'].innerHTML;
+}, h => {
+  // recortar a partir do título: o formulário acima lista "endereço — cliente"
+  // no dropdown de serviço, e procurar no HTML inteiro pegaria esse trecho
+  const i = h.indexOf('Clientes de drywall');
+  if (i < 0) return 'tabela de clientes não foi renderizada';
+  const linhas = h.slice(i).split('<tr class="dw-serv-row').slice(1);
+  const semCli = linhas.find(l => l.includes('(sem cliente)'));
+  const comCli = linhas.find(l => l.includes('Maria Silva'));
+  if (!semCli || !comCli) return 'não achei as linhas de cliente na tabela';
+  if (!comCli.includes('Renomear cliente')) return 'cliente nomeado deveria ter o botão de renomear';
+  if (semCli.includes('Renomear cliente')) return 'grupo "(sem cliente)" NÃO pode ter renomear';
+  if (!semCli.includes('Excluir os serviços')) return 'grupo sem cliente deveria ter excluir';
+  return true;
+});
+
+roda('Clientes — abrir o cliente lista os serviços dele com editar/excluir', () => {
+  api.dwToggleCli('Maria Silva');   // 12 Oak St + 77 Ash Way
+  return els['t8body'].innerHTML;
+}, h => (h.includes('Editar serviço') && h.includes('12 Oak St') && h.includes('77 Ash Way')
+  && !h.includes('undefined') && !h.includes('NaN')) || 'abrir o cliente não trouxe os serviços');
+
+roda('Clientes — clicar de novo fecha', () => {
+  api.dwToggleCli('Maria Silva');
+  return els['t8body'].innerHTML;
+}, h => !h.includes('Editar serviço') || 'o cliente deveria ter fechado');
+
+roda('renomear cliente avisa quantos lançamentos serão alterados', () => {
+  api.openDwCli('Maria Silva');     // 2 lançamentos (rows 2 e 5)
+  return { nome: els['dwc_nome'].value, nota: els['dwcNote'].textContent };
+}, v => (v.nome === 'Maria Silva' && /2 lançamentos/.test(v.nota) && !/undefined/.test(v.nota))
+  || 'aviso do renomear veio errado: ' + JSON.stringify(v));
 
 console.log(fails ? '\n' + fails + ' falha(s).' : '\nrender ok.');
 process.exit(fails ? 1 : 0);
