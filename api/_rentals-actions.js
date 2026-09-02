@@ -230,11 +230,86 @@ async function lancarCusto(params) {
       { key: 'Valor', val: valor },
       { key: 'Data do Pagamento', val: shiftDateIso(dataIso, k) },
       { key: 'Pagador', val: pagador },
+      { key: 'Status Repasse', val: (isAguaTipo(tipo) && ehRepasse(pagador)) ? 'Pendente' : '' },
+      { key: 'Data do Repasse', val: '' },
       { key: 'Observações', val: '' },
     ]));
   }
   await R.appendRows(ssId, sh.title, rows);
   return { ok: true, count: rows.length };
+}
+
+// ── ÁGUA ──────────────────────────────────────────────────
+// A NJR sempre paga a conta à concessionária; o que muda é se o proprietário
+// absorve o custo ou repassa ao inquilino. Quando repassa, o reembolso é um
+// evento próprio, com status e data separados do pagamento da concessionária.
+const isAguaTipo = t => { const n = norm(t); return n === 'água' || n === 'agua'; };
+const ehRepasse = p => norm(p) === 'inquilino';
+
+// Lança água em vários meses e/ou várias casas de uma vez (o rateio entre
+// unidades do mesmo prédio já vem calculado pela tela).
+async function lancarAgua(params) {
+  const { ssId, sh } = await ctx('Custos');
+  const itens = Array.isArray(params.itens) ? params.itens : [];
+  if (!itens.length) return { error: 'Informe ao menos um lançamento.' };
+  if (itens.length > 60) return { error: 'Muitos lançamentos de uma vez (máximo 60).' };
+
+  const pagador = clean(params.pagador) || 'Proprietário';
+  const repassa = ehRepasse(pagador);
+  const pago = repassa && norm(params.statusRepasse) === 'pago';
+  const dataRepasse = clean(params.dataRepasse);
+  if (pago && !/^\d{4}-\d{2}-\d{2}$/.test(dataRepasse)) {
+    return { error: 'Informe a data em que o inquilino pagou.' };
+  }
+  const dataPagamento = clean(params.dataPagamento);
+  const desc = clean(params.desc);
+
+  const linhas = [];
+  for (const it of itens) {
+    const addr = clean(it.addr);
+    const comp = clean(it.competencia);
+    const valor = num(it.valor);
+    if (!addr) return { error: 'Casa obrigatória em todos os lançamentos.' };
+    if (!/^\d{4}-\d{2}$/.test(comp)) return { error: 'Competência inválida (use AAAA-MM) em ' + addr + '.' };
+    if (!(valor > 0)) return { error: 'Valor inválido em ' + addr + ' / ' + comp + ' — informe um número maior que zero.' };
+    linhas.push(R.buildRow(sh.headers, [
+      { key: 'Carimbo de data/hora', val: R.nowInTz() },
+      { key: 'Endereço', val: addr },
+      { key: 'Competência', val: comp, forceText: true },
+      { key: 'Tipo', val: 'Água' },
+      { key: 'Descrição', val: desc },
+      { key: 'Valor', val: valor },
+      { key: 'Data do Pagamento', val: dataPagamento },
+      { key: 'Pagador', val: pagador },
+      { key: 'Status Repasse', val: repassa ? (pago ? 'Pago' : 'Pendente') : '' },
+      { key: 'Data do Repasse', val: pago ? dataRepasse : '' },
+      { key: 'Observações', val: '' },
+    ]));
+  }
+  await R.appendRows(ssId, sh.title, linhas);
+  return { ok: true, count: linhas.length };
+}
+
+// Marca (ou desmarca) o reembolso da água pelo inquilino.
+async function marcarRepasseAgua(params) {
+  const { ssId, sh } = await ctx('Custos');
+  const rowNum = parseInt(params.rowNum);
+  if (!rowNum || rowNum < 2) return { error: 'Linha inválida.' };
+
+  const linha = await R.readRentalRow(ssId, sh.title, rowNum, sh.headers);
+  if (!linha) return { error: 'Lançamento não encontrado.' };
+  if (!isAguaTipo(linha['Tipo'])) return { error: 'Este lançamento não é de água.' };
+  if (!ehRepasse(linha['Pagador'])) return { error: 'Esta água é assumida pelo proprietário — não há repasse a cobrar.' };
+
+  const pago = params.pago === true || norm(params.pago) === 'true' || norm(params.pago) === 'sim';
+  const data = clean(params.data);
+  if (pago && !/^\d{4}-\d{2}-\d{2}$/.test(data)) return { error: 'Informe a data do pagamento (AAAA-MM-DD).' };
+
+  await R.updateRentalCells(ssId, sh.title, rowNum, sh.headers, [
+    { key: 'Status Repasse', val: pago ? 'Pago' : 'Pendente' },
+    { key: 'Data do Repasse', val: pago ? data : '' },
+  ]);
+  return { ok: true, pago };
 }
 
 async function saveCusto(params) {
@@ -252,6 +327,18 @@ async function saveCusto(params) {
     { key: 'Pagador', val: clean(params.pagador) },
     { key: 'Observações', val: clean(params.obs) },
   ];
+  // água repassada guarda o status do reembolso; assumida pelo proprietário não tem repasse
+  if (isAguaTipo(params.tipo) && ehRepasse(params.pagador)) {
+    if (params.statusRepasse !== undefined) {
+      const pg = norm(params.statusRepasse) === 'pago';
+      fields.push({ key: 'Status Repasse', val: pg ? 'Pago' : 'Pendente' });
+      fields.push({ key: 'Data do Repasse', val: pg ? clean(params.dataRepasse) : '' });
+    }
+  } else {
+    fields.push({ key: 'Status Repasse', val: '' });
+    fields.push({ key: 'Data do Repasse', val: '' });
+  }
+
   const rowNum = parseInt(params.rowNum);
   if (rowNum && rowNum >= 2) {
     await R.updateRentalCells(ssId, sh.title, rowNum, sh.headers, [{ key: 'Carimbo de data/hora', val: R.nowInTz() }].concat(fields));
@@ -334,7 +421,7 @@ async function getDocsFolder(params) {
 module.exports = {
   saveCasa, deleteCasa, reorderCasas, removerInquilino,
   markRecebido, deleteRecebimento,
-  saveCusto, lancarCusto, deleteCusto,
+  saveCusto, lancarCusto, deleteCusto, lancarAgua, marcarRepasseAgua,
   saveManutencao, deleteManutencao,
   getDocsFolder, uploadFile,
 };

@@ -13,7 +13,10 @@ const DOCS_FOLDER = 'NJR Casas de Aluguel - Documentos';
 const TABS = {
   Casas: ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Status','Aluguel Mensal','Security Deposit','Início do Contrato','Fim do Contrato','Seguradora','Vigência do Seguro','Valor do Seguro','Periodicidade do Seguro','Mortgage Mensal','Valor da Água','Periodicidade da Água','Observações','Ordem'],
   Recebimentos: ['Carimbo de data/hora','Endereço','Competência','Valor do Aluguel','Data do Pagamento','Multa','Total Recebido','Status','Observações'],
-  Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Pagador','Observações'],
+  // "Data do Pagamento" = quando a NJR pagou a concessionária.
+  // "Status Repasse"/"Data do Repasse" = quando o inquilino reembolsou a NJR
+  // (só fazem sentido em Água com Pagador = Inquilino). São dois eventos distintos.
+  Custos: ['Carimbo de data/hora','Endereço','Competência','Tipo','Descrição','Valor','Data do Pagamento','Pagador','Status Repasse','Data do Repasse','Observações'],
   Manutenção: ['Carimbo de data/hora','Endereço','Data de Conclusão','Competência','Tipo de Serviço','Descrição do Serviço','Empresa Subcontratada','Contato do Subcontratado','Valor do Serviço','Status Pagamento','Anexar Invoice'],
   'Histórico de Inquilinos': ['Carimbo de data/hora','Endereço','Inquilino','Contato do Inquilino','Início do Contrato','Fim do Contrato','Encerrado em','Motivo','Observações'],
   Alertas: ['Tipo','Endereço','Marco','Enviado em'],

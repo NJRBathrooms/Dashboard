@@ -61,6 +61,7 @@ for (const f of HTMLS) {
 for (const [titulo, script] of [
   ['lint — funções inexistentes', 'test-lint.js'],
   ['render — telas num DOM simulado', 'test-render.js'],
+  ['aluguéis — água, receita e telas', 'test-rentals.js'],
   ['lógica — cálculo do drywall', 'test-drywall-calc.js'],
   ['lógica — editar/excluir serviço de drywall', 'test-drywall-servico.js'],
   ['lógica — cadastro/encerramento de obra', 'test-completar-obra.js'],

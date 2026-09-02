@@ -174,6 +174,29 @@ tbody td { padding:11px 14px; border-bottom:1px solid #f4f7fb; font-size:13px; }
 .pill.p-pend{ background:var(--pend-t); color:var(--pend-d); }
 .pill.p-late{ background:var(--late-t); color:var(--late-d); }
 .pill.p-partial{ background:var(--partial-t); color:var(--partial-d); }
+.pill.p-agua{ background:rgba(41,128,185,.12); color:#1f6391; }
+.pill.p-agua i{ margin-right:4px; }
+/* linhas de água no card: cobrança paralela ao aluguel, com status próprio */
+.hcard-agua{ margin-top:6px; font-size:11.5px; font-weight:700; color:#33506b; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.hcard-agua i.fa-droplet{ color:#2980b9; opacity:.85; }
+.hcard-agua.pend{ color:var(--partial-d); }
+.ag-st{ font-weight:800; border-radius:7px; padding:2px 7px; font-size:10.5px; }
+.ag-st.ok{ background:rgba(39,174,96,.13); color:#1e8449; }
+.ag-st.pend{ background:var(--partial-t); color:var(--partial-d); }
+.ag-btn{ border:1px solid rgba(232,89,12,.35); background:#fff; color:var(--partial-d); border-radius:8px; padding:3px 9px; font-size:10.5px; font-weight:800; cursor:pointer; }
+.ag-btn:hover{ background:var(--partial-t); }
+/* formulário de água: seleção de casas, meses e prévia do rateio */
+.ag-casas{ display:flex; flex-direction:column; gap:2px; max-height:180px; overflow-y:auto; border:1px solid #e3e9f0; border-radius:10px; padding:8px; }
+.ag-casa{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--navy); padding:5px 6px; border-radius:7px; cursor:pointer; }
+.ag-casa:hover{ background:#f4f8fc; }
+.ag-mes{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.ag-mes .f-input{ margin:0; }
+.f-prefix{ position:relative; flex:1; }
+.f-prefix span{ position:absolute; left:11px; top:50%; transform:translateY(-50%); font-weight:800; color:#7b8ea4; font-size:13px; pointer-events:none; }
+.f-prefix .f-input{ padding-left:26px; }
+.ag-prev{ margin-top:14px; background:#f7fafd; border-radius:10px; padding:12px; }
+.ag-prev-t{ font-size:11.5px; font-weight:800; color:var(--navy); margin-bottom:6px; }
+.ag-prev-l{ font-size:12px; color:#4a6076; padding:3px 0; }
 .pill.p-vac{ background:var(--vaca-t); color:var(--vaca-d); }
 .hcard-badges{ margin-top:8px; display:flex; flex-wrap:wrap; gap:5px; }
 .hcard-rent{ flex:0 0 auto; font-size:20px; font-weight:900; color:var(--navy); font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
@@ -467,10 +490,35 @@ function shortAddr(a){ const m=String(a||'').match(/\d+[A-Za-z]?/); return m?m[0
 function multaPreview(comp){ const [y,m]=comp.split('-').map(Number); const day10=new Date(y,m-1,10,23,59,59); return new Date()>day10?50:0; }
 function isAgua(t){ const n=norm(t); return n==='água'||n==='agua'; }
 function isMortgage(t){ return norm(t)==='mortgage'; }
-// água paga pelo proprietário e repassada ao inquilino, na competência informada (soma dos lançamentos)
-function aguaRepasseFor(addr,comp){ return DB.custos.filter(c=>norm(c['Endereço'])===norm(addr)&&String(c['Competência'])===comp&&isAgua(c['Tipo'])&&norm(c['Pagador'])==='inquilino').reduce((s,c)=>s+parseAmt(c['Valor']),0); }
-// aluguel esperado no mês = aluguel + água repassada
-function expectedRent(c,comp){ return parseAmt(c['Aluguel Mensal'])+aguaRepasseFor(c['Endereço'],comp); }
+// ── ÁGUA ───────────────────────────────────────────────────
+// A NJR sempre paga a conta à concessionária. Quando repassa ao inquilino, o
+// reembolso é um evento próprio: tem status e data separados do aluguel. Por isso
+// a água NÃO entra mais no aluguel esperado — ela é uma cobrança paralela.
+function aguaRepassadas(addr,comp){
+  return DB.custos.filter(c=>norm(c['Endereço'])===norm(addr)&&isAgua(c['Tipo'])&&norm(c['Pagador'])==='inquilino'
+    &&(comp===undefined||String(c['Competência'])===comp));
+}
+function aguaPaga(c){ return norm(c['Status Repasse'])==='pago'; }
+// água repassada ainda não reembolsada, do mês e de meses anteriores (dívida não some com a virada do mês)
+function aguaPendentesAte(addr,comp){
+  return aguaRepassadas(addr).filter(c=>!aguaPaga(c)&&String(c['Competência'])<=comp)
+    .sort((a,b)=>String(a['Competência']).localeCompare(String(b['Competência'])));
+}
+function somaAgua(list){ return Math.round(list.reduce((s,c)=>s+parseAmt(c['Valor']),0)*100)/100; }
+// célula de status do repasse na tabela de custos
+function repasseCell(c){
+  if(!isAgua(c['Tipo'])||norm(c['Pagador'])!=='inquilino') return '<span style="color:#c3cedb">—</span>';
+  if(aguaPaga(c)) return '<span class="ag-st ok"><i class="fas fa-check"></i> pago'+(c['Data do Repasse']?' '+fmtDate(c['Data do Repasse']):'')+'</span>'
+    +' <button class="mini-btn sec" style="padding:2px 7px;font-size:10px" onclick="desmarcarAgua('+c._row+')" title="Desfazer">↺</button>';
+  return '<span class="ag-st pend"><i class="fas fa-clock"></i> pendente</span>'
+    +' <button class="ag-btn" onclick="askAguaPaga('+c._row+')">Marcar pago</button>';
+}
+// receita de água efetivamente recebida na competência (regime de caixa, pelo mês da conta)
+function aguaRecebidaNoMes(comp){
+  return somaAgua(DB.custos.filter(c=>isAgua(c['Tipo'])&&norm(c['Pagador'])==='inquilino'&&aguaPaga(c)&&String(c['Competência'])===comp));
+}
+// aluguel esperado no mês = só o aluguel; a água tem cobrança e status próprios
+function expectedRent(c,comp){ return parseAmt(c['Aluguel Mensal']); }
 function houseState(c,comp){
   if(!isOcupada(c)) return { key:'vac' };
   const rec=recFor(c['Endereço'],comp);
@@ -499,7 +547,9 @@ function renderDash(){
   const part=occ.filter(x=>x.s.key==='partial');
   const vac =states.filter(x=>x.s.key==='vac');
   let recebido=0; DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>recebido+=parseAmt(r['Total Recebido']));
-  const aReceber=late.concat(pend).reduce((t,x)=>t+expectedRent(x.c,comp),0)+part.reduce((t,x)=>t+x.s.falta,0);
+  recebido+=aguaRecebidaNoMes(comp); // água repassada já reembolsada é receita do mês da conta
+  const aguaAReceber=casas.reduce((t,c)=>t+somaAgua(aguaPendentesAte(c['Endereço'],comp)),0);
+  const aReceber=late.concat(pend).reduce((t,x)=>t+expectedRent(x.c,comp),0)+part.reduce((t,x)=>t+x.s.falta,0)+aguaAReceber;
 
   // ── month navigator ──
   const [yy,mm]=comp.split('-'); const isCur=comp===todayComp();
@@ -547,7 +597,8 @@ function hcardHTML(c,s){
     pend:'<span class="pill p-pend">'+esc(s.label||'Pendente')+'</span>', partial:'<span class="pill p-partial">Parcial</span>', vac:'<span class="pill p-vac">Vacância</span>' }[s.key];
   const badges=[]; const ce=expiryBadge(c['Fim do Contrato'],'Contrato'); if(ce)badges.push(ce);
   const se=expiryBadge(c['Vigência do Seguro'],'Seguro'); if(se)badges.push(se);
-  const aguaRep=aguaRepasseFor(addr,dashComp);
+  const pend=aguaPendentesAte(addr,dashComp);
+  const pagasMes=aguaRepassadas(addr,dashComp).filter(aguaPaga);
   const aluguel=parseAmt(c['Aluguel Mensal']);
   let action;
   if(s.key==='vac') action='<button class="act-btn vac" onclick="editCasa(\''+eAddr+'\')"><i class="fas fa-user-plus"></i> Definir inquilino</button>';
@@ -559,13 +610,24 @@ function hcardHTML(c,s){
   const tenant=isOcupada(c)?('<i class="fas fa-user"></i>'+esc(c['Inquilino']||'—')):'<i class="fas fa-door-open"></i>Sem inquilino';
   const vi=fmtDate(c['Início do Contrato']), vf=fmtDate(c['Fim do Contrato']);
   const vig=(vi!=='—'||vf!=='—')?'<div class="hcard-vig"><i class="fas fa-file-signature"></i> Vigência: '+vi+' – '+vf+'</div>':'';
-  const aguaLine=aguaRep>0?'<div class="hcard-extra"><i class="fas fa-droplet"></i> Água repassada ao inquilino: '+$$(aguaRep)+'</div>':'';
-  const rentHTML=aguaRep>0
-    ? '<div class="hcard-rent">'+$$(aluguel+aguaRep)+'<span> /mês</span><div class="hcard-rent-brk">'+$$(aluguel)+' aluguel + '+$$(aguaRep)+' água</div></div>'
-    : '<div class="hcard-rent">'+$$(aluguel)+'<span> /mês</span></div>';
+  // linhas de água: as pagas no mês e as pendentes (inclusive de meses anteriores)
+  const aguaLines=[];
+  pagasMes.forEach(k=>aguaLines.push('<div class="hcard-agua ok"><i class="fas fa-droplet"></i> Água '+fmtComp(String(k['Competência']))+' · '+$$(parseAmt(k['Valor']))
+    +' <span class="ag-st ok"><i class="fas fa-check"></i> pago'+(k['Data do Repasse']?' '+fmtDate(k['Data do Repasse']):'')+'</span></div>'));
+  pend.forEach(k=>{
+    const atrasada=String(k['Competência'])<dashComp;
+    aguaLines.push('<div class="hcard-agua pend"><i class="fas fa-droplet"></i> Água '+fmtComp(String(k['Competência']))+' · '+$$(parseAmt(k['Valor']))
+      +' <span class="ag-st pend"><i class="fas fa-clock"></i> '+(atrasada?'pendente de mês anterior':'pendente')+'</span>'
+      +' <button class="ag-btn" onclick="askAguaPaga('+k._row+')"><i class="fas fa-check"></i> Marcar pago</button></div>');
+  });
+  const aguaLine=aguaLines.join('');
+  const totPend=somaAgua(pend);
+  const rentHTML='<div class="hcard-rent">'+$$(aluguel)+'<span> /mês</span>'
+    +(totPend>0?'<div class="hcard-rent-brk" style="color:var(--partial-d)">+ '+$$(totPend)+' de água a receber</div>':'')+'</div>';
   return '<div class="hcard '+stCls+'" id="'+slug+'"><span class="hcard-rail"></span>'
     +'<div class="hcard-main">'
-      +'<div class="hcard-headline"><span class="hcard-addr">'+esc(addr)+'</span>'+pill+'</div>'
+      +'<div class="hcard-headline"><span class="hcard-addr">'+esc(addr)+'</span>'+pill
+        +(totPend>0?'<span class="pill p-agua"><i class="fas fa-droplet"></i> Água pendente</span>':'')+'</div>'
       +'<div class="hcard-tenant">'+tenant+'</div>'
       +vig
       +aguaLine
@@ -583,10 +645,10 @@ function askReceb(addr,slug){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
   const el=document.getElementById('act-'+slug); if(!el)return;
   const rent=expectedRent(c,dashComp), multa=multaPreview(dashComp), total=rent+multa;
-  const aguaRep=aguaRepasseFor(addr,dashComp);
   const t=new Date(), dstr=pad2(t.getDate())+'/'+pad2(t.getMonth()+1);
   const fine=multa>0?'<span class="fine">+$50 multa</span>':'<span class="ok">sem multa</span>';
-  const aguaTxt=aguaRep>0?' · inclui '+$$(aguaRep)+' água':'';
+  const pendAg=somaAgua(aguaPendentesAte(addr,dashComp));
+  const aguaTxt=pendAg>0?' · água '+$$(pendAg)+' cobrada à parte':'';
   const eAddr=esc(addr).replace(/'/g,"\\'");
   el.innerHTML='<div class="confirm"><div class="confirm-txt">Receber <b>'+$$(total)+'</b>'+aguaTxt+' · hoje '+dstr+' · '+fine+'</div>'
     +'<div class="confirm-btns"><button class="c-adjust" onclick="openReceb(\''+eAddr+'\')">Ajustar</button>'
@@ -605,13 +667,15 @@ let _recebExpected=0, _recebPrev=0, _recebMode='total';
 function openReceb(addr,compArg){
   const c=DB.casas.find(x=>norm(x['Endereço'])===norm(addr)); if(!c)return;
   const comp=compArg||((typeof dashComp!=='undefined'&&dashComp)?dashComp:todayComp()); const rec=recFor(addr,comp);
-  const aluguel=parseAmt(c['Aluguel Mensal']); const aguaRep=aguaRepasseFor(addr,comp);
-  _recebExpected=aluguel+aguaRep;
+  const aluguel=parseAmt(c['Aluguel Mensal']);
+  const pendAg=somaAgua(aguaPendentesAte(addr,comp));
+  _recebExpected=aluguel;
   _recebPrev=rec?parseAmt(rec['Valor do Aluguel']):0;
   const faltaAtual=Math.round((_recebExpected-_recebPrev)*100)/100;
   // se já existe um recebimento parcial nesse mês → modo "parcela" (pede só o que falta)
   _recebMode=(rec && faltaAtual>0.005)?'installment':'total';
-  const expHint=aguaRep>0?('esperado <b>'+$$(_recebExpected)+'</b> ('+$$(aluguel)+' aluguel + '+$$(aguaRep)+' água)'):('esperado <b>'+$$(_recebExpected)+'</b>');
+  const expHint='esperado <b>'+$$(_recebExpected)+'</b> de aluguel'
+    +(pendAg>0?'. A água ('+$$(pendAg)+') é cobrada à parte — marque como paga no card da casa':'');
   const prevBox=(_recebMode==='installment')
     ? '<div class="receb-prev"><i class="fas fa-clock-rotate-left"></i> Já recebido <b>'+$$(_recebPrev)+'</b> de '+$$(_recebExpected)+' — falta <b>'+$$(faltaAtual)+'</b>. Informe abaixo o valor <b>deste</b> pagamento; será somado ao já recebido.</div>'
     : '';
@@ -725,6 +789,7 @@ function renderCustos(){
     +'<td>'+$$(parseAmt(c['Valor']))+'</td>'
     +'<td>'+fmtDate(c['Data do Pagamento'])+'</td>'
     +'<td>'+esc(c['Descrição']||'—')+'</td>'
+    +'<td>'+repasseCell(c)+'</td>'
     +'<td><button class="mini-btn danger" onclick="delCusto('+c._row+')"><i class="fas fa-trash"></i></button></td></tr>'; }).join('');
   const [yy,mm]=comp.split('-'); const isCur=comp===todayComp();
   const nav='<div class="mnav"><button class="mnav-arw" onclick="custMonth(-1)" aria-label="Mês anterior">‹</button>'
@@ -733,11 +798,11 @@ function renderCustos(){
     +(isCur?'':'<button class="mnav-today" onclick="custToday()">hoje</button>')+'</div>';
   document.getElementById('tab3').innerHTML= nav
     +'<div class="card2"><div class="sec-title"><i class="fas fa-file-invoice-dollar"></i> Custos — '+fmtComp(comp)
-    +'<button class="btn-primary2" style="margin-left:auto;padding:8px 16px" onclick="addCusto()"><i class="fas fa-plus"></i> Lançar custo</button></div>'
+    +'<button class="mini-btn sec" style="margin-left:auto" onclick="addAgua()"><i class="fas fa-droplet"></i> Lançar água</button><button class="btn-primary2" style="padding:8px 16px" onclick="addCusto()"><i class="fas fa-plus"></i> Lançar custo</button></div>'
     +'<div style="font-size:11.5px;color:#7b8ea4;margin:-4px 0 12px"><i class="fas fa-circle-info"></i> O <b>mortgage</b> é fixo por casa (cadastro) e entra automaticamente como custo no Financeiro — não precisa lançar aqui.</div>'
-    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th>Descrição</th><th></th></tr></thead><tbody>'
-    +(rows||'<tr><td colspan="6" class="empty">Nenhum custo neste mês</td></tr>')
-    +(list.length?'<tr><td colspan="2" style="text-align:right;font-weight:800">Total</td><td style="font-weight:800;color:var(--navy)">'+$$(tot)+'</td><td colspan="3"></td></tr>':'')
+    +'<div class="tbl-wrap"><table><thead><tr><th>Casa</th><th>Tipo</th><th>Valor</th><th>Pago em</th><th>Descrição</th><th>Repasse</th><th></th></tr></thead><tbody>'
+    +(rows||'<tr><td colspan="7" class="empty">Nenhum custo neste mês</td></tr>')
+    +(list.length?'<tr><td colspan="2" style="text-align:right;font-weight:800">Total</td><td style="font-weight:800;color:var(--navy)">'+$$(tot)+'</td><td colspan="4"></td></tr>':'')
     +'</tbody></table></div></div>';
 }
 function casaSelectOptions(sel){ return DB.casas.filter(c=>String(c['Endereço']||'').trim()).map(c=>'<option value="'+esc(c['Endereço'])+'"'+(norm(sel)===norm(c['Endereço'])?' selected':'')+'>'+esc(c['Endereço'])+'</option>').join(''); }
@@ -794,6 +859,128 @@ async function saveCasa(btn){
   });
 }
 async function delCasa(addr){ if(!confirm('Excluir a casa '+addr+'? (os lançamentos ficam na base)'))return; try{ await apiWrite({action:'deleteCasa',addr}); closeModal(); showToast('Casa excluída'); await loadData(); }catch(e){ showToast(e.message,true); } }
+
+// ══ ÁGUA: lançamento (vários meses / rateio entre unidades) e baixa do repasse ══
+let AG_MESES=[], AG_CASAS=[];
+
+function compAnterior(comp,n){ const [y,m]=comp.split('-').map(Number); const d=new Date(y,m-1-n,1); return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
+
+function addAgua(){
+  AG_MESES=[custComp];
+  AG_CASAS=[];
+  openModal('<div class="modal-title"><i class="fas fa-droplet"></i> Lançar água</div>'
+    +'<div class="mb"><label class="f-label">Casas *</label><div id="agCasas" class="ag-casas">'
+      +DB.casas.filter(c=>String(c['Endereço']||'').trim()).map(c=>'<label class="ag-casa"><input type="checkbox" value="'+esc(c['Endereço'])+'" onchange="agRender()"> '+esc(c['Endereço'])+'</label>').join('')
+    +'</div><div style="font-size:11px;color:#7b8ea4;margin-top:6px">Marque mais de uma quando a conta for do prédio inteiro — o valor é dividido entre elas.</div></div>'
+    +'<div class="mb"><label class="f-label">Quem paga *</label>'
+      +'<select class="f-select" id="agPagador" onchange="agRender()">'
+        +'<option value="Proprietário">Proprietário assume o custo</option>'
+        +'<option value="Inquilino">Repassar ao inquilino</option>'
+      +'</select></div>'
+    +'<div id="agRepasseWrap" class="mb" style="display:none;background:#eef6fb;border-radius:10px;padding:12px">'
+      +'<label class="f-label" style="margin-bottom:6px">O inquilino já pagou?</label>'
+      +'<select class="f-select" id="agStatus" onchange="agRender()">'
+        +'<option value="Pendente">Ainda não pagou</option>'
+        +'<option value="Pago">Já pagou</option>'
+      +'</select>'
+      +'<div id="agDataWrap" style="display:none;margin-top:10px"><label class="f-label">Data em que pagou *</label><input class="f-input" id="agDataRep" type="date" value="'+todayISO()+'"></div>'
+    +'</div>'
+    +'<div class="mb"><label class="f-label">Meses e valores *</label><div id="agMeses"></div>'
+      +'<button type="button" class="mini-btn sec" style="margin-top:8px" onclick="agAddMes()"><i class="fas fa-plus"></i> Adicionar mês</button></div>'
+    +'<div class="grid2">'
+      +'<div><label class="f-label">Data em que a NJR pagou a conta</label><input class="f-input" id="agDataPag" type="date"></div>'
+      +'<div><label class="f-label">Descrição</label><input class="f-input" id="agDesc" placeholder="opcional"></div>'
+    +'</div>'
+    +'<div id="agPrev" class="ag-prev"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="mini-btn sec" onclick="closeModal()">Cancelar</button><button class="btn-primary2" onclick="saveAgua(this)">Lançar</button></div>');
+  agRenderMeses(); agRender();
+}
+function agAddMes(){
+  const ult=AG_MESES[AG_MESES.length-1]||custComp;
+  AG_MESES.push(compAnterior(ult,-1));
+  agRenderMeses(); agRender();
+}
+function agDelMes(i){ if(AG_MESES.length<=1)return; AG_MESES.splice(i,1); agRenderMeses(); agRender(); }
+function agRenderMeses(){
+  const vals=AG_MESES.map((m,i)=>{ const el=document.getElementById('agVal'+i); return el?el.value:''; });
+  document.getElementById('agMeses').innerHTML=AG_MESES.map((m,i)=>
+    '<div class="ag-mes">'
+    +'<input class="f-input" type="month" value="'+m+'" onchange="AG_MESES['+i+']=this.value;agRender()">'
+    +'<div class="f-prefix"><span>$</span><input class="f-input" id="agVal'+i+'" type="number" step="0.01" placeholder="0.00" value="'+(vals[i]||'')+'" oninput="agRender()"></div>'
+    +(AG_MESES.length>1?'<button type="button" class="mini-btn danger" onclick="agDelMes('+i+')"><i class="fas fa-times"></i></button>':'<span style="width:34px"></span>')
+    +'</div>').join('');
+}
+function agSel(){ return [...document.querySelectorAll('#agCasas input:checked')].map(i=>i.value); }
+function agRender(){
+  const rep=document.getElementById('agPagador').value==='Inquilino';
+  document.getElementById('agRepasseWrap').style.display=rep?'':'none';
+  const pago=rep&&document.getElementById('agStatus').value==='Pago';
+  document.getElementById('agDataWrap').style.display=pago?'':'none';
+  const casas=agSel();
+  const linhas=AG_MESES.map((m,i)=>{
+    const v=parseFloat((document.getElementById('agVal'+i)||{}).value)||0;
+    if(!v||!casas.length) return '';
+    const parts=rateio(v,casas.length);
+    return '<div class="ag-prev-l"><b>'+fmtComp(m)+'</b> · '+$$(v)
+      +(casas.length>1?' → '+parts.map(p=>$$(p)).join(' + ')+' ('+casas.length+' unidades)':'')+'</div>';
+  }).filter(Boolean).join('');
+  document.getElementById('agPrev').innerHTML=linhas
+    ?('<div class="ag-prev-t">Serão lançados '+(AG_MESES.length*casas.length)+' registro(s):</div>'+linhas)
+    :'<div class="ag-prev-t" style="color:#7b8ea4">Selecione as casas e informe os valores.</div>';
+}
+// divide em centavos exatos: o resto vai para as primeiras casas
+function rateio(valor,n){
+  const cents=Math.round(valor*100), per=Math.floor(cents/n), resto=cents-per*n;
+  return Array.from({length:n},(_,i)=>(per+(i<resto?1:0))/100);
+}
+async function saveAgua(btn){
+  const casas=agSel();
+  if(!casas.length){ showToast('Selecione ao menos uma casa',true); return; }
+  const pagador=document.getElementById('agPagador').value;
+  const rep=pagador==='Inquilino';
+  const statusRepasse=rep?document.getElementById('agStatus').value:'';
+  const dataRepasse=(rep&&statusRepasse==='Pago')?document.getElementById('agDataRep').value:'';
+  if(rep&&statusRepasse==='Pago'&&!dataRepasse){ showToast('Informe a data em que o inquilino pagou',true); return; }
+  const itens=[];
+  for(let i=0;i<AG_MESES.length;i++){
+    const v=parseFloat((document.getElementById('agVal'+i)||{}).value)||0;
+    if(!v||v<=0){ showToast('Informe o valor de '+fmtComp(AG_MESES[i]),true); return; }
+    const parts=rateio(v,casas.length);
+    casas.forEach((addr,k)=>itens.push({addr,competencia:AG_MESES[i],valor:parts[k]}));
+  }
+  await runBtn(btn, async()=>{
+    try{
+      const r=await apiWrite({action:'lancarAgua',itens,pagador,statusRepasse,dataRepasse,
+        dataPagamento:document.getElementById('agDataPag').value,desc:document.getElementById('agDesc').value});
+      closeModal(); showToast((r.count||itens.length)+' lançamento(s) de água'); await loadData();
+    }catch(e){ showToast(e.message,true); }
+  });
+}
+
+// baixa do repasse a partir do card da casa
+function askAguaPaga(rowNum){
+  const k=DB.custos.find(x=>x._row===rowNum);
+  if(!k){ showToast('Lançamento não encontrado',true); return; }
+  openModal('<div class="modal-title"><i class="fas fa-droplet"></i> Pagamento da água</div>'
+    +'<div class="ag-prev-t" style="margin-bottom:12px">'+esc(k['Endereço'])+' · '+fmtComp(String(k['Competência']))+' · <b>'+$$(parseAmt(k['Valor']))+'</b></div>'
+    +'<div class="mb"><label class="f-label">Data em que o inquilino pagou *</label><input class="f-input" id="agpData" type="date" value="'+todayISO()+'"></div>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">'
+    +'<button class="mini-btn sec" onclick="closeModal()">Cancelar</button>'
+    +'<button class="btn-primary2" onclick="saveAguaPaga('+rowNum+',this)">Confirmar pagamento</button></div>');
+}
+async function saveAguaPaga(rowNum,btn){
+  const data=document.getElementById('agpData').value;
+  if(!data){ showToast('Informe a data',true); return; }
+  await runBtn(btn, async()=>{
+    try{ await apiWrite({action:'marcarRepasseAgua',rowNum,pago:true,data}); closeModal(); showToast('Água marcada como paga'); await loadData(); }
+    catch(e){ showToast(e.message,true); }
+  });
+}
+async function desmarcarAgua(rowNum){
+  if(!confirm('Desfazer o pagamento desta água? Ela volta a aparecer como pendente.'))return;
+  try{ await apiWrite({action:'marcarRepasseAgua',rowNum,pago:false}); showToast('Voltou para pendente'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
+}
 
 function addCusto(){
   openModal('<div class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Lançar custo — '+fmtComp(custComp)+'</div>'
@@ -978,8 +1165,9 @@ function renderFin(){
   let totRec=0, totCus=0;
   const rows=casas.map(c=>{
     const addr=c['Endereço'];
-    // receita = recebimentos (já incluem a água repassada, que é cobrada junto do aluguel)
-    const rec=DB.recebimentos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Total Recebido']),0);
+    // receita = aluguel recebido + água repassada que o inquilino JÁ reembolsou (regime de caixa)
+    let rec=DB.recebimentos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Total Recebido']),0);
+    rec+=somaAgua(aguaRepassadas(addr,comp).filter(aguaPaga));
     // custos lançados (exclui mortgage, que é fixo do cadastro) + manutenção + mortgage fixo
     let cus=DB.custos.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).reduce((s,r)=>s+parseAmt(r['Valor']),0);
     cus+=DB.manutencao.filter(r=>norm(r['Endereço'])===norm(addr)&&String(r['Competência'])===comp).reduce((s,r)=>s+parseAmt(r['Valor do Serviço']),0);
@@ -1038,6 +1226,12 @@ function anualData(ano){
     const addr=r['Endereço']; if(!addr) return; const v=parseAmt(r['Valor']); const cat=categoriaFiscal(r['Tipo']);
     ensure(addr).cat[cat]+=v;
     items.push({casa:addr,data:r['Data do Pagamento'],comp:r['Competência'],categoria:cat,desc:r['Tipo']||'Custo',receita:0,despesa:v});
+    // água repassada: a despesa acima é sempre da NJR (ela paga a concessionária);
+    // a receita só entra quando o inquilino de fato reembolsou — regime de caixa
+    if(isAgua(r['Tipo'])&&norm(r['Pagador'])==='inquilino'&&aguaPaga(r)){
+      ensure(addr).income+=v;
+      items.push({casa:addr,data:r['Data do Repasse']||r['Data do Pagamento'],comp:r['Competência'],categoria:'Rental Income',desc:'Água reembolsada pelo inquilino',receita:v,despesa:0});
+    }
   });
   DB.manutencao.filter(inYear).forEach(r=>{
     const addr=r['Endereço']; if(!addr) return; const v=parseAmt(r['Valor do Serviço']);
@@ -1144,7 +1338,7 @@ function anualReportHTML(ano){
           +'<td style="padding:12px;font-size:14px;font-weight:900;background:#0d2137;color:#f2a340;text-align:right">'+$$(totals.resultado)+'</td>'
         +'</tr></tfoot>'
       +'</table></div>'
-      +'<div style="margin-top:20px;font-size:11.5px;color:#8aa0b6;line-height:1.5">Mortgage exibido como valor total pago (principal + juros + escrow); a separação do valor dedutível de juros fica a cargo do contador. Água repassada ao inquilino está incluída em Rental Income e em Utilities.</div>'
+      +'<div style="margin-top:20px;font-size:11.5px;color:#8aa0b6;line-height:1.5">Mortgage exibido como valor total pago (principal + juros + escrow); a separação do valor dedutível de juros fica a cargo do contador. A água repassada ao inquilino entra em Utilities quando a NJR paga a concessionária, e em Rental Income quando o inquilino reembolsa — água ainda não reembolsada não conta como receita.</div>'
       +'<div style="margin-top:22px"><div style="font-size:12px;font-weight:800;color:#5a7088;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Security Deposits retidos (referência — não é receita)</div>'
         +'<table style="width:100%;border-collapse:collapse;border:1px solid #e9eef4;border-radius:8px;overflow:hidden"><tbody>'+(deposRows||'<tr><td style="padding:10px;color:#8aa0b6">Sem casas</td></tr>')+'</tbody></table>'
       +'</div>'
@@ -1159,7 +1353,7 @@ function openAnualPrint(){
 function closeAnualPrint(){ document.getElementById('anualReportOverlay').classList.remove('open'); }
 function finDetail(comp){
   const items=[];
-  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido'+(aguaRepasseFor(r['Endereço'],comp)>0?' (inclui água)':''),valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento'],src:'rec',row:r._row}));
+  DB.recebimentos.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Aluguel recebido',valor:parseAmt(r['Total Recebido']),sign:1,data:r['Data do Pagamento'],src:'rec',row:r._row}));
   DB.custos.filter(r=>String(r['Competência'])===comp&&!isMortgage(r['Tipo'])).forEach(r=>items.push({casa:r['Endereço'],tipo:r['Tipo']||'Custo',valor:parseAmt(r['Valor']),sign:-1,data:r['Data do Pagamento'],src:'custo',row:r._row}));
   DB.casas.filter(c=>String(c['Endereço']||'').trim()&&parseAmt(c['Mortgage Mensal'])>0).forEach(c=>items.push({casa:c['Endereço'],tipo:'Mortgage (fixo mensal)',valor:parseAmt(c['Mortgage Mensal']),sign:-1,data:'',src:'mortgage'}));
   DB.manutencao.filter(r=>String(r['Competência'])===comp).forEach(r=>items.push({casa:r['Endereço'],tipo:'Manutenção: '+(r['Tipo de Serviço']||''),valor:parseAmt(r['Valor do Serviço']),sign:-1,data:r['Data de Conclusão'],src:'man',row:r._row}));
