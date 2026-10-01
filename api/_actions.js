@@ -313,12 +313,40 @@ async function addCliente(params) {
 }
 
 // ── REGISTRO DE HORAS (app de funcionário) ────────────────
+
+// true quando o endereço tem ficha em Cadastro de Obras marcada como finalizada.
+// Endereço sem ficha (obra legada) não é encerrado — devolve false.
+async function obraEncerrada(index, addr) {
+  const alvo = G.normStr(addr);
+  if (!alvo) return false;
+  const sh = G.findSheetEntry(index, KW.obras);
+  if (!sh) return false;
+  const fIdx = sh.headers.findIndex(h => G.normStr(h) === 'finalizada');
+  if (fIdx < 0) return false;
+  const [addrs, fins] = await Promise.all([
+    G.readColumn(sh.title, addrColIndex(sh.headers)),
+    G.readColumn(sh.title, fIdx),
+  ]);
+  for (let i = 1; i < addrs.length; i++) {
+    if (G.normStr(addrs[i]) === alvo) return /^s/i.test(String(fins[i] || '').trim());
+  }
+  return false;
+}
+
 async function addLabor(params) {
   const { index } = await G.loadSheetIndex();
   const sh = G.findSheetEntry(index, KW.labor);
   if (!sh) return { error: 'Aba de registro de trabalho não encontrada.' };
   const emp = (params.emp || '').trim();
   if (!emp) return { error: 'Nome do funcionário obrigatório.' };
+
+  // Obra encerrada não aceita lançamento. A lista do app já não mostra essas
+  // obras, mas a tela do funcionário pode estar aberta desde antes do
+  // encerramento — sem esta trava as horas entram na obra fechada e distorcem
+  // o resultado financeiro dela.
+  if (await obraEncerrada(index, params.addr)) {
+    return { error: 'Esta obra já foi encerrada e não aceita novos lançamentos. Fale com o Nilmar para reabri-la se ainda houver trabalho nela.' };
+  }
 
   const row = G.buildRow(sh.headers, [
     { key: 'Carimbo de data/hora', val: G.nowInTz() },
