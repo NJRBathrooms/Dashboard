@@ -66,6 +66,7 @@ for (const [titulo, script] of [
   ['lógica — editar/excluir serviço de drywall', 'test-drywall-servico.js'],
   ['lógica — cadastro/encerramento de obra', 'test-completar-obra.js'],
   ['horas — obra fechada some do app do funcionário', 'test-emp-obra-fechada.js'],
+  ['cabeçalho — botão de atualizar', 'test-refresh.js'],
 ]) {
   secao(titulo);
   const r = spawnSync(process.execPath, [path.join(__dirname, script)], { encoding: 'utf8' });

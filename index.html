@@ -49,6 +49,12 @@ html { overflow-x:hidden; }
 .update-badge.err { color:#e74c3c; border-color:rgba(231,76,60,.3); }
 .logout-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:6px 14px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0; }
 .logout-btn:hover { background:rgba(255,255,255,.2); }
+/* Atualizar: relê a planilha sem recarregar a página (a tela abre do cache local) */
+.refresh-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:6px 14px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0; display:flex; align-items:center; gap:6px; }
+.refresh-btn:hover:not(:disabled) { background:rgba(255,255,255,.2); }
+.refresh-btn:disabled { opacity:.6; cursor:default; }
+.refresh-btn.spinning i { animation:spin .75s linear infinite; }
+@media (max-width:560px) { .refresh-btn .rf-label { display:none; } .refresh-btn { padding:6px 10px; } }
 
 @media (max-width:480px) {
   .app-header { padding:34px 16px 14px; gap:14px; }
@@ -405,6 +411,7 @@ tbody tr:hover td { background:#fafbfe; }
         <div class="update-badge" id="updateBadge">
           <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> <span class="badge-label">Carregando...</span>
         </div>
+        <button class="refresh-btn" id="refreshBtn" onclick="refreshData()" title="Reler a planilha agora"><i class="fas fa-rotate-right"></i><span class="rf-label">Atualizar</span></button>
         <button class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt" style="margin-right:6px"></i>Sair</button>
       </div>
     </div>
@@ -1478,6 +1485,37 @@ async function loadData() {
       T1_NEEDS_CHARTS = true;
       console.error('Render error (non-fatal):', e);
     }
+  }
+}
+
+// Botão "Atualizar" do cabeçalho: relê a planilha sem recarregar a página.
+// Existe porque a tela é pintada do cache local (DB_CACHE_KEY) e um lançamento
+// feito agora — horas do sábado à noite, por exemplo — só aparece numa nova
+// leitura. Sem isso, a única saída era F5 com o risco de olhar dado velho.
+let REFRESHING = false;
+async function refreshData() {
+  if (REFRESHING) return;                       // clique duplo não dispara dois fetches
+  REFRESHING = true;
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.classList.add('spinning'); }
+  setBadge('loading', 'Atualizando...');
+  try {
+    const res = await fetch('/api/data', { cache: 'no-store' });
+    if (res.status === 401) { doLogout(); return; }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    DB = data;
+    try { localStorage.setItem(DB_CACHE_KEY, JSON.stringify(DB)); } catch(_) {}
+    renderAll();
+    renderCloseForm();                          // tab 5 não entra no renderAll
+    setBadge('ok', updTimeLabel());
+    showToast('Dados atualizados');
+  } catch (e) {
+    setBadge('err', 'Erro ao atualizar');
+    showToast('Não foi possível atualizar: ' + e.message, true);
+  } finally {
+    REFRESHING = false;
+    if (btn) { btn.disabled = false; btn.classList.remove('spinning'); }
   }
 }
 
