@@ -162,6 +162,14 @@ const DB = {
     { _row: 5, ts: '2026-08-13 09:00:00', data: '2026-08-13', cliente: 'Maria Silva', addr: '77 Ash Way',
       valorCobrado: '450', pessoa: 'Ana', companhia: 'DW Crew', diaria: 180, obs: '' },
   ],
+  descontosProg: [
+    // parcelamento em andamento, com uma parcela já marcada
+    { _row: 2, emp: 'João La Pastina', descricao: 'Conserto do carro', valor: 529, parcelas: 5,
+      inicio: '2026-08-02', quitadas: ['2026-08-02'], status: 'Ativo', obs: 'oficina do Zé' },
+    // divisão inexata, nada marcado — exercita o arredondamento na tela
+    { _row: 3, emp: 'Ana Paula', descricao: 'Adiantamento', valor: 100, parcelas: 3,
+      inicio: '2026-08-23', quitadas: [], status: 'Ativo', obs: '' },
+  ],
 };
 
 // ── execução ───────────────────────────────────────────────
@@ -199,6 +207,16 @@ roda('renderAll() — pinta o app inteiro sem erro', () => api.renderAll());
 // 2. cada tela, verificando que produziu conteúdo íntegro
 roda('Controle de Obras (obra selecionada)', () => { api.set('SEL_ADDR', '4 Tara rd, Essex'); api.renderTab1(); }, () => semLixo('t1body'));
 roda('Controle de Horas', () => api.renderTab2(), () => semLixo('gerBody'));
+
+// a tabela de descontos programados vive abaixo dos cards de pagamento
+roda('Controle de Horas — tabela de descontos programados', () => api.renderTab2(), () => {
+  const h = els['gerBody'].innerHTML;
+  if (!h.includes('Descontos programados')) return 'a seção não apareceu abaixo dos cards';
+  if (!h.includes('Conserto do carro')) return 'o parcelamento não foi listado';
+  if (!h.includes('$105.80')) return 'o valor da parcela de $529/5 não apareceu';
+  if (h.includes('undefined') || h.includes('NaN')) return 'a seção contém undefined/NaN';
+  return true;
+});
 roda('Insurance & W9 — Control', () => { api.showInsSub('control'); }, () => semLixo('insBody'));
 roda('Insurance & W9 — Registry', () => { api.showInsSub('registry'); }, () => semLixo('insBody'));
 roda('Usuários', () => api.renderUsuarios(), () => semLixo('usrBody'));

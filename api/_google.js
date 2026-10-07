@@ -152,6 +152,8 @@ async function readAll() {
   const obras = findValues(byTitle, ['nome do cliente', 'orçamento']);
   const cli   = findValues(byTitle, ['contato do cliente', 'email do cliente']);
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
+  // Descontos programados (parcelamento de dívida do funcionário)
+  const dprog = findValues(byTitle, ['nome do funcionário', 'nº de parcelas']);
   const subp  = findValues(byTitle, ['company name', 'coi policy']);
   const func  = findValues(byTitle, ['nome', 'senha']);
   const rateh = findValues(byTitle, ['nome', 'vigente desde']);
@@ -184,6 +186,19 @@ async function readAll() {
     obras:          obras ? rowsToObjects(obras)     : [],
     clients:        cli   ? rowsToObjects(cli)       : [],
     ajustes:        ajus  ? rowsToObjects(ajus)      : [],
+    // 1 linha = 1 parcelamento. As parcelas são calculadas no cliente a partir
+    // do total, do nº de parcelas e da semana de início.
+    descontosProg:  dprog ? rowsToObjects(dprog).map(r => ({
+      _row: r._row,
+      emp: String(r['Nome do funcionário'] || '').trim(),
+      descricao: String(r['Descrição'] || '').trim(),
+      valor: Number(r['Valor Total']) || 0,
+      parcelas: Math.trunc(Number(r['Nº de Parcelas'])) || 0,
+      inicio: String(r['Semana de Início'] || '').trim().slice(0, 10),
+      quitadas: String(r['Semanas Quitadas'] || '').split(',').map(s => s.trim()).filter(Boolean),
+      status: String(r['Status'] || '').trim(),
+      obs: String(r['Observações'] || '').trim(),
+    })).filter(d => d.emp && d.parcelas > 0 && /^\d{4}-\d{2}-\d{2}$/.test(d.inicio)) : [],
     subProfiles:    subp  ? rowsToObjects(subp)      : [],
     // Usuários/funcionários — a senha NUNCA vai para o navegador, só nome e rate
     funcionarios:   func  ? rowsToObjects(func).map(r => ({

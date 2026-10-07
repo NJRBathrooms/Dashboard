@@ -457,6 +457,173 @@ async function saveAjuste(params) {
   return { ok: true };
 }
 
+// ── DESCONTOS PROGRAMADOS (parcelamento de dívida do funcionário) ──
+// Ex.: a NJR pagou $529 do conserto do carro do Leandro e desconta em 5 semanas.
+// A tabela é só de consulta: ela NÃO escreve no pagamento. Quem lança o desconto
+// no card da semana continua sendo o Nilmar, à mão. O que esta aba guarda é o
+// plano e quais parcelas ele já marcou como descontadas.
+const DESCPROG_SHEET = 'Descontos Programados';
+const DESCPROG_HEADERS = ['Carimbo de data/hora', 'Nome do funcionário', 'Descrição',
+  'Valor Total', 'Nº de Parcelas', 'Semana de Início', 'Semanas Quitadas', 'Status', 'Observações'];
+
+// Divide o total em n parcelas fechando no centavo: as primeiras levam o resto.
+// $529 / 5 = 105,80 exato; $100 / 3 = 33,34 + 33,33 + 33,33.
+function parcelasDe(total, n) {
+  const cents = Math.round(Number(total) * 100);
+  const per = Math.floor(cents / n);
+  const resto = cents - per * n;
+  return Array.from({ length: n }, (_, i) => (per + (i < resto ? 1 : 0)) / 100);
+}
+
+// Semana (domingo ISO) + N semanas, em UTC para não escorregar de fuso.
+function semanaMais(iso, semanas) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return '';
+  const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  dt.setUTCDate(dt.getUTCDate() + semanas * 7);
+  const p = n => String(n).padStart(2, '0');
+  return dt.getUTCFullYear() + '-' + p(dt.getUTCMonth() + 1) + '-' + p(dt.getUTCDate());
+}
+
+const ehDomingoISO = iso => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return false;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay() === 0;
+};
+
+async function descProgSheet() {
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === DESCPROG_SHEET);
+  if (!sh) {
+    await G.createSheet(DESCPROG_SHEET, DESCPROG_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === DESCPROG_SHEET);
+  }
+  return sh;
+}
+
+function validaDescProg(params) {
+  const emp = (params.emp || '').trim();
+  if (!emp) return { error: 'Funcionário obrigatório.' };
+  const desc = (params.descricao || '').trim();
+  if (!desc) return { error: 'Descrição obrigatória — diga do que é o desconto.' };
+  const valor = round2(params.valor);
+  if (!(valor > 0)) return { error: 'Valor total deve ser maior que zero.' };
+  const n = Math.trunc(Number(params.parcelas));
+  if (!(n >= 1 && n <= 52)) return { error: 'Número de parcelas deve ser de 1 a 52.' };
+  const ini = (params.semanaInicio || '').trim();
+  if (!ehDomingoISO(ini)) return { error: 'Semana de início inválida — precisa ser um domingo (yyyy-mm-dd).' };
+  return { emp, desc, valor, n, ini };
+}
+
+async function addDescontoProgramado(params) {
+  const v = validaDescProg(params);
+  if (v.error) return v;
+  const sh = await descProgSheet();
+  if (!sh) return { error: 'Não foi possível criar a aba "Descontos Programados".' };
+
+  const row = G.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: G.nowInTz() },
+    { key: 'Nome do funcionário', val: v.emp },
+    { key: 'Descrição', val: v.desc },
+    { key: 'Valor Total', val: v.valor },
+    { key: 'Nº de Parcelas', val: v.n },
+    { key: 'Semana de Início', val: v.ini, forceText: true },
+    { key: 'Semanas Quitadas', val: '', forceText: true },
+    { key: 'Status', val: 'Ativo' },
+    { key: 'Observações', val: params.obs || '' },
+  ]);
+  await G.appendRow(sh.title, row);
+  return { ok: true, parcela: parcelasDe(v.valor, v.n)[0] };
+}
+
+async function updateDescontoProgramado(params) {
+  const rowNum = Math.trunc(Number(params.rowNum));
+  if (!(rowNum > 1)) return { error: 'Linha inválida.' };
+  const v = validaDescProg(params);
+  if (v.error) return v;
+  const sh = await descProgSheet();
+  if (!sh) return { error: 'Aba "Descontos Programados" não encontrada.' };
+
+  // Reduzir o número de parcelas não pode apagar parcela já marcada como quitada.
+  const quitadas = await lerQuitadas(sh, rowNum);
+  // -1 = a semana nem cai mais na grade do plano (início movido para frente);
+  // >= n = caiu fora do fim (parcelas reduzidas). Os dois perdem histórico.
+  const fora = quitadas.filter(s => { const i = indiceDaSemana(v.ini, s); return i < 0 || i >= v.n; });
+  if (fora.length) {
+    return { error: 'Já existem parcelas quitadas fora do novo plano (' + fora.join(', ') +
+      '). Desmarque-as antes de reduzir as parcelas ou mudar a semana de início.' };
+  }
+
+  await G.updateRowCells(sh.title, rowNum, sh.headers, [
+    { key: 'Nome do funcionário', val: v.emp },
+    { key: 'Descrição', val: v.desc },
+    { key: 'Valor Total', val: v.valor },
+    { key: 'Nº de Parcelas', val: v.n },
+    { key: 'Semana de Início', val: v.ini, forceText: true },
+    { key: 'Observações', val: params.obs || '' },
+  ]);
+  return { ok: true };
+}
+
+async function deleteDescontoProgramado(params) {
+  const rowNum = Math.trunc(Number(params.rowNum));
+  if (!(rowNum > 1)) return { error: 'Linha inválida.' };
+  const sh = await descProgSheet();
+  if (!sh) return { error: 'Aba "Descontos Programados" não encontrada.' };
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
+// posição (0-based) de uma semana dentro do plano; -1 se não bate com nenhuma
+function indiceDaSemana(inicio, semana) {
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(inicio || '').trim());
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(semana || '').trim());
+  if (!a || !b) return -1;
+  const d1 = Date.UTC(+a[1], +a[2] - 1, +a[3]), d2 = Date.UTC(+b[1], +b[2] - 1, +b[3]);
+  const dias = (d2 - d1) / 86400000;
+  return dias >= 0 && dias % 7 === 0 ? dias / 7 : -1;
+}
+
+async function lerQuitadas(sh, rowNum) {
+  const idx = sh.headers.indexOf('Semanas Quitadas');
+  if (idx < 0) return [];
+  const col = await G.readColumn(sh.title, idx);
+  return String(col[rowNum - 1] || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// Marca/desmarca UMA parcela como já descontada. Só muda o controle — o valor
+// que entra no pagamento continua sendo digitado pelo Nilmar no card da semana.
+async function marcarParcelaDesconto(params) {
+  const rowNum = Math.trunc(Number(params.rowNum));
+  if (!(rowNum > 1)) return { error: 'Linha inválida.' };
+  const semana = (params.semana || '').trim();
+  if (!ehDomingoISO(semana)) return { error: 'Semana inválida.' };
+
+  const sh = await descProgSheet();
+  if (!sh) return { error: 'Aba "Descontos Programados" não encontrada.' };
+
+  const iniCol = await G.readColumn(sh.title, sh.headers.indexOf('Semana de Início'));
+  const nCol = await G.readColumn(sh.title, sh.headers.indexOf('Nº de Parcelas'));
+  const inicio = String(iniCol[rowNum - 1] || '').trim();
+  const n = Math.trunc(Number(nCol[rowNum - 1])) || 0;
+  const i = indiceDaSemana(inicio, semana);
+  if (i < 0 || i >= n) return { error: 'Essa semana não faz parte do parcelamento.' };
+
+  const atuais = await lerQuitadas(sh, rowNum);
+  const quer = params.quitada !== false;
+  const nova = quer
+    ? (atuais.includes(semana) ? atuais : [...atuais, semana])
+    : atuais.filter(s => s !== semana);
+  nova.sort();
+
+  await G.updateRowCells(sh.title, rowNum, sh.headers, [
+    { key: 'Semanas Quitadas', val: nova.join(','), forceText: true },
+    { key: 'Status', val: nova.length >= n ? 'Quitado' : 'Ativo' },
+  ]);
+  return { ok: true, quitadas: nova.length, total: n };
+}
+
 // ── RELATÓRIO DE PAGAMENTO (envia por e-mail ao financeiro) ──
 async function emailReport(params) {
   const to = process.env.REPORT_EMAIL || 'Paulinhajusten@hotmail.com';
@@ -1012,6 +1179,7 @@ async function emailInvoice(params) {
 
 module.exports = {
   addObra, closeObra, updateObra, completarObra, saveAjuste, emailReport, emailInvoice,
+  addDescontoProgramado, updateDescontoProgramado, deleteDescontoProgramado, marcarParcelaDesconto,
   addMaterial, updateMaterial, deleteMaterial,
   addSubcontrato, updateSubcontrato, deleteSubcontrato,
   addCliente, addLabor, updateLabor, deleteLabor,

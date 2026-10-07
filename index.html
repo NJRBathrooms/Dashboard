@@ -1255,6 +1255,79 @@ async function delRateChange(rowNum,nome,desde){
   try{ await apiWrite({action:'deleteRateChange',rowNum}); showToast('Alteração de rate excluída'); await loadData(); }
   catch(e){ showToast(e.message,true); }
 }
+// Novo/editar desconto programado. A semana de início é escolhida numa lista de
+// domingos — garante semana válida sem o usuário precisar saber que é domingo.
+function openDescProg(rowNum){
+  const d = rowNum ? (PROC.descontosProg||[]).find(x=>x._row===rowNum) : null;
+  EDIT_ROW_STATE={ type:'descprog', rowNum:rowNum||null, addr:null };
+  document.getElementById('rowEditModalTitle').innerHTML=
+    '<i class="fas fa-hand-holding-dollar" style="color:var(--orange)"></i><span>'+(d?'Editar desconto programado':'Novo desconto programado')+'</span>';
+
+  const nomes=[...new Set([...(PROC.funcionarios||[]).map(f=>f.nome), ...(d?[d.emp]:[])])].filter(Boolean).sort();
+  const p=n=>String(n).padStart(2,'0');
+  const isoDe=dt=>dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const dom0=new Date(hoje); dom0.setDate(dom0.getDate()-dom0.getDay());
+  const semanas=[];
+  for(let i=-4;i<=12;i++){
+    const s=new Date(dom0); s.setDate(s.getDate()+i*7);
+    const e=new Date(s); e.setDate(e.getDate()+6);
+    const f=x=>x.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+    semanas.push({ iso:isoDe(s), label:f(s)+' — '+f(e)+(i===0?'  (semana atual)':'') });
+  }
+  const iniSel=d?d.inicio:isoDe(dom0);
+  if (d && !semanas.some(s=>s.iso===d.inicio)) semanas.unshift({ iso:d.inicio, label:fmtDay(d.inicio)+'  (início atual)' });
+
+  document.getElementById('rowEditModalBody').innerHTML=`
+    <div class="row g-3">
+      <div class="col-12"><div style="background:#eef6ff;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e">
+        Registra um valor que a NJR adiantou e será descontado em parcelas semanais.
+        <strong>Esta tabela não mexe no pagamento</strong> — ela só lembra quanto descontar em cada semana.
+      </div></div>
+      <div class="col-md-6"><label class="f-label">Funcionário <span class="f-req">*</span></label>
+        <select id="dp_emp" class="f-input">
+          <option value="">Selecione...</option>
+          ${nomes.map(n=>`<option value="${escH(n)}"${d&&d.emp===n?' selected':''}>${escH(n)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="col-md-6"><label class="f-label">Motivo <span class="f-req">*</span></label>
+        <input id="dp_desc" class="f-input" value="${d?escH(d.descricao):''}" placeholder="Ex.: Conserto do carro">
+      </div>
+      <div class="col-md-4"><label class="f-label">Valor total <span class="f-req">*</span></label>
+        <div class="f-input-prefix"><span class="prefix">$</span>
+          <input id="dp_valor" class="f-input" inputmode="decimal" value="${d?d.valor:''}" placeholder="529" oninput="dpPreview()"></div>
+      </div>
+      <div class="col-md-3"><label class="f-label">Parcelas <span class="f-req">*</span></label>
+        <input id="dp_n" class="f-input" inputmode="numeric" value="${d?d.parcelas:''}" placeholder="5" oninput="dpPreview()">
+      </div>
+      <div class="col-md-5"><label class="f-label">Primeira parcela na semana <span class="f-req">*</span></label>
+        <select id="dp_ini" class="f-input" onchange="dpPreview()">
+          ${semanas.map(s=>`<option value="${s.iso}"${s.iso===iniSel?' selected':''}>${escH(s.label)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="col-12"><div id="dp_preview" style="font-size:12.5px;color:#31506e"></div></div>
+      <div class="col-12"><label class="f-label">Observações <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
+        <textarea id="dp_obs" class="f-input" rows="2" placeholder="Ex.: oficina do Zé, nota no WhatsApp">${d?escH(d.obs):''}</textarea>
+      </div>
+    </div>`;
+  dpPreview();
+  document.getElementById('rowEditModal').classList.add('open');
+}
+// Mostra as parcelas enquanto o usuário digita, para ele conferir antes de salvar.
+function dpPreview(){
+  const el=document.getElementById('dp_preview'); if(!el)return;
+  const v=parseFloat(String(document.getElementById('dp_valor').value||'').replace(',','.'));
+  const n=Math.trunc(Number(document.getElementById('dp_n').value));
+  const ini=document.getElementById('dp_ini').value;
+  if(!(v>0)||!(n>=1&&n<=52)){ el.innerHTML=''; return; }
+  const ps=dpParcelas(v,n);
+  const unicos=[...new Set(ps.map(x=>x.toFixed(2)))];
+  const fim=dpSemanaMais(ini,n-1);
+  el.innerHTML=`<div style="background:#f0f9f4;border-left:3px solid #27ae60;border-radius:8px;padding:10px 13px">
+    <strong>${n}x</strong> de <strong>${unicos.length===1?'$'+unicos[0]:'$'+unicos[0]+' e $'+unicos[1]}</strong>
+    — primeira em ${fmtDay(ini)}, última em ${fmtDay(fim)}.</div>`;
+}
+
 function funcionarioModal(f){ // f = null → novo funcionário
   EDIT_ROW_STATE={ type:'funcionario', rowNum:f?f._row:null, addr:null };
   document.getElementById('rowEditModalTitle').innerHTML='<i class="fas fa-users-gear" style="color:var(--orange)"></i><span>'+(f?'Editar Funcionário':'Novo Funcionário')+'</span>';
@@ -2183,6 +2256,74 @@ async function dwDelete(rowNum) {
   catch(e){ showToast(e.message, true); }
 }
 
+// ══ DESCONTOS PROGRAMADOS — CÁLCULO (bloco puro, sem DOM; testado por scripts/test-desconto-prog.js) ══
+// Parcelamento de dívida do funcionário: a NJR adianta um valor e desconta em N
+// semanas. A tabela é só de consulta — quem lança o desconto no pagamento é o
+// Nilmar, no card da semana. As parcelas têm semana FIXA: se uma passar sem ser
+// descontada, ela fica pendente naquela data, não empurra as seguintes.
+
+// Divide no centavo: as primeiras parcelas levam o resto. $529/5 = 105.80 exato.
+function dpParcelas(total, n) {
+  const qtd = Math.trunc(Number(n)) || 0;
+  if (qtd < 1) return [];
+  const cents = Math.round((Number(total) || 0) * 100);
+  const per = Math.floor(cents / qtd);
+  const resto = cents - per * qtd;
+  return Array.from({ length: qtd }, (_, i) => (per + (i < resto ? 1 : 0)) / 100);
+}
+// Semana (domingo ISO) + N semanas, em UTC para não escorregar de fuso.
+function dpSemanaMais(iso, semanas) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '').trim());
+  if (!m) return '';
+  const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  dt.setUTCDate(dt.getUTCDate() + semanas * 7);
+  const p = n => String(n).padStart(2, '0');
+  return dt.getUTCFullYear() + '-' + p(dt.getUTCMonth() + 1) + '-' + p(dt.getUTCDate());
+}
+// Posição da semana dentro do plano (0-based); -1 se não é semana de parcela.
+function dpIndice(inicio, semana) {
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(inicio || '').trim());
+  const b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(semana || '').trim());
+  if (!a || !b) return -1;
+  const dias = (Date.UTC(+b[1], +b[2] - 1, +b[3]) - Date.UTC(+a[1], +a[2] - 1, +a[3])) / 86400000;
+  return dias >= 0 && dias % 7 === 0 ? dias / 7 : -1;
+}
+// Expande um registro em plano completo: parcelas, situação de cada uma e saldo.
+// "atrasada" = semana já passou e ninguém marcou como descontada.
+function dpPlano(d, semanaAtual) {
+  const vals = dpParcelas(d.valor, d.parcelas);
+  const quitadas = new Set(d.quitadas || []);
+  const parcelas = vals.map((v, i) => {
+    const semana = dpSemanaMais(d.inicio, i);
+    const paga = quitadas.has(semana);
+    return { n: i + 1, valor: v, semana, paga,
+      atrasada: !paga && !!semanaAtual && semana < semanaAtual,
+      daSemana: !!semanaAtual && semana === semanaAtual };
+  });
+  const pago = parcelas.filter(p => p.paga).reduce((s, p) => s + p.valor, 0);
+  const total = vals.reduce((s, v) => s + v, 0);
+  const daSemana = parcelas.find(p => p.daSemana && !p.paga) || null;
+  return {
+    ...d, parcelas,
+    pago: Math.round(pago * 100) / 100,
+    saldo: Math.round((total - pago) * 100) / 100,
+    qtdPagas: parcelas.filter(p => p.paga).length,
+    atrasadas: parcelas.filter(p => p.atrasada),
+    aDescontar: daSemana ? daSemana.valor : 0,
+    semanaDaParcela: daSemana ? daSemana.semana : '',
+    quitado: parcelas.every(p => p.paga),
+  };
+}
+// Tudo que o Nilmar precisa ver numa semana: o que vence agora e o que ficou para trás.
+function dpDaSemana(lista, semanaAtual) {
+  return (lista || []).map(d => dpPlano(d, semanaAtual))
+    .filter(p => !p.quitado || p.parcelas.some(x => x.daSemana))
+    .sort((a, b) => (b.aDescontar - a.aDescontar)
+      || (b.atrasadas.length - a.atrasadas.length)
+      || String(a.emp).localeCompare(String(b.emp)));
+}
+// ══ FIM DESCONTOS PROGRAMADOS — CÁLCULO ══
+
 // ══ DRYWALL — CÁLCULO (bloco puro, sem DOM; testado por scripts/test-drywall-calc.js) ══
 function dwNorm(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' '); }
 function dwRound2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
@@ -2373,6 +2514,13 @@ function processAll() {
       desc:parseAmt(r['Desconto']), justDesc:String(r['Justificativa Desconto']||'')
     };
   });
+  // Descontos programados (parcelamentos) — vêm prontos do servidor
+  PROC.descontosProg=(DB.descontosProg||[]).map(d=>({
+    _row:d._row, emp:String(d.emp||'').trim(), descricao:String(d.descricao||'').trim(),
+    valor:parseAmt(d.valor), parcelas:Math.trunc(Number(d.parcelas))||0,
+    inicio:String(d.inicio||'').slice(0,10), quitadas:Array.isArray(d.quitadas)?d.quitadas:[],
+    status:String(d.status||''), obs:String(d.obs||''),
+  })).filter(d=>d.emp&&d.parcelas>0&&d.valor>0);
   fillAddressesT4();
   fillFinAddresses();
   fillAddressesReg();
@@ -2656,16 +2804,132 @@ function renderGerencial() {
   const byEmp={};
   rows.forEach(r=>{ if(!r.emp)return; (byEmp[r.emp]=byEmp[r.emp]||[]).push(r); });
   const emps=Object.keys(byEmp).sort();
+  const wk=weekKey(wkOff);
+  // Líquido da semana por funcionário — serve para avisar quando a parcela
+  // programada passa do que ele tem a receber.
+  const liquido={};
+  emps.forEach(emp=>{
+    const s=computeStats(byEmp[emp],emp), a=getAjuste(emp,wk);
+    liquido[emp]=s.total+(a.bonif||0)-(a.desc||0);
+  });
+
   if (!emps.length) {
-    body.innerHTML=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros nesta semana</strong></div>`;
+    body.innerHTML=`<div class="empty-box"><i class="fas fa-calendar-times"></i><strong>Sem registros nesta semana</strong></div>`
+      + descProgHTML(wk, liquido);
     return;
   }
-  const wk=weekKey(wkOff);
   body.innerHTML=`<div class="row g-3">${emps.map((emp,i)=>{
     const cid='g'+i;
     ADJ_CTX[cid]={ emp, week:wk };
     return `<div class="col-12 col-lg-6 col-xl-4">${payCardHTML(emp, computeStats(byEmp[emp], emp), { adj:getAjuste(emp,wk), editable:true, cid })}</div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>`
+    + descProgHTML(wk, liquido);
+}
+
+// ── TABELA: DESCONTOS PROGRAMADOS (abaixo dos cards de pagamento) ──
+// Consulta apenas: mostra o que descontar na semana exibida para o Nilmar
+// digitar no campo "Descontos" do card. Não escreve no pagamento.
+let DP_ABERTO={};
+function dpToggle(row){ DP_ABERTO[row]=!DP_ABERTO[row]; renderGerencial(); }
+
+function descProgHTML(wk, liquido) {
+  const planos=dpDaSemana(PROC.descontosProg||[], wk);
+  const fmtWk=iso=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||''); return m?(m[3]+'/'+m[2]):'—'; };
+
+  const linhas=planos.map(p=>{
+    const liq=liquido[p.emp];
+    const estoura=p.aDescontar>0 && liq!=null && p.aDescontar>liq;
+    const aberto=!!DP_ABERTO[p._row];
+
+    const semanaCell=p.aDescontar>0
+      ? `<strong style="color:var(--orange);font-size:14px">${$$(p.aDescontar)}</strong>
+         <div style="font-size:11px;color:#7b8ea4">parcela ${dpIndice(p.inicio,wk)+1} de ${p.parcelas}</div>
+         ${estoura?`<div style="font-size:11px;color:#e74c3c;font-weight:700;margin-top:2px">
+           <i class="fas fa-triangle-exclamation"></i> passa do líquido (${$$(liq)})</div>`:''}`
+      : '<span style="color:#7b8ea4">—</span>';
+
+    const atraso=p.atrasadas.length
+      ? `<div style="font-size:11px;color:#e74c3c;font-weight:700;margin-top:3px">
+           <i class="fas fa-clock"></i> ${p.atrasadas.length} parcela${p.atrasadas.length>1?'s':''} em atraso</div>` : '';
+
+    const detalhe=aberto?`<tr class="dp-detail"><td colspan="7" style="background:#f7fafd;padding:12px 16px">
+      <div style="font-size:12px;color:#7b8ea4;margin-bottom:8px">
+        Marque a parcela quando tiver lançado o desconto no pagamento da semana.
+        ${p.obs?'<br><em>'+escH(p.obs)+'</em>':''}
+      </div>
+      <div class="table-responsive"><table style="margin:0">
+        <thead><tr><th>Parcela</th><th>Semana</th><th>Valor</th><th>Situação</th><th></th></tr></thead>
+        <tbody>${p.parcelas.map(x=>`<tr${x.daSemana?' style="background:rgba(232,130,12,.08)"':''}>
+          <td>${x.n} de ${p.parcelas}</td>
+          <td>${fmtWk(x.semana)}${x.daSemana?' <span style="font-size:10px;color:var(--orange);font-weight:700">ESTA SEMANA</span>':''}</td>
+          <td><strong>${$$(x.valor)}</strong></td>
+          <td>${x.paga?'<span style="color:#27ae60;font-weight:700"><i class="fas fa-check-circle"></i> descontada</span>'
+            :x.atrasada?'<span style="color:#e74c3c;font-weight:700"><i class="fas fa-clock"></i> em atraso</span>'
+            :'<span style="color:#7b8ea4">pendente</span>'}</td>
+          <td class="td-actions"><button class="row-act-btn ${x.paga?'del':'edit'}"
+            onclick="toggleParcela(${p._row},'${x.semana}',${x.paga?'false':'true'})"
+            title="${x.paga?'Desmarcar':'Marcar como descontada'}">
+            <i class="fas fa-${x.paga?'rotate-left':'check'}"></i></button></td>
+        </tr>`).join('')}</tbody>
+      </table></div></td></tr>`:'';
+
+    return `<tr${p.aDescontar>0?' style="background:rgba(232,130,12,.05)"':''}>
+      <td><div class="emp-badge"><div class="emp-dot" style="background:${getColor(p.emp)}"></div>
+        <strong>${escH(p.emp)}</strong></div></td>
+      <td>${escH(p.descricao)}${atraso}</td>
+      <td>${$$(p.valor)}</td>
+      <td>${p.qtdPagas} de ${p.parcelas}<div style="font-size:11px;color:#7b8ea4">${$$(p.pago)} descontado</div></td>
+      <td><strong>${$$(p.saldo)}</strong></td>
+      <td>${semanaCell}</td>
+      <td class="td-actions">
+        <button class="row-act-btn edit" onclick="dpToggle(${p._row})" title="${aberto?'Fechar':'Ver parcelas'}">
+          <i class="fas fa-chevron-${aberto?'up':'down'}"></i></button>
+        <button class="row-act-btn edit" onclick="openDescProg(${p._row})" title="Editar"><i class="fas fa-pen"></i></button>
+        <button class="row-act-btn del" onclick="delDescProg(${p._row})" title="Excluir"><i class="fas fa-trash"></i></button>
+      </td></tr>${detalhe}`;
+  }).join('');
+
+  const totalSemana=planos.reduce((s,p)=>s+p.aDescontar,0);
+  const resumo=totalSemana>0
+    ? `<div style="background:#fff4e6;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e;margin-bottom:12px">
+         <strong>${$$(totalSemana)}</strong> a descontar nesta semana.
+         Lance o valor no campo <strong>Descontos</strong> do card de cada funcionário e depois marque a parcela aqui.
+       </div>`
+    : `<div style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Nenhuma parcela vence nesta semana.</div>`;
+
+  return `
+    <div class="data-table mt-4">
+      <div class="table-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span><i class="fas fa-hand-holding-dollar me-2" style="color:var(--orange)"></i>Descontos programados</span>
+        <button class="row-act-btn edit" style="width:auto;padding:5px 12px;font-size:12px;font-weight:700"
+          onclick="openDescProg(null)"><i class="fas fa-plus"></i> Novo</button>
+      </div>
+      <div style="padding:14px 16px 0">${resumo}</div>
+      ${linhas?`<div class="table-responsive"><table>
+        <thead><tr><th>Funcionário</th><th>Motivo</th><th>Total</th><th>Progresso</th><th>Saldo</th><th>Nesta semana</th><th>Ações</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>`
+      :`<div class="empty-box" style="margin:0 16px 16px"><i class="fas fa-hand-holding-dollar"></i>
+         <strong>Nenhum desconto programado</strong><br>
+         <small>Use "Novo" quando a NJR adiantar um valor a descontar em parcelas</small></div>`}
+    </div>`;
+}
+
+async function toggleParcela(rowNum, semana, quitada) {
+  try {
+    await apiWrite({ action:'marcarParcelaDesconto', rowNum, semana, quitada });
+    const d=(PROC.descontosProg||[]).find(x=>x._row===rowNum);
+    if (d) d.quitadas = quitada ? [...new Set([...d.quitadas, semana])].sort() : d.quitadas.filter(s=>s!==semana);
+    showToast(quitada?'Parcela marcada como descontada':'Marcação desfeita');
+    renderGerencial();
+  } catch(e){ showToast(e.message,true); }
+}
+
+async function delDescProg(rowNum) {
+  const d=(PROC.descontosProg||[]).find(x=>x._row===rowNum);
+  if (!d) return;
+  if (!confirm('Excluir o desconto programado de "'+d.emp+'" ('+d.descricao+', '+$$(d.valor)+')?\n\nO histórico de parcelas já marcadas é perdido. Os descontos que já foram lançados nos pagamentos NÃO são desfeitos.')) return;
+  try { await apiWrite({ action:'deleteDescontoProgramado', rowNum }); showToast('Desconto programado excluído'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
 }
 
 // ── RELATÓRIO DE PAGAMENTO (gera + envia por e-mail ao financeiro) ──
@@ -3997,6 +4261,26 @@ async function saveRowEdit() {
       closeEditModal();
       showToast('Rate alterado a partir de ' + fmtDay(desde));
       await loadData(); // recalcula só as horas a partir da vigência
+      return;
+    } else if (EDIT_ROW_STATE.type === 'descprog') {
+      const emp = document.getElementById('dp_emp').value.trim();
+      const descricao = document.getElementById('dp_desc').value.trim();
+      const valorStr = document.getElementById('dp_valor').value.trim().replace(',', '.');
+      const n = Math.trunc(Number(document.getElementById('dp_n').value));
+      const semanaInicio = document.getElementById('dp_ini').value;
+      if (!emp) throw new Error('Selecione o funcionário.');
+      if (!descricao) throw new Error('Informe o motivo do desconto.');
+      if (!valorStr || isNaN(parseFloat(valorStr)) || parseFloat(valorStr) <= 0) throw new Error('Informe o valor total.');
+      if (!(n >= 1 && n <= 52)) throw new Error('Número de parcelas deve ser de 1 a 52.');
+      await apiWrite({
+        action: EDIT_ROW_STATE.rowNum ? 'updateDescontoProgramado' : 'addDescontoProgramado',
+        rowNum: EDIT_ROW_STATE.rowNum, emp, descricao,
+        valor: String(parseFloat(valorStr)), parcelas: n, semanaInicio,
+        obs: document.getElementById('dp_obs').value.trim(),
+      });
+      closeEditModal();
+      showToast(EDIT_ROW_STATE.rowNum ? 'Desconto programado atualizado' : 'Desconto programado criado');
+      await loadData();
       return;
     } else if (EDIT_ROW_STATE.type === 'funcionario') {
       const isNew = !EDIT_ROW_STATE.rowNum;
