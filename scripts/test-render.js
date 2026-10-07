@@ -193,6 +193,9 @@ const semLixo = id => {
   if (!h) return 'tela ' + id + ' ficou vazia';
   if (h.includes('undefined')) return 'tela ' + id + ' contém "undefined"';
   if (h.includes('NaN')) return 'tela ' + id + ' contém "NaN"';
+  // objeto ou array interpolado direto no template — foi assim que a contagem de
+  // parcelas virou "[object Object],[object Object]" na tela em 07/10/2026
+  if (h.includes('[object Object]')) return 'tela ' + id + ' contém "[object Object]"';
   return true;
 };
 
@@ -214,7 +217,10 @@ roda('Controle de Horas — tabela de descontos programados', () => api.renderTa
   if (!h.includes('Descontos programados')) return 'a seção não apareceu abaixo dos cards';
   if (!h.includes('Conserto do carro')) return 'o parcelamento não foi listado';
   if (!h.includes('$105.80')) return 'o valor da parcela de $529/5 não apareceu';
-  if (h.includes('undefined') || h.includes('NaN')) return 'a seção contém undefined/NaN';
+  if (!h.includes('1 de 5')) return 'o progresso deveria dizer "1 de 5" (uma parcela marcada de cinco)';
+  if (!h.includes('$423.20')) return 'o saldo após 1 parcela deveria ser $423.20';
+  if (h.includes('undefined') || h.includes('NaN') || h.includes('[object Object]'))
+    return 'a seção contém undefined/NaN/[object Object]';
   return true;
 });
 roda('Insurance & W9 — Control', () => { api.showInsSub('control'); }, () => semLixo('insBody'));
