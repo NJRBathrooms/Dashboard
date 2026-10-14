@@ -154,6 +154,8 @@ async function readAll() {
   const ajus  = findValues(byTitle, ['semana', 'bonifica']);
   // Descontos programados (parcelamento de dívida do funcionário)
   const dprog = findValues(byTitle, ['nome do funcionário', 'nº de parcelas']);
+  // CRM: histórico de contatos pós-obra (docs/2026-10-14-crm-design.md)
+  const crmc  = findValues(byTitle, ['destinatário', 'marco']);
   const subp  = findValues(byTitle, ['company name', 'coi policy']);
   const func  = findValues(byTitle, ['nome', 'senha']);
   const rateh = findValues(byTitle, ['nome', 'vigente desde']);
@@ -186,6 +188,18 @@ async function readAll() {
     obras:          obras ? rowsToObjects(obras)     : [],
     clients:        cli   ? rowsToObjects(cli)       : [],
     ajustes:        ajus  ? rowsToObjects(ajus)      : [],
+    // 1 linha = 1 marco tratado (enviado ou dispensado) de uma obra
+    crmContatos:    crmc  ? rowsToObjects(crmc).map(r => ({
+      _row: r._row,
+      data: String(r['Carimbo de data/hora'] || '').trim().slice(0, 10).replace(/\//g, '-'),
+      id: String(r['ID Cliente'] || '').trim(),
+      addr: String(r['Endereço da Obra'] || '').trim(),
+      destinatario: String(r['Destinatário'] || '').trim(),
+      marco: String(r['Marco'] || '').trim(),
+      resultado: String(r['Resultado'] || '').trim(),
+      canal: String(r['Canal'] || '').trim(),
+      anotacao: String(r['Anotação'] || '').trim(),
+    })).filter(c => c.addr && c.marco) : [],
     // 1 linha = 1 parcelamento. As parcelas são calculadas no cliente a partir
     // do total, do nº de parcelas e da semana de início.
     descontosProg:  dprog ? rowsToObjects(dprog).map(r => ({

@@ -450,6 +450,123 @@ async function crmDataConclusao(params) {
   return { ok: true };
 }
 
+// ── PARTE 2: contato (marcos, histórico, morador, "não contatar") ──
+
+const CONTATOS_SHEET = 'CRM Contatos';
+const CONTATOS_HEADERS = ['Carimbo de data/hora', 'ID Cliente', 'Endereço da Obra', 'Destinatário',
+  'Marco', 'Resultado', 'Canal', 'Anotação'];
+const DESTINOS = ['Empreiteiro', 'Cliente'];
+const RESULTADOS = ['Enviado', 'Dispensado'];
+const CANAIS = ['SMS', 'WhatsApp', 'Copiado', ''];
+const MARCO_RE = /^(30d|6m|\d+a)$/;
+
+async function abaContatos() {
+  let { index } = await G.loadSheetIndex();
+  let sh = index.find(s => s.title === CONTATOS_SHEET);
+  if (!sh) {
+    await G.createSheet(CONTATOS_SHEET, CONTATOS_HEADERS);
+    ({ index } = await G.loadSheetIndex());
+    sh = index.find(s => s.title === CONTATOS_SHEET);
+  }
+  if (!sh) throw new Error('Não foi possível criar a aba "CRM Contatos".');
+  return sh;
+}
+
+// Registra o que o Nilmar fez com um marco: enviou ou decidiu não enviar.
+// Um marco de uma obra para um destinatário só pode ser registrado uma vez —
+// a chave é obra + destinatário + marco (não o ID, que muda se a ficha for juntada).
+async function crmRegistrarContato(params) {
+  const addr = t(params.addr), destinatario = t(params.destinatario), marco = t(params.marco);
+  const resultado = t(params.resultado), canal = t(params.canal);
+  if (!addr) return { error: 'Obra não informada.' };
+  if (!DESTINOS.includes(destinatario)) return { error: 'Destinatário inválido.' };
+  if (!MARCO_RE.test(marco)) return { error: 'Marco inválido.' };
+  if (!RESULTADOS.includes(resultado)) return { error: 'Resultado inválido.' };
+  if (!CANAIS.includes(canal)) return { error: 'Canal inválido.' };
+
+  const { shC, shO } = await abasCrm();
+  if (!(await linhaDaObra(shO, addr))) return { error: 'Obra não encontrada.' };
+  const sh = await abaContatos();
+  const linhas = G.rowsToObjects((await G.readWorkbook()).byTitle[sh.title] || []);
+  const ja = linhas.find(r => G.normStr(r['Endereço da Obra']) === G.normStr(addr)
+    && t(r['Destinatário']) === destinatario && t(r['Marco']) === marco);
+  if (ja) return { error: 'Esse marco já foi registrado em ' + t(ja['Carimbo de data/hora']).slice(0, 10) + ' (' + t(ja['Resultado']) + ').' };
+
+  await G.appendRow(sh.title, G.buildRow(sh.headers, [
+    { key: 'Carimbo de data/hora', val: G.nowInTz() },
+    { key: 'ID Cliente', val: t(params.id) },
+    { key: 'Endereço da Obra', val: addr },
+    { key: 'Destinatário', val: destinatario },
+    { key: 'Marco', val: marco },
+    { key: 'Resultado', val: resultado },
+    { key: 'Canal', val: canal },
+    { key: 'Anotação', val: t(params.anotacao) },
+  ]));
+
+  // O canal usado vira o canal lembrado da ficha. Mensagem para o MORADOR não
+  // conta: a ficha é do empreiteiro, e o canal do morador não diz nada sobre ele.
+  let canalLembrado = false;
+  if (resultado === 'Enviado' && (canal === 'SMS' || canal === 'WhatsApp') && t(params.id) && !params.morador) {
+    const row = await linhaDoCliente(shC, params.id);
+    if (row) { await G.updateRowCells(shC.title, row, shC.headers, [{ key: 'Canal Preferido', val: canal }]); canalLembrado = true; }
+  }
+  return { ok: true, canalLembrado };
+}
+
+// Desfaz um registro (toque errado). Confere que a linha é mesmo a esperada
+// antes de apagar — se a planilha mudou entre a leitura e o clique, recusa.
+async function crmDesfazerContato(params) {
+  const rowNum = Math.trunc(Number(params.rowNum));
+  if (!(rowNum > 1)) return { error: 'Registro inválido.' };
+  const sh = await abaContatos();
+  const linhas = G.rowsToObjects((await G.readWorkbook()).byTitle[sh.title] || []);
+  const r = linhas.find(x => x._row === rowNum);
+  if (!r || G.normStr(r['Endereço da Obra']) !== G.normStr(params.addr) || t(r['Marco']) !== t(params.marco)
+    || t(r['Destinatário']) !== t(params.destinatario)) {
+    return { error: 'O histórico mudou desde que a tela foi aberta. Atualize e tente de novo.' };
+  }
+  await G.deleteRow(sh.sheetId, rowNum);
+  return { ok: true };
+}
+
+// Morador autorizado pelo empreiteiro: vira contato da obra e destrava a trilha
+// de cliente nela. { remover: true } desfaz.
+async function crmAutorizarMorador(params) {
+  const addr = t(params.addr);
+  if (!addr) return { error: 'Obra não informada.' };
+  const { shO } = await abasCrm();
+  const row = await linhaDaObra(shO, addr);
+  if (!row) return { error: 'Obra não encontrada.' };
+  if (params.remover) {
+    await G.updateRowCells(shO.title, row, shO.headers, [
+      { key: 'Morador Nome', val: '' }, { key: 'Morador Telefone', val: '' }, { key: 'Autorizado Em', val: '' }]);
+    return { ok: true, removido: true };
+  }
+  const nome = t(params.nome), fone = foneDe(params.telefone);
+  if (!nome) return { error: 'Informe o nome do morador.' };
+  if (!fone) return { error: 'Informe o telefone do morador (10 dígitos).' };
+  const data = t(params.data) || new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { error: 'Data inválida.' };
+  await G.updateRowCells(shO.title, row, shO.headers, [
+    { key: 'Morador Nome', val: nome },
+    { key: 'Morador Telefone', val: fmtFone(fone), forceText: true },
+    { key: 'Autorizado Em', val: data, forceText: true },
+  ]);
+  return { ok: true };
+}
+
+// "Não contatar": nenhum marco abre mais para este cliente (nem para o morador
+// das obras dele).
+async function crmNaoContatar(params) {
+  const id = t(params.id);
+  if (!id) return { error: 'Ficha não informada.' };
+  const { shC } = await abasCrm();
+  const row = await linhaDoCliente(shC, id);
+  if (!row) return { error: 'Ficha ' + id + ' não encontrada.' };
+  await G.updateRowCells(shC.title, row, shC.headers, [{ key: 'Não Contatar', val: params.valor ? 'Sim' : '' }]);
+  return { ok: true };
+}
+
 module.exports = {
   // puros (testados em scripts/test-crm-fichas.js)
   planejarFichas, tipoSugerido, nomeCanonico, geradorIds, foneDe, fmtFone, norm, baseAddr, nomeValido,
@@ -457,4 +574,6 @@ module.exports = {
   garantirColunas, criarFicha, fichaPorNomeOuCriar, abasCrm, COLS_CLIENTE, COLS_OBRA, TIPOS,
   // ações
   crmPreparar, crmSalvarCliente, crmConfirmarCliente, crmJuntarClientes, crmVincularObra, crmDataConclusao,
+  crmRegistrarContato, crmDesfazerContato, crmAutorizarMorador, crmNaoContatar,
+  CONTATOS_SHEET, CONTATOS_HEADERS,
 };

@@ -405,9 +405,36 @@ tbody tr:hover td { background:#fafbfe; }
 .crm-obra .c-addr { flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--navy); overflow-wrap:anywhere; }
 .crm-obra .c-sub { font-size:12px; font-weight:500; color:#7b8ea4; margin-top:2px; }
 .crm-obra .c-data, .crm-obra .c-idade { display:none; }
-.crm-obra .c-act { flex-shrink:0; }
+.crm-obra .c-act { flex-shrink:0; order:2; }
+.crm-obra .c-addr { order:1; }
+.crm-obra .c-marco { flex-basis:100%; order:3; display:flex; flex-wrap:wrap; gap:6px; }
+.crm-obra .c-marco:empty { display:none; }
 .crm-obra .c-act .row-act-btn { width:34px; height:34px; }
-.crm-obra .c-extra { flex-basis:100%; }
+.crm-obra .c-extra { flex-basis:100%; order:4; }
+.crm-m { font-size:11.5px; font-weight:800; border-radius:999px; padding:6px 11px; border:none; white-space:nowrap; line-height:1.2; }
+.crm-m .who { font-weight:600; opacity:.85; }
+.crm-m.aberto { background:var(--orange); color:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(232,130,12,.3); }
+.crm-m.futuro { background:#eef3f8; color:#7b8ea4; }
+.crm-m.enviado { background:#e9f7ef; color:#1e7e4a; }
+.crm-m.dispensado, .crm-m.naoContatar { background:#f3f5f8; color:#9aabbd; }
+.crm-m.resolvido { background:#eaf1ff; color:#2557a7; }
+/* janela da mensagem: tela cheia no celular, botões grandes para o dedo */
+.crm-msg-info { font-size:12.5px; color:#5a7088; line-height:1.55; margin-bottom:10px; }
+.crm-msg-aviso { background:#fff6db; color:#6f4a00; border-radius:8px; padding:9px 11px; font-size:12.5px; margin-bottom:10px; }
+.crm-msg-txt { width:100%; min-height:210px; font-size:14px; line-height:1.5; }
+.crm-msg-btns { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.crm-msg-btn { display:flex; align-items:center; justify-content:center; gap:9px; border-radius:12px; padding:14px; font-size:15px; font-weight:800; text-decoration:none; border:1.5px solid #dde7f1; background:#fff; color:var(--navy); cursor:pointer; }
+.crm-msg-btn.wa { border-color:#25d366; color:#128c4a; }
+.crm-msg-btn.sms { border-color:#2f80ed; color:#1d5fb8; }
+.crm-msg-btn.lembrado.wa { background:#25d366; color:#fff; }
+.crm-msg-btn.lembrado.sms { background:#2f80ed; color:#fff; }
+.crm-msg-btn.off { opacity:.45; pointer-events:none; }
+.crm-msg-conf { margin-top:14px; background:#f0f9f4; border-left:3px solid #27ae60; border-radius:10px; padding:12px; }
+.crm-hist { font-size:12.5px; color:#31506e; border-top:1px dashed #e4ecf4; padding:7px 0; display:flex; gap:8px; align-items:flex-start; }
+@media (max-width:600px) {
+  #rowEditModal.crm-full { padding:0; align-items:stretch; }
+  #rowEditModal.crm-full .modal-card { width:100%; max-width:none; min-height:100%; max-height:none; border-radius:0; margin:0; overflow:auto; }
+}
 .crm-sug { margin-top:6px; font-size:12px; background:#fff6db; border-radius:8px; padding:8px 10px; color:#6f4a00; line-height:1.5; }
 .crm-sug .crm-mini { margin:6px 6px 0 0; }
 .crm-mini { border:1px solid #dde7f1; background:#fff; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:700; color:var(--navy); cursor:pointer; }
@@ -423,8 +450,10 @@ tbody tr:hover td { background:#fafbfe; }
 .crm-menu button i { color:var(--orange); width:18px; text-align:center; }
 .crm-menu button small { display:block; font-weight:500; color:#7b8ea4; font-size:12px; margin-top:2px; }
 @media (min-width:900px) {
-  .crm-cols { display:grid; grid-template-columns:minmax(240px,1fr) 110px 150px 44px; gap:10px; padding:10px 0 6px 14px; font-size:11px; font-weight:800; color:#9aabbd; text-transform:uppercase; letter-spacing:.06em; }
-  .crm-obra { display:grid; grid-template-columns:minmax(240px,1fr) 110px 150px 44px; gap:4px 10px; align-items:center; }
+  .crm-cols { display:grid; grid-template-columns:minmax(220px,1fr) 100px 130px minmax(170px,1fr) 44px; gap:10px; padding:10px 0 6px 14px; font-size:11px; font-weight:800; color:#9aabbd; text-transform:uppercase; letter-spacing:.06em; }
+  .crm-obra { display:grid; grid-template-columns:minmax(220px,1fr) 100px 130px minmax(170px,1fr) 44px; gap:4px 10px; align-items:center; }
+  .crm-obra .c-addr { order:1; } .crm-obra .c-data { order:2; } .crm-obra .c-idade { order:3; }
+  .crm-obra .c-marco { order:4; flex-basis:auto; } .crm-obra .c-marco:empty { display:block; } .crm-obra .c-act { order:5; } .crm-obra .c-extra { order:6; }
   .crm-obra .c-sub-m { display:none; }
   .crm-obra .c-data, .crm-obra .c-idade { display:block; font-size:12.5px; color:#5a7088; }
   .crm-obra .c-extra { grid-column:1 / -1; }
@@ -2443,9 +2472,137 @@ function crmDuplicatas(fichas) {
   return out;
 }
 
+// ── marcos ──
+function crmAddDias(iso, n) {
+  const u = crmUtc(iso); if (isNaN(u)) return '';
+  const d = new Date(u + n * 86400000), p = x => String(x).padStart(2, '0');
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+}
+// soma meses de calendário; 31/08 + 6 meses = 28/02 (último dia do mês)
+function crmAddMeses(iso, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); if (!m) return '';
+  let y = +m[1], mo = +m[2] - 1 + n;
+  y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12;
+  const ult = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate(), p = x => String(x).padStart(2, '0');
+  return y + '-' + p(mo + 1) + '-' + p(Math.min(+m[3], ult));
+}
+// Marcos de uma trilha a partir da conclusão: os que já venceram e o próximo.
+//   Cliente:     30 dias, 6 meses, 1 ano, 2 anos…
+//   Empreiteiro: 6 meses, 1 ano, 2 anos…
+function crmDefMarcos(trilha, conclusao, hoje) {
+  const out = [];
+  if (trilha === 'Cliente') out.push({ k: '30d', rotulo: '30 dias', data: crmAddDias(conclusao, 30) });
+  out.push({ k: '6m', rotulo: '6 meses', data: crmAddMeses(conclusao, 6) });
+  for (let a = 1; a < 60; a++) {
+    const data = crmAddMeses(conclusao, 12 * a);
+    out.push({ k: a + 'a', rotulo: a === 1 ? '1 ano' : a + ' anos', data });
+    if (data > hoje) break;
+  }
+  const i = out.findIndex(d => d.data > hoje);
+  return i < 0 ? out : out.slice(0, i + 1);
+}
+// Estado de cada marco de uma obra. Regras (docs/2026-10-14-crm-design.md):
+//   - marco NÃO expira: vencido sem registro fica "aberto", e eles acumulam;
+//   - o relógio é sempre a conclusão da obra, inclusive para o morador;
+//   - empreiteiro autorizou → os marcos de empreiteiro ainda abertos ficam
+//     "resolvido" e o morador ganha a trilha de cliente inteira;
+//   - "Não contatar" suprime tudo que ainda não foi tratado.
+// O registro de contato casa por obra + destinatário + marco.
+function crmMarcosObra(obra, ficha, contatos, hoje) {
+  if (!ficha || !obra.finalizada || !obra.conclusao) return { trilhas: [], abertos: 0 };
+  const reg = {};
+  (contatos || []).forEach(c => { reg[crmNorm(c.addr) + '|' + c.destinatario + '|' + c.marco] = c; });
+  const autorizado = !!(crmFone(obra.moradorTel) && obra.autorizadoEm);
+  const trilhas = [];
+  const monta = (dest, para) => {
+    const marcos = crmDefMarcos(dest, obra.conclusao, hoje).map(d => {
+      const c = reg[crmNorm(obra.addr) + '|' + dest + '|' + d.k] || null;
+      let estado;
+      if (c) estado = c.resultado === 'Enviado' ? 'enviado' : 'dispensado';
+      else if (d.data > hoje) estado = 'futuro';
+      else if (ficha.naoContatar) estado = 'naoContatar';
+      else if (dest === 'Empreiteiro' && autorizado) estado = 'resolvido';
+      else estado = 'aberto';
+      return { ...d, estado, contato: c };
+    });
+    trilhas.push({ dest, ...para, marcos, abertos: marcos.filter(m => m.estado === 'aberto').length });
+  };
+  if (ficha.tipo === 'Empreiteiro') {
+    monta('Empreiteiro', { nome: ficha.nome, fone: ficha.fone, morador: false });
+    if (autorizado) monta('Cliente', { nome: obra.moradorNome, fone: crmFone(obra.moradorTel), morador: true });
+  } else if (ficha.tipo === 'Cliente') {
+    monta('Cliente', { nome: ficha.nome, fone: ficha.fone, morador: false });
+  }
+  return { trilhas, abertos: trilhas.reduce((s, tr) => s + tr.abertos, 0) };
+}
+
+// ── mensagens (inglês; o Nilmar pode editar antes de enviar) ──
+function crmPrimeiroNome(nome) {
+  const w = crmT(nome).split(/[\s\-–(]+/).filter(Boolean)[0] || '';
+  return w ? w.charAt(0).toUpperCase() + w.slice(1) : '';
+}
+// "190 Pine Street, Holbrook - MA - Fase dois" → "190 Pine Street"
+function crmEndCurto(addr) {
+  return crmT(addr).replace(/\s*[-–]\s*(fase.*|drywall.*|tile.*|backsplash.*)$/i, '').split(',')[0].trim();
+}
+// Tempo desde a conclusão, por extenso. O marco define o CONTEÚDO da mensagem;
+// a frase de tempo diz a verdade: como o marco não expira, a de 30 dias pode sair
+// com 6 meses, e "It's been a month" seria falso.
+function crmTempoIngles(meses) {
+  const ext = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven'];
+  if (meses < 2) return 'a month';
+  if (meses < 12) return ext[meses] + ' months';
+  const a = Math.floor(meses / 12);
+  return a === 1 ? 'a year' : (ext[a] || String(a)) + ' years';
+}
+// ctx: { nome, endereco, morador, empreiteiro, empresa, link, meses }
+function crmMensagem(dest, marco, ctx) {
+  const nome = ctx.nome || 'there', end = ctx.endereco || 'your home';
+  const mA = /^(\d+)a$/.exec(marco), anos = mA ? +mA[1] : 0;
+  const doMarco = marco === '30d' ? 1 : marco === '6m' ? 6 : anos * 12;
+  const quanto = crmTempoIngles(Math.max(doMarco, Number.isFinite(ctx.meses) ? ctx.meses : 0));
+  if (dest === 'Empreiteiro') {
+    if (marco === '6m') return `Hi ${nome}! Nilmar from NJR Bathrooms. It's been ${quanto} since we finished ${end} together. Thanks again for bringing us in.\n\n`
+      + `We'd like to check in with the homeowner to see how the bathroom is holding up, and let them know about our referral thank-you ($300 gift card when someone they refer completes a project). `
+      + `We won't reach out without your OK. Would that be alright? If so, could you share their name and number?`;
+    if (anos) return `Hi ${nome}! Nilmar from NJR Bathrooms. It's been ${quanto} since we did ${end} with you.\n\n`
+      + `This is when we usually recommend a maintenance visit: deep clean, new caulk at the transitions and fresh sealer on grout, stone and tile. `
+      + `Would you like to offer that to the homeowner yourself, or would you prefer we contact them directly? Either way works for us.`;
+    return '';
+  }
+  // cliente: dono do imóvel, ou morador autorizado pelo empreiteiro — que
+  // sempre fica sabendo como a NJR conseguiu o número dele
+  const abertura = ctx.morador
+    ? `Hi ${nome}! It's Nilmar from NJR Bathrooms. ${ctx.empreiteiro || 'Your contractor'}${ctx.empresa ? ' from ' + ctx.empresa : ''} gave me your number — our team did the tile work on your bathroom at ${end}.`
+    : `Hi ${nome}! It's Nilmar from NJR Bathrooms.`;
+  const ref = ctx.morador ? 'it' : 'your bathroom at ' + end;
+  if (marco === '30d') {
+    const aval = ctx.link ? `\n\nIf you're happy with our work, a Google review would mean a lot to a small family business like ours: ${ctx.link}` : '';
+    return `${abertura} It's been ${quanto} since we finished ${ref} — hope you're loving it!\n\n`
+      + `A quick care tip: use a pH-neutral cleaner and skip bleach or vinegar on the grout and stone. It keeps everything looking new.${aval}\n\nThank you!`;
+  }
+  if (marco === '6m') return `${abertura} It's been ${quanto} since we finished ${ref}. How is everything holding up? I'd really like to know.\n\n`
+    + `Also, if you know anyone thinking about a bathroom remodel, send them our way. When a project you refer is completed, we'll send you a $300 gift card as a thank-you.`;
+  if (anos === 1) return `${abertura} It's been ${quanto} since we did ${ref}.\n\n`
+    + `This is when we recommend a quick maintenance visit to keep it watertight and looking new: a deep clean, fresh caulk at every transition (floor-to-wall, niches and stone), and a new coat of grout, stone and tile sealer.\n\n`
+    + `Want me to send you a quote? Just reply here.`;
+  if (anos > 1) return `${abertura} It's been ${quanto} since we did ${ref}. Caulk and sealers wear out over time, and a yearly touch-up is the easiest way to protect it: `
+    + `deep clean, new caulk at the transitions, and fresh sealer on grout, stone and tile.\n\n`
+    + `Would you like a quote? (And if you'd rather I not reach out about this, just let me know.)`;
+  return '';
+}
+// Links de envio com o texto já escrito. Números dos EUA: +1.
+// "?&body=" é a forma que funciona no iPhone e no Android.
+function crmLinks(fone, texto) {
+  const f = crmFone(fone);
+  if (!f) return { sms: '', wa: '' };
+  const enc = encodeURIComponent(texto || '');
+  return { sms: 'sms:+1' + f + '?&body=' + enc, wa: 'https://wa.me/1' + f + '?text=' + enc };
+}
+
 // Monta a lista da aba: fichas com suas obras, da obra mais antiga para a mais
 // nova, e as obras sem cliente. Não filtra — quem filtra é crmFiltrar.
-function crmMontar({ clientes, obras, ultimo, hoje }) {
+function crmMontar({ clientes, obras, ultimo, hoje, contatos }) {
   const porId = {};
   const fichas = (clientes || []).filter(c => c.id).map(c => {
     const f = { ...c, fone: crmFone(c.contato), obras: [] };
@@ -2474,14 +2631,21 @@ function crmMontar({ clientes, obras, ultimo, hoje }) {
   });
   fichas.sort((a, b) => a.ordem.localeCompare(b.ordem) || crmNorm(a.nome).localeCompare(crmNorm(b.nome)));
   aIdentificar.sort((a, b) => ordemObra(a).localeCompare(ordemObra(b)));
+  aIdentificar.forEach(o => { o.marcos = { trilhas: [], abertos: 0 }; });   // sem ficha, sem trilha
 
   const dupes = crmDuplicatas(fichas);
-  fichas.forEach(f => { f.dupes = dupes[f.id] || []; f.aConfirmar = f.origem !== 'Nilmar'; });
+  fichas.forEach(f => {
+    f.dupes = dupes[f.id] || [];
+    f.aConfirmar = f.origem !== 'Nilmar';
+    f.obras.forEach(o => { o.marcos = crmMarcosObra(o, f, contatos, hoje); });
+    f.abertos = f.obras.reduce((s, o) => s + o.marcos.abertos, 0);
+  });
 
   return {
     fichas,
     aIdentificar,
     contagem: {
+      abertos: fichas.reduce((s, f) => s + f.abertos, 0),
       aConfirmar: fichas.filter(f => f.aConfirmar).length,
       aIdentificar: aIdentificar.length,
       datas: fichas.reduce((s, f) => s + f.obras.filter(o => o.sugestao).length, 0)
@@ -2496,6 +2660,7 @@ function crmFiltrar(m, filtro, busca) {
   const casa = f => !q || crmNorm(f.nome).includes(q) || crmNorm(f.empresa).includes(q)
     || (qd.length >= 3 && f.fone.includes(qd)) || f.obras.some(o => crmNorm(o.addr).includes(q));
   let fichas = m.fichas.filter(casa);
+  if (filtro === 'abertos') fichas = fichas.filter(f => f.abertos > 0);
   if (filtro === 'confirmar') fichas = fichas.filter(f => f.aConfirmar || f.dupes.length);
   if (filtro === 'datas') fichas = fichas.filter(f => f.obras.some(o => o.sugestao));
   const ident = (filtro === 'todos' || filtro === 'identificar' || filtro === 'datas')
@@ -4360,14 +4525,14 @@ function showCliMsg(type,msg) {
 // ══ TAB 9: CRM ═══════════════════════════════════════════
 // Lista de clientes e obras para o contato pós-obra. Cálculo no bloco puro
 // "CRM — CÁLCULO"; aqui só tela e ações. Design: docs/2026-10-14-crm-design.md
-let CRM_FILTRO = 'todos', CRM_BUSCA = '', CRM_ABERTO = {}, CRM_M = null, CRM_PICK = '';
+let CRM_FILTRO = 'abertos', CRM_BUSCA = '', CRM_ABERTO = {}, CRM_M = null, CRM_PICK = '';
 const CRM_MAX_OBRAS = 3;   // obras visíveis por cliente antes do "ver as outras"
 
 function crmDados() {
   const hoje = crmIso(new Date());
   const ultimo = crmUltimoTrabalho((PROC.labor || []).map(r => ({ addr: r.addr, dia: r.ts ? crmIso(r.ts) : '' })));
   const obras = (PROC.obras || []).map(o => ({ ...o, dtFinal: crmIso(o.dtFinal), dtInicio: crmIso(o.dtInicio) }));
-  return crmMontar({ clientes: PROC.clients || [], obras, ultimo, hoje });
+  return crmMontar({ clientes: PROC.clients || [], obras, ultimo, hoje, contatos: DB.crmContatos || [] });
 }
 
 function renderCRM() {
@@ -4394,6 +4559,7 @@ function renderCRMLista() {
   if (!CRM_M) CRM_M = crmDados();
   const m = CRM_M, c = m.contagem;
   const chips = [
+    ['abertos', 'Abertos', c.abertos],
     ['todos', 'Todos', m.fichas.length],
     ['confirmar', 'A confirmar', c.aConfirmar],
     ['datas', 'Datas a conferir', c.datas],
@@ -4404,7 +4570,7 @@ function renderCRMLista() {
     `<button class="crm-chip${CRM_FILTRO === k ? ' on' : ''}" onclick="crmSetFiltro('${k}')">${l}<span class="n">${n}</span></button>`).join('');
 
   const v = crmFiltrar(m, CRM_FILTRO, CRM_BUSCA);
-  const cols = `<div class="crm-cols"><span>Obra</span><span>Concluída</span><span>Tempo</span><span></span></div>`;
+  const cols = `<div class="crm-cols"><span>Obra</span><span>Concluída</span><span>Tempo</span><span>Marco</span><span></span></div>`;
   const grupo = (titulo, n, corpo) => `<div class="crm-group"><div class="crm-group-h">${titulo}<span>${n}</span></div>${cols}${corpo}</div>`;
   let html = '';
   if (v.empreiteiros.length) html += grupo('Empreiteiros', v.empreiteiros.length, v.empreiteiros.map(crmFichaHTML).join(''));
@@ -4427,15 +4593,19 @@ function crmTipoBadge(tipo) {
 }
 
 function crmFichaHTML(f) {
-  const tudo = !!CRM_ABERTO[f.id] || !!CRM_BUSCA || CRM_FILTRO === 'datas';
-  const lista = CRM_FILTRO === 'datas' ? f.obras.filter(o => o.sugestao) : f.obras;
-  const obras = tudo ? lista : lista.slice(0, CRM_MAX_OBRAS);
-  const resto = lista.length - obras.length;
+  // Abertos: só as obras com marco aberto. Todos: as 3 primeiras + "ver as outras".
+  let lista = f.obras;
+  if (CRM_FILTRO === 'datas') lista = f.obras.filter(o => o.sugestao);
+  else if (CRM_FILTRO === 'abertos' && !CRM_ABERTO[f.id]) lista = f.obras.filter(o => o.marcos.abertos > 0);
+  const capar = CRM_FILTRO === 'todos' && !CRM_ABERTO[f.id] && !CRM_BUSCA;
+  const obras = capar ? lista.slice(0, CRM_MAX_OBRAS) : lista;
+  const escondidas = CRM_FILTRO === 'datas' ? 0 : f.obras.length - obras.length;
   const sub = [f.fone ? crmFmtFone(f.fone) : 'sem telefone', f.canal, f.obras.length + ' obra' + (f.obras.length === 1 ? '' : 's')]
     .filter(Boolean).join(' · ');
   const conf = f.aConfirmar
     ? `<span class="crm-badge conf">a confirmar · ${f.origem === 'Inferido' ? 'agrupado só pelo nome' : 'identificado pelo telefone'}</span>`
       + ` <button class="crm-link" onclick="crmConfirmar('${esc(f.id)}')">Confirmar</button>` : '';
+  const nc = f.naoContatar ? '<span class="crm-badge dup"><i class="fas fa-ban"></i> não contatar</span>' : '';
   const dup = f.dupes.map(d => `<div><span class="crm-badge dup">possível duplicata de ${escH(d.nome)}</span>`
     + ` <button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','${esc(d.id)}')">Juntar</button></div>`).join('');
   return `<div class="crm-cli">
@@ -4443,14 +4613,14 @@ function crmFichaHTML(f) {
       <div style="min-width:0">
         <div class="crm-cli-nome">${escH(f.nome)}${f.empresa ? ' <span class="emp">· ' + escH(f.empresa) + '</span>' : ''}</div>
         <div class="crm-cli-sub">${escH(sub)}</div>
-        <div>${crmTipoBadge(f.tipo)}${conf}</div>${dup}
+        <div>${crmTipoBadge(f.tipo)}${nc}${conf}</div>${dup}
       </div>
       <div class="crm-acts"><button class="row-act-btn edit" title="Editar ficha" onclick="openCrmCliente('${esc(f.id)}')"><i class="fas fa-pen"></i></button></div>
     </div>
-    ${obras.map(crmObraHTML).join('')}
-    ${!lista.length ? '<div class="crm-obra"><div class="c-addr" style="color:#7b8ea4;font-weight:500">nenhuma obra vinculada</div></div>' : ''}
-    ${resto > 0 ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">ver as outras ${resto} ▾</div>` : ''}
-    ${tudo && !CRM_BUSCA && CRM_FILTRO !== 'datas' && lista.length > CRM_MAX_OBRAS ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">mostrar menos ▴</div>` : ''}
+    ${obras.map(o => crmObraHTML(o, f)).join('')}
+    ${!f.obras.length ? '<div class="crm-obra"><div class="c-addr" style="color:#7b8ea4;font-weight:500">nenhuma obra vinculada</div></div>' : ''}
+    ${escondidas > 0 ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">ver ${CRM_FILTRO === 'abertos' ? 'todas as ' + f.obras.length + ' obras' : 'as outras ' + escondidas} ▾</div>` : ''}
+    ${CRM_ABERTO[f.id] && !CRM_BUSCA && CRM_FILTRO !== 'datas' && (CRM_FILTRO === 'abertos' || f.obras.length > CRM_MAX_OBRAS) ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">mostrar menos ▴</div>` : ''}
   </div>`;
 }
 
@@ -4473,13 +4643,40 @@ function crmSugHTML(o) {
     <button class="crm-mini pri" onclick="openCrmData('${a}')">Informar a data</button><button class="crm-mini" onclick="crmManterData('${a}')">Está certa</button></div>`;
 }
 
-function crmObraHTML(o) {
+// Selos de marco de uma obra: todos os abertos (clicáveis), o último já tratado
+// e o próximo que vai chegar. O histórico completo fica no menu ⋯ da obra.
+function crmMarcosHTML(o, f) {
+  if (!o.marcos || !o.marcos.trilhas.length) return '';
+  const a = esc(o.addr);
+  return o.marcos.trilhas.map(tr => {
+    const quem = tr.morador ? '<span class="who">morador · </span>' : '';
+    const abertos = tr.marcos.filter(m => m.estado === 'aberto');
+    const tratados = tr.marcos.filter(m => ['enviado', 'dispensado', 'resolvido', 'naoContatar'].includes(m.estado));
+    const ultimo = tratados[tratados.length - 1];
+    const futuro = tr.marcos.find(m => m.estado === 'futuro');
+    const sel = [];
+    abertos.forEach(m => sel.push(`<button class="crm-m aberto" onclick="openCrmMsg('${a}','${tr.dest}','${m.k}')">${quem}● ${m.rotulo}</button>`));
+    if (ultimo) {
+      const txt = ultimo.estado === 'enviado' ? '✓ ' + ultimo.rotulo + ' · ' + fmtDay(ultimo.contato.data)
+        : ultimo.estado === 'dispensado' ? ultimo.rotulo + ' · não enviado'
+          : ultimo.estado === 'resolvido' ? ultimo.rotulo + ' · resolvido pela autorização'
+            : ultimo.rotulo + ' · não contatar';
+      sel.push(`<span class="crm-m ${ultimo.estado}">${quem}${txt}</span>`);
+    }
+    if (futuro) sel.push(`<span class="crm-m futuro">${quem}○ ${futuro.rotulo} em ${fmtDay(futuro.data)}</span>`);
+    return sel.join('');
+  }).join('');
+}
+
+function crmObraHTML(o, f) {
   const sub = [o.finalizada ? (o.conclusao ? 'concluída ' + crmDataTxt(o) : 'concluída, sem data') : 'em andamento', o.idade].filter(Boolean).join(' · ');
   const sug = crmSugHTML(o);
+  const marcos = crmMarcosHTML(o, f);
   return `<div class="crm-obra">
     <div class="c-addr">${escH(o.addr)}<div class="c-sub c-sub-m">${escH(sub)}</div></div>
     <div class="c-data">${escH(crmDataTxt(o))}</div>
     <div class="c-idade">${escH(o.idade || '')}</div>
+    <div class="c-marco">${marcos}</div>
     <div class="c-act"><button class="row-act-btn edit" title="Ações da obra" onclick="openCrmObraMenu('${esc(o.addr)}')"><i class="fas fa-ellipsis"></i></button></div>
     ${sug ? '<div class="c-extra">' + sug + '</div>' : ''}
   </div>`;
@@ -4544,7 +4741,7 @@ const crmFicha = id => (CRM_M || crmDados()).fichas.find(f => f.id === id);
 
 function openCrmCliente(id) {
   const f = id ? crmFicha(id) : null;
-  EDIT_ROW_STATE = { type: 'crmcli', rowNum: null, addr: null, id: f ? f.id : '' };
+  EDIT_ROW_STATE = { type: 'crmcli', rowNum: null, addr: null, id: f ? f.id : '', nc: !!(f && f.naoContatar) };
   const tipo = f ? f.tipo : '';
   crmModal(f ? 'Ficha de ' + escH(f.nome) : 'Nova ficha de cliente', 'fa-address-card', `
     <div class="row g-3">
@@ -4564,6 +4761,7 @@ function openCrmCliente(id) {
         <input id="cc_email" class="f-input" type="email" value="${f ? escH(f.email) : ''}"></div>
       <div class="col-12"><label class="f-label">Observação</label>
         <textarea id="cc_obs" class="f-input" rows="2">${f ? escH(f.obs) : ''}</textarea></div>
+      ${f ? `<div class="col-12"><label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;cursor:pointer;color:#31506e"><input type="checkbox" id="cc_nc" style="margin-top:3px" ${f.naoContatar ? 'checked' : ''}><span><strong>Não contatar</strong> — o cliente pediu para não receber mensagens. Nenhum marco abre mais para ele.</span></label></div>` : ''}
       ${f ? `<div class="col-12"><button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','')">Esta pessoa tem outra ficha? Juntar com outra ficha…</button></div>` : ''}
     </div>`);
 }
@@ -4616,17 +4814,6 @@ function crmJuntarResumo() {
   el.innerHTML = `<div class="f-label">Qual ficha fica?</div>${opt(a)}${opt(b)}`;
 }
 
-function openCrmObraMenu(addr) {
-  const o = (CRM_M || crmDados()).fichas.flatMap(f => f.obras).concat((CRM_M || crmDados()).aIdentificar).find(x => x.addr === addr);
-  if (!o) return;
-  EDIT_ROW_STATE = { type: 'crmmenu', rowNum: null, addr };
-  const a = esc(addr);
-  crmModal(escH(addr), 'fa-ellipsis', `<div class="crm-menu">
-    <button onclick="openCrmVincular('${a}')"><i class="fas fa-user-pen"></i><span>${o.idCliente ? 'Mover para outro cliente' : 'Atribuir cliente'}<small>${o.idCliente ? 'a obra está na ficha errada' : 'a obra está sem cliente'}</small></span></button>
-    ${o.finalizada ? `<button onclick="openCrmData('${a}')"><i class="fas fa-calendar-check"></i><span>Data de conclusão<small>hoje: ${o.dtFinal ? fmtDay(o.dtFinal) : 'sem data'}${o.ultimoTrabalho ? ' · último trabalho ' + fmtDay(o.ultimoTrabalho) : ''}</small></span></button>` : ''}
-  </div>`, false);
-}
-
 function openCrmVincular(addr) {
   const o = (CRM_M || crmDados()).fichas.flatMap(f => f.obras).concat((CRM_M || crmDados()).aIdentificar).find(x => x.addr === addr);
   CRM_PICK = '';
@@ -4663,6 +4850,167 @@ function openCrmData(addr) {
     <label class="f-label">Concluída em <span class="f-req">*</span></label>
     <input id="cd_data" class="f-input" type="date" value="${sug || (o && o.dtFinal) || ''}" max="${crmIso(new Date())}">
     <div style="font-size:12px;color:#7b8ea4;margin-top:8px">É a partir desta data que os marcos de 6 meses, 1 ano etc. são contados.</div>`);
+}
+
+// ── PARTE 2: contato (marcos, mensagem, histórico, morador) ──
+
+// Link "Escrever avaliação" do Google da NJR. Vazio → a mensagem de 30 dias
+// sai sem o pedido de avaliação (docs/2026-10-14-crm-design.md, "Pendente").
+const CRM_LINK_AVALIACAO = '';
+
+function crmAchaObra(addr) {
+  const m = CRM_M || crmDados();
+  for (const f of m.fichas) { const o = f.obras.find(x => x.addr === addr); if (o) return { o, f }; }
+  return { o: m.aIdentificar.find(x => x.addr === addr) || null, f: null };
+}
+const crmRotuloMarco = k => k === '30d' ? '30 dias' : k === '6m' ? '6 meses' : k === '1a' ? '1 ano' : parseInt(k, 10) + ' anos';
+
+function openCrmMsg(addr, dest, marco) {
+  const { o, f } = crmAchaObra(addr);
+  if (!o || !f) return;
+  const tr = o.marcos.trilhas.find(x => x.dest === dest);
+  const mk = tr && tr.marcos.find(x => x.k === marco);
+  if (!tr || !mk) return;
+  const texto = crmMensagem(dest, marco, {
+    nome: crmPrimeiroNome(tr.nome), endereco: crmEndCurto(addr), morador: tr.morador,
+    empreiteiro: crmPrimeiroNome(f.nome), empresa: f.empresa, link: CRM_LINK_AVALIACAO,
+    meses: crmMeses(o.conclusao, crmIso(new Date())) });
+  EDIT_ROW_STATE = { type: 'crmmsg', rowNum: null, addr, id: f.id, dest, marco, morador: tr.morador, canal: '', fone: tr.fone };
+  // avisa, sem bloquear, quando o marco é antigo para a idade da obra
+  const maisRecente = tr.marcos.filter(x => x.estado !== 'futuro').pop();
+  const atrasado = maisRecente && maisRecente.k !== marco;
+  const lembrado = tr.morador ? '' : f.canal;         // canal lembrado é do dono da ficha
+  const ordem = lembrado === 'SMS' ? ['sms', 'wa'] : ['wa', 'sms'];
+  const off = tr.fone ? '' : ' off';
+  const btn = k => k === 'wa'
+    ? `<a class="crm-msg-btn wa${lembrado === 'WhatsApp' ? ' lembrado' : ''}${off}" href="#" onclick="return crmEnviar('WhatsApp', this)"><i class="fab fa-whatsapp"></i> WhatsApp${lembrado === 'WhatsApp' ? ' · usado da última vez' : ''}</a>`
+    : `<a class="crm-msg-btn sms${lembrado === 'SMS' ? ' lembrado' : ''}${off}" href="#" onclick="return crmEnviar('SMS', this)"><i class="fas fa-comment-sms"></i> SMS${lembrado === 'SMS' ? ' · usado da última vez' : ''}</a>`;
+  crmModal(escH(tr.nome || f.nome) + ' · ' + mk.rotulo, 'fa-paper-plane', `
+    <div class="crm-msg-info"><strong>${escH(addr)}</strong><br>
+      concluída ${fmtDay(o.conclusao)} · ${escH(o.idade)}<br>
+      Para: ${tr.morador ? 'morador ' : ''}<strong>${escH(tr.nome || f.nome)}</strong> · ${tr.fone ? crmFmtFone(tr.fone) : '<span style="color:#b42318">sem telefone — adicione na ficha</span>'}</div>
+    ${atrasado ? `<div class="crm-msg-aviso"><i class="fas fa-clock"></i> Esta é a mensagem de <strong>${mk.rotulo}</strong> — a obra já tem ${escH(o.idade.replace(/^há /, ''))}.</div>` : ''}
+    ${marco === '30d' && !CRM_LINK_AVALIACAO ? '<div class="crm-msg-aviso"><i class="fas fa-star"></i> O link de avaliação no Google ainda não foi configurado, então o pedido de avaliação ficou de fora.</div>' : ''}
+    <textarea id="cm_txt" class="f-input crm-msg-txt">${escH(texto)}</textarea>
+    <div class="crm-msg-btns">${ordem.map(btn).join('')}
+      <button type="button" class="crm-msg-btn" onclick="crmCopiar()"><i class="fas fa-copy"></i> Copiar texto</button>
+    </div>
+    <div id="cm_conf" class="crm-msg-conf" style="display:none">
+      <div style="font-weight:800;color:#1e7e4a;margin-bottom:6px">Enviou<span id="cm_canal"></span>?</div>
+      <textarea id="cm_nota" class="f-input" rows="2" placeholder="O que respondeu? (opcional — ex.: indicou a vizinha Jane)"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="crm-mini pri" onclick="crmRegistrar('Enviado')">Sim, registrar</button>
+        <button class="crm-mini" onclick="document.getElementById('cm_conf').style.display='none'">Ainda não</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:center"><button class="crm-link" style="color:#7b8ea4" onclick="document.getElementById('cm_disp').style.display=''">Não vou enviar</button></div>
+    <div id="cm_disp" style="display:none;margin-top:8px">
+      <textarea id="cm_motivo" class="f-input" rows="2" placeholder="Motivo (opcional — ex.: já falei pessoalmente)"></textarea>
+      <button class="crm-mini" style="margin-top:8px" onclick="crmRegistrar('Dispensado')">Confirmar: não enviar</button>
+    </div>`, false);
+  document.getElementById('rowEditModal').classList.add('crm-full');
+}
+
+// O link é montado no toque, com o texto como está — o Nilmar pode ter editado.
+function crmEnviar(canal, a) {
+  const st = EDIT_ROW_STATE;
+  const texto = (document.getElementById('cm_txt') || {}).value || '';
+  const l = crmLinks(st.fone, texto);
+  const href = canal === 'SMS' ? l.sms : l.wa;
+  if (!href) { showToast('Sem telefone para este contato', true); return false; }
+  a.href = href;
+  if (canal === 'WhatsApp') a.target = '_blank';
+  st.canal = canal;
+  const c = document.getElementById('cm_conf'); if (c) c.style.display = '';
+  const cc = document.getElementById('cm_canal'); if (cc) cc.textContent = ' pelo ' + canal;
+  return true;
+}
+async function crmCopiar() {
+  const el = document.getElementById('cm_txt'); const texto = el ? el.value : '';
+  try { await navigator.clipboard.writeText(texto); }
+  catch (_) { try { el.select(); document.execCommand('copy'); } catch (__) {} }
+  EDIT_ROW_STATE.canal = 'Copiado';
+  showToast('Texto copiado');
+  const c = document.getElementById('cm_conf'); if (c) c.style.display = '';
+  const cc = document.getElementById('cm_canal'); if (cc) cc.textContent = '';
+}
+async function crmRegistrar(resultado) {
+  const st = EDIT_ROW_STATE;
+  const anotacao = ((document.getElementById(resultado === 'Enviado' ? 'cm_nota' : 'cm_motivo') || {}).value || '').trim();
+  const reg = { action: 'crmRegistrarContato', id: st.id, addr: st.addr, destinatario: st.dest, marco: st.marco,
+    resultado, canal: resultado === 'Enviado' ? (st.canal || '') : '', anotacao, morador: !!st.morador };
+  try {
+    await apiWrite(reg);
+    closeEditModal();
+    crmPatch(db => {
+      (db.crmContatos = db.crmContatos || []).push({ data: crmIso(new Date()), id: reg.id, addr: reg.addr,
+        destinatario: reg.destinatario, marco: reg.marco, resultado, canal: reg.canal, anotacao });
+      if (resultado === 'Enviado' && (reg.canal === 'SMS' || reg.canal === 'WhatsApp') && !reg.morador) {
+        const r = crmRowCli(db, reg.id); if (r) r['Canal Preferido'] = reg.canal;
+      }
+    });
+    showToast(resultado === 'Enviado' ? 'Contato registrado' : 'Marcado como não enviado');
+    loadData();   // em 2º plano: traz o nº da linha, que o "desfazer" usa
+  } catch (e) { showToast(e.message, true); }
+}
+async function crmDesfazer(rowNum, addr, destinatario, marco) {
+  if (!confirm('Desfazer este registro? O marco volta a ficar aberto.')) return;
+  try {
+    await apiWrite({ action: 'crmDesfazerContato', rowNum, addr, destinatario, marco });
+    closeEditModal();
+    crmPatch(db => { db.crmContatos = (db.crmContatos || []).filter(c => c._row !== rowNum); });
+    showToast('Registro desfeito');
+    loadData();
+  } catch (e) { showToast(e.message, true); }
+}
+
+function openCrmMorador(addr) {
+  const { o, f } = crmAchaObra(addr); if (!o) return;
+  EDIT_ROW_STATE = { type: 'crmmorador', rowNum: null, addr };
+  const hoje = crmIso(new Date());
+  crmModal('Morador autorizado', 'fa-house-user', `
+    <div style="background:#eef6ff;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e;margin-bottom:12px">
+      Registre quando <strong>${escH(f ? f.nome : 'o empreiteiro')}</strong> autorizar a NJR a falar com o dono do imóvel.
+      A partir daí o morador recebe as mensagens de cliente desta obra, contadas desde a conclusão.</div>
+    <div class="f-label">${escH(addr)}</div>
+    <div class="row g-3">
+      <div class="col-12"><label class="f-label">Nome do morador <span class="f-req">*</span></label>
+        <input id="cm_mnome" class="f-input" value="${escH(o.moradorNome || '')}"></div>
+      <div class="col-md-6"><label class="f-label">Telefone <span class="f-req">*</span></label>
+        <input id="cm_mtel" class="f-input" inputmode="tel" value="${escH(o.moradorTel || '')}"></div>
+      <div class="col-md-6"><label class="f-label">Autorizado em</label>
+        <input id="cm_mdata" class="f-input" type="date" value="${escH(crmIso(o.autorizadoEm) || hoje)}" max="${hoje}"></div>
+    </div>
+    ${o.autorizadoEm ? `<div style="margin-top:14px"><button class="crm-link" style="color:#b42318" onclick="crmRemoverMorador('${esc(addr)}')">Remover autorização</button></div>` : ''}`);
+}
+async function crmRemoverMorador(addr) {
+  if (!confirm('Remover a autorização? A trilha do morador some e os marcos do empreiteiro voltam a abrir.')) return;
+  try {
+    await apiWrite({ action: 'crmAutorizarMorador', addr, remover: true });
+    closeEditModal();
+    crmPatch(db => { const r = crmRowObra(db, addr); r['Morador Nome'] = ''; r['Morador Telefone'] = ''; r['Autorizado Em'] = ''; });
+    showToast('Autorização removida');
+  } catch (e) { showToast(e.message, true); }
+}
+
+function openCrmObraMenu(addr) {
+  const { o, f } = crmAchaObra(addr);
+  if (!o) return;
+  EDIT_ROW_STATE = { type: 'crmmenu', rowNum: null, addr };
+  const a = esc(addr);
+  const hist = (DB.crmContatos || []).filter(c => crmNorm(c.addr) === crmNorm(addr))
+    .sort((x, y) => String(y.data).localeCompare(String(x.data)));
+  const quem = c => c.destinatario === 'Empreiteiro' ? 'empreiteiro' : (f && f.tipo === 'Empreiteiro' ? 'morador' : 'cliente');
+  crmModal(escH(addr), 'fa-ellipsis', `<div class="crm-menu">
+    <button onclick="openCrmVincular('${a}')"><i class="fas fa-user-pen"></i><span>${o.idCliente ? 'Mover para outro cliente' : 'Atribuir cliente'}<small>${o.idCliente ? 'a obra está na ficha errada' : 'a obra está sem cliente'}</small></span></button>
+    ${o.finalizada ? `<button onclick="openCrmData('${a}')"><i class="fas fa-calendar-check"></i><span>Data de conclusão<small>hoje: ${o.dtFinal ? fmtDay(o.dtFinal) : 'sem data'}${o.ultimoTrabalho ? ' · último trabalho ' + fmtDay(o.ultimoTrabalho) : ''}</small></span></button>` : ''}
+    ${f && f.tipo === 'Empreiteiro' ? `<button onclick="openCrmMorador('${a}')"><i class="fas fa-house-user"></i><span>${o.autorizadoEm ? 'Morador autorizado: ' + escH(o.moradorNome) : 'Registrar autorização do morador'}<small>${o.autorizadoEm ? crmFmtFone(crmFone(o.moradorTel)) + ' · desde ' + fmtDay(crmIso(o.autorizadoEm)) : 'o empreiteiro deixou a NJR falar com o dono'}</small></span></button>` : ''}
+  </div>
+  ${hist.length ? '<div class="f-label" style="margin-top:16px">Histórico de contatos</div>' + hist.map(c => `<div class="crm-hist">
+      <div style="flex:1"><strong>${fmtDay(c.data)} · ${crmRotuloMarco(c.marco)}</strong> · ${quem(c)} · ${c.resultado === 'Enviado' ? 'enviado' + (c.canal ? ' (' + escH(c.canal) + ')' : '') : 'não enviado'}
+        ${c.anotacao ? '<br><em>' + escH(c.anotacao) + '</em>' : ''}</div>
+      ${c._row ? `<button class="crm-link" onclick="crmDesfazer(${c._row},'${a}','${esc(c.destinatario)}','${esc(c.marco)}')">desfazer</button>` : ''}
+    </div>`).join('') : ''}`, false);
 }
 
 // ── HELPERS ────────────────────────────────────────────────
@@ -4878,9 +5226,24 @@ async function saveRowEdit() {
         empresa: document.getElementById('cc_emp').value.trim(),
         email: document.getElementById('cc_email').value.trim(),
         obs: document.getElementById('cc_obs').value.trim() });
+      // "Não contatar" é uma ação separada: só grava se mudou
+      const nc = document.getElementById('cc_nc');
+      if (nc && !!nc.checked !== !!EDIT_ROW_STATE.nc) await apiWrite({ action: 'crmNaoContatar', id: r.id, valor: !!nc.checked });
       closeEditModal();
       showToast(r.criado ? 'Ficha criada' : 'Ficha salva' + (r.obrasRenomeadas ? ' — nome atualizado em ' + r.obrasRenomeadas + ' obra(s)' : ''));
       await loadData();
+      return;
+    } else if (EDIT_ROW_STATE.type === 'crmmorador') {
+      const addr = EDIT_ROW_STATE.addr;
+      const nome = document.getElementById('cm_mnome').value.trim();
+      const telefone = document.getElementById('cm_mtel').value.trim();
+      const data = document.getElementById('cm_mdata').value || crmIso(new Date());
+      if (!nome) throw new Error('Informe o nome do morador.');
+      if (!crmFone(telefone)) throw new Error('Informe o telefone do morador com os 10 dígitos.');
+      await apiWrite({ action: 'crmAutorizarMorador', addr, nome, telefone, data });
+      closeEditModal();
+      crmPatch(db => { const r = crmRowObra(db, addr); r['Morador Nome'] = nome; r['Morador Telefone'] = crmFmtFone(crmFone(telefone)); r['Autorizado Em'] = data; });
+      showToast('Morador autorizado — as mensagens de cliente desta obra foram liberadas');
       return;
     } else if (EDIT_ROW_STATE.type === 'crmjuntar') {
       const a = EDIT_ROW_STATE.id, b = CRM_PICK;
@@ -5000,6 +5363,7 @@ function closeEditModal() {
   document.getElementById('rowEditModal').classList.remove('open');
   EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
   // o menu de ações do CRM esconde o "Salvar"; os outros modais contam com ele visível
+  document.getElementById('rowEditModal').classList.remove('crm-full');
   const b = document.getElementById('rowEditSaveBtn');
   b.style.display = '';
   b.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';

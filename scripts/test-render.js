@@ -71,6 +71,7 @@ const run = new Function(...nomes, '__export', code +
   ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
   ' dwToggleServ, openDwLanc, openDwServ, dwToggleCli, openDwCli,' +
   ' renderCRM, crmSetFiltro, crmToggle, openCrmCliente, openCrmJuntar, openCrmObraMenu, openCrmVincular, openCrmData, f3AtualizaTipo,' +
+  ' openCrmMsg, crmEnviar, openCrmMorador,' +
   ' setDB:v=>{DB=v}, getPROC:()=>PROC,' +
   ' set:(k,v)=>{ if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v;' +
   ' if(k==="SEL_ADDR_T4")SEL_ADDR_T4=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_MES")DW_MES=v;' +
@@ -94,6 +95,11 @@ const DB = {
     { _row: 4, 'Endereço': '9 Weston terrace Wellesley', 'Nome do Cliente': 'Paula Home', 'Contato': '(508) 498-8550',
       'Escopo': 'Dois pisos', 'Orçamento': 1240, 'Data Início Prevista': '2026-08-03', 'Data Fim Prevista': '2026-08-10',
       'Link Fotos Antes': '', 'Finalizada': 'Sim', 'Data Finalização': '2026-09-20', 'Link Fotos Depois': '', 'ID Cliente': 'C002' },
+    // CRM: obra de empreiteiro com morador autorizado → duas trilhas
+    { _row: 5, 'Endereço': '77 Elm Ct Andover', 'Nome do Cliente': 'Andrew B', 'Contato': '555-0100',
+      'Escopo': 'Shower', 'Orçamento': 5000, 'Data Início Prevista': '2026-02-01', 'Data Fim Prevista': '2026-03-01',
+      'Link Fotos Antes': '', 'Finalizada': 'Sim', 'Data Finalização': '2026-03-01', 'Link Fotos Depois': '', 'ID Cliente': 'C001',
+      'Morador Nome': 'Jane Doe', 'Morador Telefone': '(978) 555-1234', 'Autorizado Em': '2026-10-01' },
   ],
   labor: [
     { _row: 2, 'Carimbo de data/hora': '2026-08-26 18:00:00', 'Endereço da obra': '4 Tara rd, Essex',
@@ -178,6 +184,10 @@ const DB = {
       valorCobrado: '950', pessoa: 'Carlos', companhia: 'Drywall Pro', diaria: 200, obs: 'sem cliente' },
     { _row: 5, ts: '2026-08-13 09:00:00', data: '2026-08-13', cliente: 'Maria Silva', addr: '77 Ash Way',
       valorCobrado: '450', pessoa: 'Ana', companhia: 'DW Crew', diaria: 180, obs: '' },
+  ],
+  crmContatos: [
+    { _row: 2, data: '2026-09-02', id: 'C001', addr: '77 Elm Ct Andover', destinatario: 'Empreiteiro', marco: '6m',
+      resultado: 'Enviado', canal: 'WhatsApp', anotacao: 'autorizou falar com a Jane' },
   ],
   descontosProg: [
     // parcelamento em andamento, com uma parcela já marcada
@@ -390,6 +400,45 @@ roda('CRM — atribuir cliente a obra sem ficha', () => api.openCrmVincular('66 
   (els['rowEditSaveBtn'].style.display === '' && modal().includes('Criar ficha nova')) || 'Salvar continuou escondido ou faltou "criar ficha"');
 roda('CRM — data de conclusão já vem com a sugestão', () => api.openCrmData('9 Weston terrace Wellesley'), () =>
   modal().includes('value="2026-08-10"') || 'a data sugerida não veio preenchida');
+
+// ── parte 2: marcos e mensagem ──
+roda('CRM — "Abertos" mostra marcos clicáveis', () => api.crmSetFiltro('abertos'), () => {
+  const h = crmLista();
+  return (h.includes('crm-m aberto') && h.includes('openCrmMsg(')) || 'nenhum marco aberto clicável';
+});
+roda('CRM — morador autorizado ganha trilha própria e o empreiteiro mostra o enviado', () => api.crmSetFiltro('todos'), () => {
+  const h = crmLista();
+  if (!h.includes('morador · ')) return 'trilha do morador não apareceu';
+  if (!h.includes('✓ 6 meses · 02/09/2026')) return 'o 6 meses enviado ao empreiteiro não apareceu';
+  return semLixo('crmLista');
+});
+roda('CRM — mensagem ao cliente monta, sem lixo e sem o botão Salvar', () => api.openCrmMsg('9 Weston terrace Wellesley', 'Cliente', '30d'), () => {
+  const h = modal();
+  if (semLixo('rowEditModalBody') !== true) return semLixo('rowEditModalBody');
+  if (!h.includes('Hi Paula!')) return 'mensagem não personalizou o nome';
+  if (!h.includes('crm-msg-btn sms lembrado')) return 'o SMS (canal lembrado da Paula) não veio em destaque';
+  if (els['rowEditSaveBtn'].style.display !== 'none') return 'botão Salvar visível na janela da mensagem';
+  return true;
+});
+roda('CRM — mensagem ao morador explica de onde veio o número', () => api.openCrmMsg('77 Elm Ct Andover', 'Cliente', '6m'), () =>
+  (modal().includes('Hi Jane!') && modal().includes('Andrew from Cabinet by Design gave me your number')) || 'abertura do morador errada');
+roda('CRM — tocar no SMS monta o link com o texto do momento', () => {
+  els['cm_txt'] = Object.assign(els['cm_txt'] || {}, { value: "Hi Jane & co" });
+  const a = { href: '#' };
+  api.crmEnviar('SMS', a);
+  return a;
+}, a => (a.href.startsWith('sms:+19785551234?&body=Hi%20Jane%20%26%20co')) || 'link errado: ' + a.href);
+roda('CRM — menu da obra mostra histórico e morador', () => api.openCrmObraMenu('77 Elm Ct Andover'), () => {
+  const h = modal();
+  if (!h.includes('Histórico de contatos') || !h.includes('autorizou falar com a Jane')) return 'histórico ausente';
+  if (!h.includes('desfazer')) return 'sem opção de desfazer';
+  if (!h.includes('Morador autorizado: Jane Doe')) return 'morador não aparece no menu';
+  return true;
+});
+roda('CRM — modal do morador', () => api.openCrmMorador('77 Elm Ct Andover'), () =>
+  (semLixo('rowEditModalBody') === true && modal().includes('Remover autorização')) || 'modal do morador incompleto');
+roda('CRM — ficha oferece "Não contatar"', () => api.openCrmCliente('C001'), () =>
+  modal().includes('id="cc_nc"') || 'faltou o "Não contatar"');
 
 roda('formulário de obra — cliente existente mostra o tipo', () => {
   els['f3Cliente'] = Object.assign(els['f3Cliente'] || {}, { value: 'andrew  b' }); api.f3AtualizaTipo();

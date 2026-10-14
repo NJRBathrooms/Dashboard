@@ -94,6 +94,7 @@ require.cache[require.resolve(gp)] = { id: gp, filename: gp, loaded: true, expor
   },
   nowInTz: () => '2026-10-14 10:00:00',
   updateCell: async () => {},
+  createSheet: async (title, headers) => { SHEETS[title] = [headers.slice()]; IDS[title] = 44; },
 } };
 
 const CRM = require(path.join(ROOT, 'api', '_crm.js'));
@@ -291,6 +292,97 @@ const teste = async (nome, fn) => {
   });
   await teste('incluir cliente recusa nome duplicado', async () => {
     assert.match((await A.addCliente({ nome: 'ZED', contato: '1', tipo: 'Cliente' })).error || '', /Já existe/);
+  });
+
+  // ══ PARTE 2: contato ═════════════════════════════════════
+  const H = 'CRM Contatos';
+  const contatos = () => (SHEETS[H] || []).slice(1);
+  const paul = () => fichaPorId('C001');
+
+  await teste('registrar cria a aba de histórico e grava o contato', async () => {
+    const r = await CRM.crmRegistrarContato({ id: 'C001', addr: '19 Seneca Lane', destinatario: 'Empreiteiro',
+      marco: '6m', resultado: 'Enviado', canal: 'WhatsApp', anotacao: 'vai pensar' });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.deepStrictEqual(SHEETS[H][0], CRM.CONTATOS_HEADERS);
+    const c = contatos()[0];
+    assert.deepStrictEqual([c[1], c[2], c[3], c[4], c[5], c[6], c[7]],
+      ['C001', '19 Seneca Lane', 'Empreiteiro', '6m', 'Enviado', 'WhatsApp', 'vai pensar']);
+  });
+  await teste('canal usado vira o canal lembrado da ficha', async () => {
+    assert.strictEqual(paul()['Canal Preferido'], 'WhatsApp');
+  });
+  await teste('o mesmo marco não pode ser registrado duas vezes', async () => {
+    const r = await CRM.crmRegistrarContato({ id: 'C001', addr: '19 SENECA lane', destinatario: 'Empreiteiro',
+      marco: '6m', resultado: 'Dispensado', canal: '' });
+    assert.match(r.error || '', /já foi registrado/);
+    assert.strictEqual(contatos().length, 1);
+  });
+  await teste('mesmo marco para o MORADOR é outro registro e não mexe no canal da ficha', async () => {
+    const r = await CRM.crmRegistrarContato({ id: 'C001', addr: '19 Seneca Lane', destinatario: 'Cliente',
+      marco: '6m', resultado: 'Enviado', canal: 'SMS', morador: true });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.strictEqual(contatos().length, 2);
+    assert.strictEqual(paul()['Canal Preferido'], 'WhatsApp', 'o SMS do morador virou canal do empreiteiro');
+  });
+  await teste('dispensar não muda o canal', async () => {
+    await CRM.crmRegistrarContato({ id: 'C001', addr: '30 Crimson Road', destinatario: 'Empreiteiro', marco: '6m', resultado: 'Dispensado', canal: '' });
+    assert.strictEqual(paul()['Canal Preferido'], 'WhatsApp');
+  });
+  await teste('registro recusa dado inválido', async () => {
+    const base = { id: 'C001', addr: '19 Seneca Lane', destinatario: 'Cliente', marco: '1a', resultado: 'Enviado', canal: 'SMS' };
+    assert.ok((await CRM.crmRegistrarContato({ ...base, marco: '7m' })).error);
+    assert.ok((await CRM.crmRegistrarContato({ ...base, destinatario: 'Vizinho' })).error);
+    assert.ok((await CRM.crmRegistrarContato({ ...base, resultado: 'Talvez' })).error);
+    assert.ok((await CRM.crmRegistrarContato({ ...base, canal: 'Pombo' })).error);
+    assert.ok((await CRM.crmRegistrarContato({ ...base, addr: '999 Nowhere' })).error);
+    assert.strictEqual(contatos().length, 3, 'gravou registro inválido');
+  });
+
+  await teste('desfazer confere a linha antes de apagar', async () => {
+    const r = await CRM.crmDesfazerContato({ rowNum: 2, addr: '19 Seneca Lane', destinatario: 'Empreiteiro', marco: '1a' });
+    assert.match(r.error || '', /mudou/);
+    assert.strictEqual(contatos().length, 3);
+  });
+  await teste('desfazer apaga o registro certo', async () => {
+    const r = await CRM.crmDesfazerContato({ rowNum: 3, addr: '19 Seneca Lane', destinatario: 'Cliente', marco: '6m' });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.strictEqual(contatos().length, 2);
+    assert.ok(!contatos().some(c => c[3] === 'Cliente'), 'apagou o registro errado');
+  });
+
+  await teste('autorizar morador grava nome, telefone formatado e data', async () => {
+    const r = await CRM.crmAutorizarMorador({ addr: '13 Blood rd', nome: 'Jane Doe', telefone: '978 555 1234', data: '2026-10-14' });
+    assert.strictEqual(r.ok, true, r.error);
+    const o = obraPorEnd('13 Blood rd');
+    assert.strictEqual(o['Morador Nome'], 'Jane Doe');
+    assert.strictEqual(o['Morador Telefone'], '(978) 555-1234');
+    assert.strictEqual(o['Autorizado Em'], '2026-10-14');
+  });
+  await teste('autorizar exige nome e telefone válido', async () => {
+    assert.ok((await CRM.crmAutorizarMorador({ addr: '13 Blood rd', nome: '', telefone: '9785551234' })).error);
+    assert.ok((await CRM.crmAutorizarMorador({ addr: '13 Blood rd', nome: 'X', telefone: '555' })).error);
+    assert.strictEqual(obraPorEnd('13 Blood rd')['Morador Nome'], 'Jane Doe', 'tentativa inválida apagou o morador');
+  });
+  await teste('remover autorização limpa os três campos', async () => {
+    await CRM.crmAutorizarMorador({ addr: '13 Blood rd', remover: true });
+    const o = obraPorEnd('13 Blood rd');
+    assert.deepStrictEqual([o['Morador Nome'], o['Morador Telefone'], o['Autorizado Em']], ['', '', '']);
+  });
+
+  await teste('"Não contatar" liga e desliga', async () => {
+    await CRM.crmNaoContatar({ id: 'C001', valor: true });
+    assert.strictEqual(paul()['Não Contatar'], 'Sim');
+    await CRM.crmNaoContatar({ id: 'C001', valor: false });
+    assert.strictEqual(paul()['Não Contatar'], '');
+    assert.ok((await CRM.crmNaoContatar({ id: 'C999', valor: true })).error);
+  });
+
+  await teste('juntar fichas leva junto o histórico de contato', async () => {
+    const novo = await CRM.crmSalvarCliente({ nome: 'Paul K Duplicado', tipo: 'Empreiteiro' });
+    await CRM.crmRegistrarContato({ id: novo.id, addr: '200 Follen Rd', destinatario: 'Empreiteiro', marco: '6m', resultado: 'Enviado', canal: 'SMS' });
+    const r = await CRM.crmJuntarClientes({ origem: novo.id, destino: 'C001' });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.ok(contatos().filter(c => c[2] === '200 Follen Rd').every(c => c[1] === 'C001'), 'o contato ficou com o ID apagado');
   });
 
   console.log(fails ? '\n' + fails + ' falha(s).' : '\nAPI do CRM ok.');
