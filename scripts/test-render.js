@@ -365,9 +365,22 @@ roda('CRM — chips com as contagens', () => api.renderCRM(), () => {
   return (h.includes('A confirmar<span class="n">2<') && h.includes('A identificar<span class="n">1<'))
     || 'contagens erradas: ' + h.replace(/<[^>]+>/g, ' ');
 });
-roda('CRM — data suspeita aparece com as três saídas', () => api.renderCRM(), () => {
+// a decisão completa da data só aparece no filtro dela; fora dele, só um selo
+roda('CRM — data suspeita: decisão completa no filtro "Datas a conferir"', () => api.crmSetFiltro('datas'), () => {
   const h = crmLista();
   return (h.includes('Usar 10/08/2026') && h.includes('Manter 20/09/2026') && h.includes('Outra data')) || 'sugestão de data não apareceu';
+});
+roda('CRM — data suspeita: nas outras visões vira só o selo "conferir data"', () => api.crmSetFiltro('todos'), () => {
+  const h = crmLista();
+  if (h.includes('Usar 10/08/2026')) return 'a caixa grande de data apareceu fora do filtro de datas';
+  return h.includes('conferir data') || 'selo "conferir data" ausente';
+});
+roda('CRM — grupos são painéis com a cor do tipo, sem selo repetido em cada cliente', () => api.crmSetFiltro('todos'), () => {
+  const h = crmLista();
+  if (!h.includes('crm-group emp') || !h.includes('crm-group cli') || !h.includes('crm-group ident')) return 'faltou um dos painéis';
+  if (!h.includes('Donos do imóvel') || !h.includes('Contratam a NJR')) return 'faixa sem a descrição do grupo';
+  if (h.includes('crm-badge emp') || h.includes('crm-badge cli')) return 'selo de tipo repetido dentro do grupo';
+  return (h.includes('class="crm-obras"') && h.includes('crm-obra solo')) || 'obras fora do trilho ou obra sem cliente com trilho';
 });
 roda('CRM — possível duplicata aparece com "Juntar"', () => api.renderCRM(), () =>
   (crmLista().includes('possível duplicata de Andrew Cabinet') && crmLista().includes('Juntar')) || 'duplicata não sinalizada');
@@ -417,6 +430,8 @@ roda('CRM — mensagem ao cliente monta, sem lixo e sem o botão Salvar', () => 
   if (semLixo('rowEditModalBody') !== true) return semLixo('rowEditModalBody');
   if (!h.includes('Hi Paula!')) return 'mensagem não personalizou o nome';
   if (!h.includes('crm-msg-btn sms lembrado')) return 'o SMS (canal lembrado da Paula) não veio em destaque';
+  if (!h.includes('https://g.page/r/CUjVp113kQ97EAE/review')) return 'a de 30 dias saiu sem o link de avaliação do Google';
+  if (h.includes('ainda não foi configurado')) return 'aviso de link faltando com o link configurado';
   if (els['rowEditSaveBtn'].style.display !== 'none') return 'botão Salvar visível na janela da mensagem';
   return true;
 });

@@ -384,14 +384,6 @@ tbody tr:hover td { background:#fafbfe; }
 .crm-chip { border:1px solid #dde7f1; background:#fff; border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; color:#5a7088; cursor:pointer; white-space:nowrap; }
 .crm-chip.on { background:var(--navy); color:#fff; border-color:var(--navy); }
 .crm-chip .n { opacity:.7; margin-left:4px; font-weight:800; }
-.crm-group { margin-top:20px; }
-.crm-group-h { display:flex; align-items:baseline; gap:8px; font-size:11.5px; font-weight:800; letter-spacing:.08em; color:#7b8ea4; text-transform:uppercase; padding:0 2px 7px; border-bottom:2px solid #e4ecf4; }
-.crm-cols { display:none; }
-.crm-cli { padding:12px 2px 2px; border-bottom:1px solid #e9eff5; }
-.crm-cli-h { display:flex; align-items:flex-start; gap:8px; }
-.crm-cli-nome { font-weight:800; color:var(--navy); font-size:14.5px; line-height:1.3; }
-.crm-cli-nome .emp { font-weight:600; color:#7b8ea4; }
-.crm-cli-sub { font-size:12px; color:#7b8ea4; margin-top:3px; line-height:1.5; }
 .crm-badge { display:inline-block; font-size:10.5px; font-weight:800; border-radius:6px; padding:2px 7px; margin:2px 4px 0 0; white-space:nowrap; }
 .crm-badge.emp { background:#eaf1ff; color:#2557a7; }
 .crm-badge.cli { background:#e9f7ef; color:#1e7e4a; }
@@ -401,16 +393,45 @@ tbody tr:hover td { background:#fafbfe; }
 .crm-acts { margin-left:auto; display:flex; gap:4px; flex-shrink:0; }
 .crm-acts .row-act-btn { width:34px; height:34px; }
 .crm-link { background:none; border:none; padding:0; color:var(--orange); font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; }
-.crm-obra { display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px 8px; padding:9px 0 9px 14px; border-top:1px dashed #e9eff5; }
-.crm-obra .c-addr { flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--navy); overflow-wrap:anywhere; }
+/* Grupo = painel branco com faixa na cor do tipo. Azul = empreiteiro, verde =
+   cliente: as mesmas cores dos selos de tipo no resto do app, então a cor diz
+   o tipo e o selo em cada cliente deixa de ser necessário. */
+.crm-group { --cor:#5a7088; --tinta:#f5f7fa; margin-top:18px; background:#fff; border:1px solid #e1e8f0; border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(13,33,55,.05); }
+.crm-group.emp { --cor:#2557a7; --tinta:#f3f7fe; }
+.crm-group.cli { --cor:#1e7e4a; --tinta:#f2faf5; }
+.crm-group.ident { --cor:#7b8ea4; --tinta:#f6f8fa; }
+.crm-group-h { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:13px 16px; background:var(--cor); color:#fff; }
+.crm-group-h i { font-size:15px; opacity:.9; }
+.crm-group-h .t { font-size:15px; font-weight:800; }
+.crm-group-h .n { background:rgba(255,255,255,.22); border-radius:999px; padding:1px 9px; font-size:12px; font-weight:800; }
+.crm-group-h .d { flex-basis:100%; font-size:12px; opacity:.85; }
+.crm-cols { display:none; }
+/* Cliente: linha tingida com barra na cor do grupo. */
+.crm-cli { border-top:1px solid #e1e8f0; }
+.crm-cli-h { display:flex; align-items:flex-start; gap:8px; padding:12px 14px; background:var(--tinta); border-left:4px solid var(--cor); }
+.crm-cli-nome { font-weight:800; color:var(--navy); font-size:14.5px; line-height:1.3; }
+.crm-cli-nome .emp { font-weight:600; color:#7b8ea4; }
+.crm-cli-sub { font-size:12px; color:#7b8ea4; margin-top:3px; line-height:1.5; }
+.crm-cli-tags { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin-top:6px; }
+.crm-cli-tags .crm-badge { margin:0; }
+/* Obras penduradas no trilho: uma linha na cor do grupo liga o cliente às
+   obras dele e termina na última. É o que responde "essa obra é de quem?". */
+.crm-obras { position:relative; }
+.crm-obra, .crm-mais { position:relative; }
+.crm-obras > .crm-obra::before, .crm-obras > .crm-mais::before { content:''; position:absolute; left:20px; top:0; bottom:0; width:2px; background:var(--cor); opacity:.5; }
+.crm-obras > :last-child::before { bottom:auto; height:22px; }
+.crm-obras > .crm-obra::after { content:''; position:absolute; left:20px; top:21px; width:11px; height:2px; background:var(--cor); opacity:.5; }
+.crm-obra { display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px 8px; padding:11px 14px 11px 40px; border-top:1px solid #eef2f6; }
+.crm-obra.solo { padding-left:14px; }
+.crm-obra .c-addr { flex:1; min-width:0; order:1; font-size:13.5px; font-weight:600; color:var(--navy); overflow-wrap:anywhere; }
 .crm-obra .c-sub { font-size:12px; font-weight:500; color:#7b8ea4; margin-top:2px; }
 .crm-obra .c-data, .crm-obra .c-idade { display:none; }
 .crm-obra .c-act { flex-shrink:0; order:2; }
-.crm-obra .c-addr { order:1; }
+.crm-obra .c-act .row-act-btn { width:34px; height:34px; }
 .crm-obra .c-marco { flex-basis:100%; order:3; display:flex; flex-wrap:wrap; gap:6px; }
 .crm-obra .c-marco:empty { display:none; }
-.crm-obra .c-act .row-act-btn { width:34px; height:34px; }
 .crm-obra .c-extra { flex-basis:100%; order:4; }
+.crm-mais { padding:9px 14px 11px 40px; border-top:1px solid #eef2f6; font-size:12.5px; font-weight:700; color:var(--orange); cursor:pointer; }
 .crm-m { font-size:11.5px; font-weight:800; border-radius:999px; padding:6px 11px; border:none; white-space:nowrap; line-height:1.2; }
 .crm-m .who { font-weight:600; opacity:.85; }
 .crm-m.aberto { background:var(--orange); color:#fff; cursor:pointer; box-shadow:0 2px 8px rgba(232,130,12,.3); }
@@ -435,11 +456,12 @@ tbody tr:hover td { background:#fafbfe; }
   #rowEditModal.crm-full { padding:0; align-items:stretch; }
   #rowEditModal.crm-full .modal-card { width:100%; max-width:none; min-height:100%; max-height:none; border-radius:0; margin:0; overflow:auto; }
 }
-.crm-sug { margin-top:6px; font-size:12px; background:#fff6db; border-radius:8px; padding:8px 10px; color:#6f4a00; line-height:1.5; }
-.crm-sug .crm-mini { margin:6px 6px 0 0; }
+.crm-sug { margin-top:4px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:12px; background:#fff6db; border-radius:8px; padding:7px 10px; color:#6f4a00; line-height:1.45; }
+.crm-sug-b { display:flex; flex-wrap:wrap; gap:6px; }
+.crm-sug .crm-mini { padding:5px 10px; font-size:11.5px; }
+.crm-m.data { background:#fff3d6; color:#8a5a00; cursor:pointer; }
 .crm-mini { border:1px solid #dde7f1; background:#fff; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:700; color:var(--navy); cursor:pointer; }
 .crm-mini.pri { background:var(--orange); border-color:var(--orange); color:#fff; }
-.crm-mais { padding:8px 0 10px 14px; font-size:12.5px; font-weight:700; color:var(--orange); cursor:pointer; }
 .crm-vazio { padding:26px 12px; text-align:center; color:#7b8ea4; font-size:13px; }
 .crm-pick { display:flex; flex-direction:column; gap:6px; max-height:320px; overflow:auto; margin-top:8px; }
 .crm-pick-opt { text-align:left; border:1px solid #dde7f1; background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:13px; color:var(--navy); }
@@ -450,13 +472,17 @@ tbody tr:hover td { background:#fafbfe; }
 .crm-menu button i { color:var(--orange); width:18px; text-align:center; }
 .crm-menu button small { display:block; font-weight:500; color:#7b8ea4; font-size:12px; margin-top:2px; }
 @media (min-width:900px) {
-  .crm-cols { display:grid; grid-template-columns:minmax(220px,1fr) 100px 130px minmax(170px,1fr) 44px; gap:10px; padding:10px 0 6px 14px; font-size:11px; font-weight:800; color:#9aabbd; text-transform:uppercase; letter-spacing:.06em; }
-  .crm-obra { display:grid; grid-template-columns:minmax(220px,1fr) 100px 130px minmax(170px,1fr) 44px; gap:4px 10px; align-items:center; }
+  .crm-group-h { padding:12px 18px; }
+  .crm-group-h .d { flex-basis:auto; margin-left:auto; }
+  .crm-cols { display:grid; grid-template-columns:minmax(220px,1fr) 100px 120px minmax(190px,1.1fr) 40px; gap:10px; padding:8px 14px 8px 40px; background:#fafcfe; border-bottom:1px solid #e1e8f0; font-size:10.5px; font-weight:800; color:#9aabbd; text-transform:uppercase; letter-spacing:.07em; }
+  .crm-cols.solo { padding-left:14px; }
+  .crm-cols + .crm-cli { border-top:none; }
+  .crm-obra { display:grid; grid-template-columns:minmax(220px,1fr) 100px 120px minmax(190px,1.1fr) 40px; gap:4px 10px; align-items:center; }
+  .crm-obra:hover { background:#fbfcfe; }
   .crm-obra .c-addr { order:1; } .crm-obra .c-data { order:2; } .crm-obra .c-idade { order:3; }
-  .crm-obra .c-marco { order:4; flex-basis:auto; } .crm-obra .c-marco:empty { display:block; } .crm-obra .c-act { order:5; } .crm-obra .c-extra { order:6; }
+  .crm-obra .c-marco { order:4; } .crm-obra .c-marco:empty { display:block; } .crm-obra .c-act { order:5; } .crm-obra .c-extra { order:6; grid-column:1 / -1; }
   .crm-obra .c-sub-m { display:none; }
   .crm-obra .c-data, .crm-obra .c-idade { display:block; font-size:12.5px; color:#5a7088; }
-  .crm-obra .c-extra { grid-column:1 / -1; }
 }
 
 @media print {
@@ -4570,12 +4596,20 @@ function renderCRMLista() {
     `<button class="crm-chip${CRM_FILTRO === k ? ' on' : ''}" onclick="crmSetFiltro('${k}')">${l}<span class="n">${n}</span></button>`).join('');
 
   const v = crmFiltrar(m, CRM_FILTRO, CRM_BUSCA);
-  const cols = `<div class="crm-cols"><span>Obra</span><span>Concluída</span><span>Tempo</span><span>Marco</span><span></span></div>`;
-  const grupo = (titulo, n, corpo) => `<div class="crm-group"><div class="crm-group-h">${titulo}<span>${n}</span></div>${cols}${corpo}</div>`;
+  // Cada grupo é um painel com faixa na cor do tipo (CSS: .crm-group.emp/.cli/.ident).
+  const GRUPOS = {
+    emp: { t: 'Empreiteiros', i: 'fa-helmet-safety', d: 'Contratam a NJR para obras dos clientes deles' },
+    cli: { t: 'Clientes', i: 'fa-house', d: 'Donos do imóvel' },
+    ident: { t: 'A identificar', i: 'fa-circle-question', d: 'Obras sem cliente — atribua um para elas entrarem no CRM' },
+  };
+  const grupo = (k, n, corpo) => `<section class="crm-group ${k}">
+    <div class="crm-group-h"><i class="fas ${GRUPOS[k].i}"></i><span class="t">${GRUPOS[k].t}</span><span class="n">${n}</span><span class="d">${GRUPOS[k].d}</span></div>
+    <div class="crm-cols${k === 'ident' ? ' solo' : ''}"><span>Obra</span><span>Concluída</span><span>Tempo</span><span>Marco</span><span></span></div>
+    ${corpo}</section>`;
   let html = '';
-  if (v.empreiteiros.length) html += grupo('Empreiteiros', v.empreiteiros.length, v.empreiteiros.map(crmFichaHTML).join(''));
-  if (v.clientes.length) html += grupo('Clientes', v.clientes.length, v.clientes.map(crmFichaHTML).join(''));
-  if (v.aIdentificar.length) html += grupo('A identificar', v.aIdentificar.length, v.aIdentificar.map(crmIdentHTML).join(''));
+  if (v.empreiteiros.length) html += grupo('emp', v.empreiteiros.length, v.empreiteiros.map(crmFichaHTML).join(''));
+  if (v.clientes.length) html += grupo('cli', v.clientes.length, v.clientes.map(crmFichaHTML).join(''));
+  if (v.aIdentificar.length) html += grupo('ident', v.aIdentificar.length, v.aIdentificar.map(crmIdentHTML).join(''));
   if (!html) {
     const semFicha = !m.fichas.length && m.aIdentificar.length;
     html = `<div class="crm-vazio"><i class="fas fa-address-book" style="font-size:28px;opacity:.4"></i><br><br>`
@@ -4602,25 +4636,29 @@ function crmFichaHTML(f) {
   const escondidas = CRM_FILTRO === 'datas' ? 0 : f.obras.length - obras.length;
   const sub = [f.fone ? crmFmtFone(f.fone) : 'sem telefone', f.canal, f.obras.length + ' obra' + (f.obras.length === 1 ? '' : 's')]
     .filter(Boolean).join(' · ');
-  const conf = f.aConfirmar
-    ? `<span class="crm-badge conf">a confirmar · ${f.origem === 'Inferido' ? 'agrupado só pelo nome' : 'identificado pelo telefone'}</span>`
-      + ` <button class="crm-link" onclick="crmConfirmar('${esc(f.id)}')">Confirmar</button>` : '';
-  const nc = f.naoContatar ? '<span class="crm-badge dup"><i class="fas fa-ban"></i> não contatar</span>' : '';
-  const dup = f.dupes.map(d => `<div><span class="crm-badge dup">possível duplicata de ${escH(d.nome)}</span>`
-    + ` <button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','${esc(d.id)}')">Juntar</button></div>`).join('');
+  // o grupo já diz o tipo; o selo só aparece quando falta o tipo
+  const tags = [];
+  if (f.tipo !== 'Empreiteiro' && f.tipo !== 'Cliente') tags.push(crmTipoBadge(f.tipo));
+  if (f.naoContatar) tags.push('<span class="crm-badge dup"><i class="fas fa-ban"></i> não contatar</span>');
+  if (f.aConfirmar) tags.push(`<span class="crm-badge conf">a confirmar${f.origem === 'Inferido' ? ' · agrupado só pelo nome' : ''}</span>`
+    + `<button class="crm-link" onclick="crmConfirmar('${esc(f.id)}')">Confirmar</button>`);
+  f.dupes.forEach(d => tags.push(`<span class="crm-badge dup">possível duplicata de ${escH(d.nome)}</span>`
+    + `<button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','${esc(d.id)}')">Juntar</button>`));
+  const menos = CRM_ABERTO[f.id] && !CRM_BUSCA && CRM_FILTRO !== 'datas' && (CRM_FILTRO === 'abertos' || f.obras.length > CRM_MAX_OBRAS);
+  const linhas = obras.map(o => crmObraHTML(o, f)).join('')
+    + (!f.obras.length ? '<div class="crm-obra"><div class="c-addr" style="color:#7b8ea4;font-weight:500">nenhuma obra vinculada</div></div>' : '')
+    + (escondidas > 0 ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">ver ${CRM_FILTRO === 'abertos' ? 'todas as ' + f.obras.length + ' obras' : 'as outras ' + escondidas} ▾</div>` : '')
+    + (menos ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">mostrar menos ▴</div>` : '');
   return `<div class="crm-cli">
     <div class="crm-cli-h">
-      <div style="min-width:0">
+      <div style="min-width:0;flex:1">
         <div class="crm-cli-nome">${escH(f.nome)}${f.empresa ? ' <span class="emp">· ' + escH(f.empresa) + '</span>' : ''}</div>
         <div class="crm-cli-sub">${escH(sub)}</div>
-        <div>${crmTipoBadge(f.tipo)}${nc}${conf}</div>${dup}
+        ${tags.length ? '<div class="crm-cli-tags">' + tags.join('') + '</div>' : ''}
       </div>
       <div class="crm-acts"><button class="row-act-btn edit" title="Editar ficha" onclick="openCrmCliente('${esc(f.id)}')"><i class="fas fa-pen"></i></button></div>
     </div>
-    ${obras.map(o => crmObraHTML(o, f)).join('')}
-    ${!f.obras.length ? '<div class="crm-obra"><div class="c-addr" style="color:#7b8ea4;font-weight:500">nenhuma obra vinculada</div></div>' : ''}
-    ${escondidas > 0 ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">ver ${CRM_FILTRO === 'abertos' ? 'todas as ' + f.obras.length + ' obras' : 'as outras ' + escondidas} ▾</div>` : ''}
-    ${CRM_ABERTO[f.id] && !CRM_BUSCA && CRM_FILTRO !== 'datas' && (CRM_FILTRO === 'abertos' || f.obras.length > CRM_MAX_OBRAS) ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">mostrar menos ▴</div>` : ''}
+    <div class="crm-obras">${linhas}</div>
   </div>`;
 }
 
@@ -4630,17 +4668,28 @@ function crmDataTxt(o) {
   return fmtDay(o.conclusao) + (o.sugestao && o.sugestao.tipo === 'sugerida' ? '*' : '');
 }
 
+// Data de conclusão suspeita. A decisão completa (usar / manter / outra) só
+// aparece no filtro "Datas a conferir", que é onde esse trabalho é feito: nas
+// outras visões eram 39 caixas amarelas cobrindo a lista. Lá fora fica só o
+// selo "conferir data", que abre a mesma decisão.
 function crmSugHTML(o) {
   if (!o.sugestao) return '';
   const a = esc(o.addr);
+  if (CRM_FILTRO !== 'datas') return '';
   if (o.sugestao.tipo === 'sugerida') {
-    return `<div class="crm-sug"><i class="fas fa-calendar-day"></i> Fechada no sistema em <strong>${fmtDay(o.dtFinal)}</strong>,
-      mas o último dia de trabalho foi <strong>${fmtDay(o.sugestao.data)}</strong>. Até você decidir, o tempo é contado a partir do último trabalho.<br>
-      <button class="crm-mini pri" onclick="crmUsarData('${a}','${o.sugestao.data}')">Usar ${fmtDay(o.sugestao.data)}</button><button class="crm-mini" onclick="crmManterData('${a}')">Manter ${fmtDay(o.dtFinal)}</button><button class="crm-mini" onclick="openCrmData('${a}')">Outra data</button></div>`;
+    return `<div class="crm-sug"><span class="crm-sug-t"><i class="fas fa-calendar-day"></i> Fechada no sistema em <strong>${fmtDay(o.dtFinal)}</strong>;
+      último dia de trabalho em <strong>${fmtDay(o.sugestao.data)}</strong>. Qual vale?</span>
+      <span class="crm-sug-b"><button class="crm-mini pri" onclick="crmUsarData('${a}','${o.sugestao.data}')">Usar ${fmtDay(o.sugestao.data)}</button><button class="crm-mini" onclick="crmManterData('${a}')">Manter ${fmtDay(o.dtFinal)}</button><button class="crm-mini" onclick="openCrmData('${a}')">Outra data</button></span></div>`;
   }
-  return `<div class="crm-sug"><i class="fas fa-calendar-day"></i> Conclusão <strong>${fmtDay(o.dtFinal)}</strong> a confirmar:
-    várias obras foram fechadas nesse mesmo dia e esta não tem horas lançadas para comparar.<br>
-    <button class="crm-mini pri" onclick="openCrmData('${a}')">Informar a data</button><button class="crm-mini" onclick="crmManterData('${a}')">Está certa</button></div>`;
+  return `<div class="crm-sug"><span class="crm-sug-t"><i class="fas fa-calendar-day"></i> Conclusão <strong>${fmtDay(o.dtFinal)}</strong> a confirmar:
+    várias obras foram fechadas nesse dia e esta não tem horas lançadas.</span>
+    <span class="crm-sug-b"><button class="crm-mini pri" onclick="openCrmData('${a}')">Informar a data</button><button class="crm-mini" onclick="crmManterData('${a}')">Está certa</button></span></div>`;
+}
+// selo pequeno para as visões que não são "Datas a conferir"
+function crmSeloData(o) {
+  return o.sugestao && CRM_FILTRO !== 'datas'
+    ? `<button class="crm-m data" onclick="openCrmData('${esc(o.addr)}')" title="A data de conclusão desta obra parece errada"><i class="fas fa-calendar-day"></i> conferir data</button>`
+    : '';
 }
 
 // Selos de marco de uma obra: todos os abertos (clicáveis), o último já tratado
@@ -4676,7 +4725,7 @@ function crmObraHTML(o, f) {
     <div class="c-addr">${escH(o.addr)}<div class="c-sub c-sub-m">${escH(sub)}</div></div>
     <div class="c-data">${escH(crmDataTxt(o))}</div>
     <div class="c-idade">${escH(o.idade || '')}</div>
-    <div class="c-marco">${marcos}</div>
+    <div class="c-marco">${crmSeloData(o)}${marcos}</div>
     <div class="c-act"><button class="row-act-btn edit" title="Ações da obra" onclick="openCrmObraMenu('${esc(o.addr)}')"><i class="fas fa-ellipsis"></i></button></div>
     ${sug ? '<div class="c-extra">' + sug + '</div>' : ''}
   </div>`;
@@ -4687,10 +4736,11 @@ function crmIdentHTML(o) {
   const sub = [nome ? 'na planilha: "' + nome + '"' : 'sem nome de cliente',
     o.finalizada ? (o.conclusao ? 'concluída ' + crmDataTxt(o) : 'concluída') : 'em andamento', o.idade].filter(Boolean).join(' · ');
   const sug = crmSugHTML(o);
-  return `<div class="crm-obra">
+  return `<div class="crm-obra solo">
     <div class="c-addr">${escH(o.addr)}<div class="c-sub c-sub-m">${escH(sub)}</div></div>
     <div class="c-data">${escH(crmDataTxt(o))}</div>
     <div class="c-idade">${escH(o.idade || '')}</div>
+    <div class="c-marco">${crmSeloData(o)}</div>
     <div class="c-act"><button class="row-act-btn edit" title="Atribuir cliente" onclick="openCrmVincular('${esc(o.addr)}')"><i class="fas fa-user-plus"></i></button></div>
     ${sug ? '<div class="c-extra">' + sug + '</div>' : ''}
   </div>`;
@@ -4856,7 +4906,7 @@ function openCrmData(addr) {
 
 // Link "Escrever avaliação" do Google da NJR. Vazio → a mensagem de 30 dias
 // sai sem o pedido de avaliação (docs/2026-10-14-crm-design.md, "Pendente").
-const CRM_LINK_AVALIACAO = '';
+const CRM_LINK_AVALIACAO = 'https://g.page/r/CUjVp113kQ97EAE/review';
 
 function crmAchaObra(addr) {
   const m = CRM_M || crmDados();
