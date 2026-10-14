@@ -358,6 +358,40 @@ async function updateRowCells(title, rowNum, headers, updates) {
   });
 }
 
+// Várias linhas numa chamada só. A montagem do CRM cria dezenas de fichas: uma
+// chamada por linha estouraria a cota de escrita do Sheets (60/min).
+async function appendRows(title, rows) {
+  if (!rows || !rows.length) return;
+  await sheetsApi().spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: q(title),
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: rows },
+  });
+}
+// Atualiza células de muitas linhas numa chamada só.
+// list = [{ rowNum, updates: [{ key, val, forceText?, fuzzy? }] }]
+async function batchUpdateRows(title, headers, list) {
+  const data = [];
+  for (const item of list || []) {
+    for (const u of item.updates || []) {
+      const idx = u.fuzzy
+        ? headers.findIndex(h => h.toLowerCase().includes(u.key.toLowerCase()))
+        : headers.indexOf(u.key);
+      if (idx < 0) continue;
+      let v = u.val;
+      if (u.forceText && v !== '' && v !== null && v !== undefined) v = "'" + String(v);
+      data.push({ range: `${q(title)}!${colLetter(idx)}${item.rowNum}`, values: [[v]] });
+    }
+  }
+  if (!data.length) return 0;
+  await sheetsApi().spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: 'USER_ENTERED', data },
+  });
+  return data.length;
+}
 async function deleteRow(sheetId, rowNum) {
   await sheetsApi().spreadsheets.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
@@ -389,5 +423,5 @@ module.exports = {
   sheetsApi, driveApi, gmailApi, sendEmail, nowFriendly,
   readAll, readEmpData, readEmpCredentials, readWorkbook, findValues, rowsToObjects,
   loadSheetIndex, findSheetEntry, createSheet, nowInTz, colLetter, buildRow,
-  appendRow, updateCell, updateRowCells, deleteRow, readColumn, normStr, q,
+  appendRow, appendRows, updateCell, updateRowCells, batchUpdateRows, deleteRow, readColumn, normStr, q,
 };

@@ -4,6 +4,7 @@
 // ============================================================
 
 const G = require('./_google');
+const CRM = require('./_crm');
 
 const KW = {
   obras:   ['nome do cliente', 'orçamento'],
@@ -21,9 +22,11 @@ const round2 = v => Math.round(parseFloat(v) * 100) / 100;
 
 // ── OBRAS ─────────────────────────────────────────────────
 async function addObra(params) {
-  const { index } = await G.loadSheetIndex();
-  const sh = G.findSheetEntry(index, KW.obras);
-  if (!sh) return { error: 'Aba "Cadastro de Obras" não encontrada. Crie a aba com os cabeçalhos corretos.' };
+  // As abas vêm do CRM: ele garante as colunas novas (ID Cliente etc.) antes de
+  // montar a linha, e o cabeçalho usado aqui já as enxerga.
+  let sh, shC;
+  try { ({ shO: sh, shC } = await CRM.abasCrm()); }
+  catch (e) { return { error: e.message }; }
   const addr = (params.addr || '').trim();
   if (!addr) return { error: 'Endereço obrigatório.' };
 
@@ -33,7 +36,18 @@ async function addObra(params) {
     return { error: 'Já existe uma obra cadastrada para esse endereço.' };
   }
 
+  // Vínculo com a ficha do cliente: existente (clienteId) ou nova (clienteTipo).
+  // Obra antiga criada sem nenhum dos dois continua funcionando — a montagem do
+  // CRM a vincula depois.
+  let idCliente = String(params.clienteId || '').trim();
+  if (!idCliente && params.clienteTipo) {
+    if (!CRM.TIPOS.includes(params.clienteTipo)) return { error: 'Escolha se o cliente é Empreiteiro ou Cliente.' };
+    idCliente = await CRM.fichaPorNomeOuCriar(shC, {
+      nome: params.cliente, telefone: params.contato, tipo: params.clienteTipo });
+  }
+
   const row = G.buildRow(sh.headers, [
+    { key: 'ID Cliente', val: idCliente },
     { key: 'endere', fuzzy: true, val: addr },
     { key: 'Nome do Cliente', val: params.cliente || '' },
     { key: 'Contato', val: params.contato || '', forceText: true },
@@ -291,25 +305,30 @@ async function deleteSubcontrato(params) {
 }
 
 // ── CLIENTES ──────────────────────────────────────────────
+// Toda ficha nasce com ID, tipo e origem (CRM). Duplicata pelo nome é recusada —
+// era assim que o mesmo cliente acabava com várias grafias.
 async function addCliente(params) {
-  const { index } = await G.loadSheetIndex();
-  let sh = G.findSheetEntry(index, KW.clientes);
-  if (!sh) return { error: 'Aba "Cadastro de Clientes" não encontrada. Crie a aba com os cabeçalhos corretos.' };
   const nome = (params.nome || '').trim();
   if (!nome) return { error: 'Nome do cliente é obrigatório.' };
   const contato = (params.contato || '').trim();
   if (!contato) return { error: 'Contato do cliente é obrigatório.' };
+  if (!CRM.TIPOS.includes(params.tipo)) return { error: 'Escolha se o cliente é Empreiteiro ou Cliente.' };
 
-  const row = G.buildRow(sh.headers, [
-    { key: 'Carimbo de data/hora', val: G.nowInTz() },
-    { key: 'Nome do Cliente', val: nome },
-    { key: 'Contato do Cliente', val: contato, forceText: true },
-    { key: 'Empresa do Cliente', val: params.empresa || '' },
-    { key: 'Email do Cliente', val: params.email || '' },
-    { key: 'Observação', val: params.obs || '' },
-  ]);
-  await G.appendRow(sh.title, row);
-  return { ok: true };
+  let shC;
+  try { ({ shC } = await CRM.abasCrm()); }
+  catch (e) { return { error: e.message }; }
+
+  const nomes = await G.readColumn(shC.title, shC.headers.indexOf('Nome do Cliente'));
+  const existe = nomes.slice(1).find(n => CRM.norm(n) && CRM.norm(n) === CRM.norm(nome));
+  if (existe) return { error: 'Já existe um cliente cadastrado como "' + String(existe).trim() + '".' };
+
+  const fone = CRM.foneDe(contato);
+  const id = await CRM.criarFicha(shC, {
+    nome, telefone: fone ? CRM.fmtFone(fone) : contato,
+    empresa: params.empresa, email: params.email, obs: params.obs,
+    tipo: params.tipo, origem: 'Nilmar',
+  });
+  return { ok: true, id };
 }
 
 // ── REGISTRO DE HORAS (app de funcionário) ────────────────

@@ -70,10 +70,11 @@ const run = new Function(...nomes, '__export', code +
   ' renderClientesTable, renderInsurance, renderUsuarios, renderCloseForm, renderFinObraDetail,' +
   ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
   ' dwToggleServ, openDwLanc, openDwServ, dwToggleCli, openDwCli,' +
+  ' renderCRM, crmSetFiltro, crmToggle, openCrmCliente, openCrmJuntar, openCrmObraMenu, openCrmVincular, openCrmData, f3AtualizaTipo,' +
   ' setDB:v=>{DB=v}, getPROC:()=>PROC,' +
   ' set:(k,v)=>{ if(k==="SEL_ADDR")SEL_ADDR=v; if(k==="SEL_FIN_ADDR")SEL_FIN_ADDR=v;' +
   ' if(k==="SEL_ADDR_T4")SEL_ADDR_T4=v; if(k==="DW_DATA")DW_DATA=v; if(k==="DW_MES")DW_MES=v;' +
-  ' if(k==="DW_CLI_MES")DW_CLI_MES=v; if(k==="OBRAS_SUB")OBRAS_SUB=v; } });');
+  ' if(k==="DW_CLI_MES")DW_CLI_MES=v; if(k==="OBRAS_SUB")OBRAS_SUB=v; if(k==="CRM_BUSCA")CRM_BUSCA=v; } });');
 
 const api = {};
 run(...nomes.map(k => sandbox[k]), o => Object.assign(api, o));
@@ -85,10 +86,14 @@ const DB = {
     { _row: 2, 'Endereço': '4 Tara rd, Essex', 'Nome do Cliente': 'Andrew B', 'Contato': '555-0100',
       'Escopo': 'Banheiro completo', 'Orçamento': 6240, 'Data Início Prevista': '2026-07-01',
       'Data Fim Prevista': '2026-08-01', 'Link Fotos Antes': 'http://drive/antes', 'Finalizada': 'Não',
-      'Data Finalização': '', 'Link Fotos Depois': '' },
+      'Data Finalização': '', 'Link Fotos Depois': '', 'ID Cliente': 'C001' },
     { _row: 3, 'Endereço': '66 Knotty way Belmont NH', 'Nome do Cliente': '', 'Contato': '',
       'Escopo': '', 'Orçamento': '', 'Data Início Prevista': '', 'Data Fim Prevista': '',
       'Link Fotos Antes': '', 'Finalizada': 'Sim', 'Data Finalização': '2026-01-10', 'Link Fotos Depois': '' },
+    // CRM: fechada 41 dias depois do último trabalho → data a conferir
+    { _row: 4, 'Endereço': '9 Weston terrace Wellesley', 'Nome do Cliente': 'Paula Home', 'Contato': '(508) 498-8550',
+      'Escopo': 'Dois pisos', 'Orçamento': 1240, 'Data Início Prevista': '2026-08-03', 'Data Fim Prevista': '2026-08-10',
+      'Link Fotos Antes': '', 'Finalizada': 'Sim', 'Data Finalização': '2026-09-20', 'Link Fotos Depois': '', 'ID Cliente': 'C002' },
   ],
   labor: [
     { _row: 2, 'Carimbo de data/hora': '2026-08-26 18:00:00', 'Endereço da obra': '4 Tara rd, Essex',
@@ -103,6 +108,11 @@ const DB = {
       'Foto do recibo (se aplicável)': '', 'Algum material é necessário para amanhã?': '',
       'Observações / Sugestões (Opcional, para feedback espontâneo)': '', 'Endereço de email': 'l@x.com',
       'Horas tabalhadas': 8 },
+    { _row: 4, 'Carimbo de data/hora': '2026-08-10 18:00:00', 'Endereço da obra': '9 Weston terrace Wellesley',
+      'Nome do funcionário': 'Leandro Venâncio', 'Hora de entrada': '08:00', 'Hora de saída': '12:00',
+      'Comprou materiais hoje?': 'Não', 'Valor total gasto': '', 'Quem pagou?': '', 'Foto do recibo (se aplicável)': '',
+      'Algum material é necessário para amanhã?': '', 'Observações / Sugestões (Opcional, para feedback espontâneo)': '',
+      'Endereço de email': 'l@x.com', 'Horas tabalhadas': 4 },
   ],
   materials: [
     { _row: 2, 'Carimbo de data/hora': '2026-08-26 12:00:00', 'Data da Compra': '2026-08-26',
@@ -126,7 +136,14 @@ const DB = {
   clients: [
     { _row: 2, 'Carimbo de data/hora': '2026-07-01 09:00:00', 'Nome do Cliente': 'Andrew B',
       'Contato do Cliente': '555-0100', 'Empresa do Cliente': 'Cabinet by Design',
-      'Email do Cliente': 'andrew@x.com', 'Observação': '' },
+      'Email do Cliente': 'andrew@x.com', 'Observação': '', 'ID Cliente': 'C001', 'Tipo': 'Empreiteiro', 'Origem': 'Confirmado' },
+    { _row: 3, 'Carimbo de data/hora': '2026-09-01 09:00:00', 'Nome do Cliente': 'Paula Home',
+      'Contato do Cliente': '(508) 498-8550', 'Empresa do Cliente': '', 'Email do Cliente': '', 'Observação': '',
+      'ID Cliente': 'C002', 'Tipo': 'Cliente', 'Origem': 'Nilmar', 'Canal Preferido': 'SMS' },
+    // sem telefone e com o mesmo primeiro nome forte → possível duplicata do Andrew B
+    { _row: 4, 'Carimbo de data/hora': '2026-09-02 09:00:00', 'Nome do Cliente': 'Andrew Cabinet',
+      'Contato do Cliente': '', 'Empresa do Cliente': '', 'Email do Cliente': '', 'Observação': '',
+      'ID Cliente': 'C003', 'Tipo': 'Empreiteiro', 'Origem': 'Inferido' },
   ],
   ajustes: [
     { _row: 2, 'Carimbo de data/hora': '2026-08-26 20:00:00', 'Nome do funcionário': 'João La Pastina',
@@ -321,6 +338,65 @@ roda('renomear cliente avisa quantos lançamentos serão alterados', () => {
   return { nome: els['dwc_nome'].value, nota: els['dwcNote'].textContent };
 }, v => (v.nome === 'Maria Silva' && /2 lançamentos/.test(v.nota) && !/undefined/.test(v.nota))
   || 'aviso do renomear veio errado: ' + JSON.stringify(v));
+
+// ── CRM (aba 9) ──────────────────────────────────────────
+const crmLista = () => (els['crmLista'] ? els['crmLista'].innerHTML : '');
+roda('CRM — a aba monta com os três grupos', () => { api.set('CRM_BUSCA', ''); api.crmSetFiltro('todos'); api.renderCRM(); }, () => {
+  const h = crmLista();
+  const r = semLixo('crmLista'); if (r !== true) return r;
+  for (const t of ['Empreiteiros', 'Clientes', 'A identificar', 'Andrew B', 'Paula Home', '66 Knotty way'])
+    if (!h.includes(t)) return 'faltou "' + t + '" na lista';
+  return true;
+});
+roda('CRM — busca fica no topo, montada uma vez só', () => api.renderCRM(), () =>
+  (String(els['t9body'].innerHTML).match(/id="crmBusca"/g) || []).length === 1 || 'busca duplicada ou ausente');
+roda('CRM — chips com as contagens', () => api.renderCRM(), () => {
+  const h = els['crmChips'] ? els['crmChips'].innerHTML : '';
+  return (h.includes('A confirmar<span class="n">2<') && h.includes('A identificar<span class="n">1<'))
+    || 'contagens erradas: ' + h.replace(/<[^>]+>/g, ' ');
+});
+roda('CRM — data suspeita aparece com as três saídas', () => api.renderCRM(), () => {
+  const h = crmLista();
+  return (h.includes('Usar 10/08/2026') && h.includes('Manter 20/09/2026') && h.includes('Outra data')) || 'sugestão de data não apareceu';
+});
+roda('CRM — possível duplicata aparece com "Juntar"', () => api.renderCRM(), () =>
+  (crmLista().includes('possível duplicata de Andrew Cabinet') && crmLista().includes('Juntar')) || 'duplicata não sinalizada');
+roda('CRM — ficha inferida pede confirmação', () => api.renderCRM(), () =>
+  (crmLista().includes('agrupado só pelo nome') && crmLista().includes('Confirmar')) || 'selo "a confirmar" ausente');
+['confirmar', 'datas', 'identificar', 'todos'].forEach(f =>
+  roda('CRM — filtro "' + f + '"', () => api.crmSetFiltro(f), () => semLixo('crmLista')));
+roda('CRM — busca sem resultado avisa', () => { api.set('CRM_BUSCA', 'zzzz'); api.crmSetFiltro('todos'); }, () => {
+  api.set('CRM_BUSCA', '');
+  return crmLista().includes('Nada encontrado') || 'busca vazia sem aviso';
+});
+roda('CRM — ver todas / mostrar menos', () => { api.crmToggle('C001'); api.crmToggle('C001'); }, () => semLixo('crmLista'));
+
+const modal = () => (els['rowEditModalBody'] ? els['rowEditModalBody'].innerHTML : '');
+roda('CRM — modal da ficha (editar)', () => api.openCrmCliente('C001'), () =>
+  (semLixo('rowEditModalBody') === true && modal().includes('Andrew B') && modal().includes('Juntar com outra ficha')) || 'modal de edição incompleto');
+roda('CRM — modal da ficha (nova)', () => api.openCrmCliente(null), () => semLixo('rowEditModalBody'));
+// "Qual ficha fica?" é escrito num elemento próprio dentro do modal
+roda('CRM — modal de juntar pré-escolhe a ficha com telefone', () => api.openCrmJuntar('C003', 'C001'), () => {
+  const r = els['crmJuntarResumo'] ? els['crmJuntarResumo'].innerHTML : '';
+  if (semLixo('rowEditModalBody') !== true) return semLixo('rowEditModalBody');
+  if (!r.includes('Qual ficha fica')) return 'escolha da ficha que fica não apareceu';
+  // a marcada tem que ser a do Andrew B (C001, com telefone), não a C003 sem telefone
+  const marcada = /checked[^>]*>\s*Fica <strong>([^<]+)</.exec(r);
+  return (marcada && marcada[1] === 'Andrew B') || 'pré-escolheu a ficha errada: ' + (marcada && marcada[1]);
+});
+roda('CRM — menu da obra esconde o Salvar', () => api.openCrmObraMenu('4 Tara rd, Essex'), () =>
+  (els['rowEditSaveBtn'].style.display === 'none' && modal().includes('Mover para outro cliente')) || 'menu com botão Salvar visível');
+roda('CRM — atribuir cliente a obra sem ficha', () => api.openCrmVincular('66 Knotty way Belmont NH'), () =>
+  (els['rowEditSaveBtn'].style.display === '' && modal().includes('Criar ficha nova')) || 'Salvar continuou escondido ou faltou "criar ficha"');
+roda('CRM — data de conclusão já vem com a sugestão', () => api.openCrmData('9 Weston terrace Wellesley'), () =>
+  modal().includes('value="2026-08-10"') || 'a data sugerida não veio preenchida');
+
+roda('formulário de obra — cliente existente mostra o tipo', () => {
+  els['f3Cliente'] = Object.assign(els['f3Cliente'] || {}, { value: 'andrew  b' }); api.f3AtualizaTipo();
+}, () => (els['f3TipoWrap'].style.display === 'none' && /Empreiteiro/.test(els['f3TipoInfo'].innerHTML)) || 'tipo da ficha não apareceu');
+roda('formulário de obra — cliente novo pede o tipo', () => {
+  els['f3Cliente'].value = 'Cliente Inédito'; api.f3AtualizaTipo();
+}, () => els['f3TipoWrap'].style.display === '' || 'campo de tipo não apareceu');
 
 console.log(fails ? '\n' + fails + ' falha(s).' : '\nrender ok.');
 process.exit(fails ? 1 : 0);

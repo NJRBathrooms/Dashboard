@@ -377,6 +377,59 @@ tbody tr:hover td { background:#fafbfe; }
 .inv-send { background:linear-gradient(135deg,var(--orange),#f59c2a); color:#0d2137; margin-left:auto; }
 .inv-btn:disabled { opacity:.7; cursor:not-allowed; }
 .invoice-scroll { flex:1; overflow-y:auto; padding:24px 16px 60px; }
+/* ── CRM (aba 9) — lista, celular primeiro ───────────────── */
+.crm-wrap { max-width:1100px; margin:0 auto; }
+.crm-top { display:flex; flex-direction:column; gap:10px; margin-bottom:6px; }
+.crm-chips { display:flex; gap:6px; flex-wrap:wrap; }
+.crm-chip { border:1px solid #dde7f1; background:#fff; border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; color:#5a7088; cursor:pointer; white-space:nowrap; }
+.crm-chip.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+.crm-chip .n { opacity:.7; margin-left:4px; font-weight:800; }
+.crm-group { margin-top:20px; }
+.crm-group-h { display:flex; align-items:baseline; gap:8px; font-size:11.5px; font-weight:800; letter-spacing:.08em; color:#7b8ea4; text-transform:uppercase; padding:0 2px 7px; border-bottom:2px solid #e4ecf4; }
+.crm-cols { display:none; }
+.crm-cli { padding:12px 2px 2px; border-bottom:1px solid #e9eff5; }
+.crm-cli-h { display:flex; align-items:flex-start; gap:8px; }
+.crm-cli-nome { font-weight:800; color:var(--navy); font-size:14.5px; line-height:1.3; }
+.crm-cli-nome .emp { font-weight:600; color:#7b8ea4; }
+.crm-cli-sub { font-size:12px; color:#7b8ea4; margin-top:3px; line-height:1.5; }
+.crm-badge { display:inline-block; font-size:10.5px; font-weight:800; border-radius:6px; padding:2px 7px; margin:2px 4px 0 0; white-space:nowrap; }
+.crm-badge.emp { background:#eaf1ff; color:#2557a7; }
+.crm-badge.cli { background:#e9f7ef; color:#1e7e4a; }
+.crm-badge.conf { background:#fff3d6; color:#8a5a00; }
+.crm-badge.dup { background:#fdecec; color:#b42318; }
+.crm-badge.semtipo { background:#fdecec; color:#b42318; }
+.crm-acts { margin-left:auto; display:flex; gap:4px; flex-shrink:0; }
+.crm-acts .row-act-btn { width:34px; height:34px; }
+.crm-link { background:none; border:none; padding:0; color:var(--orange); font-weight:700; font-size:12px; cursor:pointer; text-decoration:underline; }
+.crm-obra { display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px 8px; padding:9px 0 9px 14px; border-top:1px dashed #e9eff5; }
+.crm-obra .c-addr { flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--navy); overflow-wrap:anywhere; }
+.crm-obra .c-sub { font-size:12px; font-weight:500; color:#7b8ea4; margin-top:2px; }
+.crm-obra .c-data, .crm-obra .c-idade { display:none; }
+.crm-obra .c-act { flex-shrink:0; }
+.crm-obra .c-act .row-act-btn { width:34px; height:34px; }
+.crm-obra .c-extra { flex-basis:100%; }
+.crm-sug { margin-top:6px; font-size:12px; background:#fff6db; border-radius:8px; padding:8px 10px; color:#6f4a00; line-height:1.5; }
+.crm-sug .crm-mini { margin:6px 6px 0 0; }
+.crm-mini { border:1px solid #dde7f1; background:#fff; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:700; color:var(--navy); cursor:pointer; }
+.crm-mini.pri { background:var(--orange); border-color:var(--orange); color:#fff; }
+.crm-mais { padding:8px 0 10px 14px; font-size:12.5px; font-weight:700; color:var(--orange); cursor:pointer; }
+.crm-vazio { padding:26px 12px; text-align:center; color:#7b8ea4; font-size:13px; }
+.crm-pick { display:flex; flex-direction:column; gap:6px; max-height:320px; overflow:auto; margin-top:8px; }
+.crm-pick-opt { text-align:left; border:1px solid #dde7f1; background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:13px; color:var(--navy); }
+.crm-pick-opt.on { border-color:var(--orange); background:#fff6ec; }
+.crm-pick-opt small { color:#7b8ea4; }
+.crm-menu { display:flex; flex-direction:column; gap:8px; }
+.crm-menu button { text-align:left; border:1px solid #dde7f1; background:#fff; border-radius:12px; padding:13px 14px; font-size:14px; font-weight:700; color:var(--navy); cursor:pointer; display:flex; gap:10px; align-items:center; }
+.crm-menu button i { color:var(--orange); width:18px; text-align:center; }
+.crm-menu button small { display:block; font-weight:500; color:#7b8ea4; font-size:12px; margin-top:2px; }
+@media (min-width:900px) {
+  .crm-cols { display:grid; grid-template-columns:minmax(240px,1fr) 110px 150px 44px; gap:10px; padding:10px 0 6px 14px; font-size:11px; font-weight:800; color:#9aabbd; text-transform:uppercase; letter-spacing:.06em; }
+  .crm-obra { display:grid; grid-template-columns:minmax(240px,1fr) 110px 150px 44px; gap:4px 10px; align-items:center; }
+  .crm-obra .c-sub-m { display:none; }
+  .crm-obra .c-data, .crm-obra .c-idade { display:block; font-size:12.5px; color:#5a7088; }
+  .crm-obra .c-extra { grid-column:1 / -1; }
+}
+
 @media print {
   body * { visibility:hidden !important; }
   #invoiceOverlay, #invoiceOverlay * { visibility:visible !important; }
@@ -426,6 +479,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t6btn" onclick="showTab(6)"><i class="fas fa-shield-halved"></i> Insurance &amp; W9</button>
     <button class="tab-btn" id="t7btn" onclick="showTab(7)"><i class="fas fa-users-gear"></i> Usuários</button>
     <button class="tab-btn" id="t8btn" onclick="showTab(8)"><i class="fas fa-trowel-bricks"></i> Drywall</button>
+    <button class="tab-btn" id="t9btn" onclick="showTab(9)"><i class="fas fa-address-book"></i> CRM</button>
     <div id="tabIndicator" class="tab-indicator"></div>
   </div>
 
@@ -502,7 +556,7 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Nome do Cliente <span class="f-req">*</span></label>
           <div style="position:relative">
             <input type="text" id="f3Cliente" class="f-input" placeholder="Pesquisar cliente cadastrado..."
-                   oninput="filterClientes(this.value); toggleClearBtn('clearF3Cliente',this.value)"
+                   oninput="filterClientes(this.value); toggleClearBtn('clearF3Cliente',this.value); f3AtualizaTipo()"
                    onfocus="filterClientes(this.value)" onblur="closeClienteDD()" autocomplete="off"
                    style="padding-left:40px;padding-right:36px">
             <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7b8ea4;pointer-events:none"></i>
@@ -514,6 +568,16 @@ tbody tr:hover td { background:#fafbfe; }
           <label class="f-label">Contato do Cliente <span class="f-req">*</span></label>
           <input type="text" id="f3Contato" class="f-input" placeholder="Preenchido ao selecionar cliente, ou digite">
         </div>
+        <!-- CRM: cliente novo precisa dizer o tipo; cliente existente mostra o da ficha -->
+        <div class="col-12" id="f3TipoWrap" style="display:none">
+          <label class="f-label">Este cliente é <span class="f-req">*</span></label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label class="crm-pick-opt" style="flex:1;min-width:200px;cursor:pointer"><input type="radio" name="f3Tipo" value="Empreiteiro"> <strong>Empreiteiro</strong><br><small>contrata a NJR para obras dos clientes dele</small></label>
+            <label class="crm-pick-opt" style="flex:1;min-width:200px;cursor:pointer"><input type="radio" name="f3Tipo" value="Cliente"> <strong>Cliente</strong><br><small>dono do imóvel</small></label>
+          </div>
+          <small style="color:#7b8ea4">Cliente novo — a ficha dele será criada junto com a obra.</small>
+        </div>
+        <div class="col-12" id="f3TipoInfo" style="display:none;font-size:12.5px;color:#5a7088"></div>
         <div class="col-12">
           <label class="f-label">Descrição do Escopo <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
           <textarea id="f3Escopo" class="f-input" rows="3" placeholder="Resumo do que será feito..."></textarea>
@@ -585,6 +649,14 @@ tbody tr:hover td { background:#fafbfe; }
         <div class="col-md-6">
           <label class="f-label">Contato do Cliente <span class="f-req">*</span></label>
           <input type="text" id="cliContato" class="f-input" placeholder="Telefone (ex: +1 415 000-0000)">
+        </div>
+        <div class="col-md-6">
+          <label class="f-label">Este cliente é <span class="f-req">*</span></label>
+          <select id="cliTipo" class="f-input">
+            <option value="">Selecione...</option>
+            <option value="Empreiteiro">Empreiteiro — contrata a NJR para obras dos clientes dele</option>
+            <option value="Cliente">Cliente — dono do imóvel</option>
+          </select>
         </div>
         <div class="col-md-6">
           <label class="f-label">Empresa do Cliente <small style="text-transform:none;color:#7b8ea4">(opcional)</small></label>
@@ -861,6 +933,11 @@ tbody tr:hover td { background:#fafbfe; }
     <div id="t8body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
   </div>
 
+  <!-- TAB 9: CRM (docs/2026-10-14-crm-design.md) -->
+  <div id="t9page" class="page" style="display:none">
+    <div id="t9body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
+  </div>
+
   </div>
 
   <!-- Edit Row Modal (material / subcontrato) -->
@@ -1131,7 +1208,7 @@ let T1_NEEDS_CHARTS = false;
 // REGISTROS TAB STATE
 let SEL_ADDR_MAT = '', SEL_ADDR_SUB = '', ALL_ADDRS_REG = [];
 // CLIENTES STATE
-let ALL_CLIENTS = [], SEL_CLIENT_NAME = '';
+let ALL_CLIENTS = [], SEL_CLIENT_NAME = '', SEL_CLIENT_ID = '';
 let _matCompURL = '', _subInvURL = '';
 // EDIT MODAL STATE
 let EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
@@ -1172,7 +1249,7 @@ async function runBtn(btn, fn, labelHTML) {
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); renderDrywall(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); renderDrywall(); renderCRM(); }
 
 // ══ TAB 7: USUÁRIOS (funcionários do app de horas) ════════
 function renderUsuarios(){
@@ -1607,12 +1684,14 @@ function errBox(msg) {
 }
 
 // TABS
+// nº de abas do app — usado na ativação e no gesto de deslizar
+const TAB_COUNT = 9;
 let CURRENT_TAB = 1;
 function getPageEl(n) { return document.getElementById('t'+n+'page'); }
 function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
 
 function activateTab(n) {
-  [1,2,3,4,5,6,7,8].forEach(i=>getBtnEl(i).classList.toggle('active', n===i));
+  for (let i=1;i<=TAB_COUNT;i++) getBtnEl(i).classList.toggle('active', n===i);
 }
 // Where the tab-nav should scroll to so button `n` is centered (clamped to valid range)
 function navScrollLeftFor(n) {
@@ -1710,7 +1789,7 @@ window.addEventListener('load', ()=>positionTabIndicator(CURRENT_TAB, false)); /
     navEl = document.querySelector('.tab-nav');
     curN = CURRENT_TAB;
     targetN = curN+dir;
-    if (targetN<1 || targetN>8) { phase='edge'; return; }
+    if (targetN<1 || targetN>TAB_COUNT) { phase='edge'; return; }
     curEl = getPageEl(curN); targetEl = getPageEl(targetN);
     viewW = viewport.offsetWidth || window.innerWidth;
     const curBtn=getBtnEl(curN), targetBtn=getBtnEl(targetN);
@@ -2256,6 +2335,181 @@ async function dwDelete(rowNum) {
   catch(e){ showToast(e.message, true); }
 }
 
+// ══ CRM — CÁLCULO (bloco puro, sem DOM; testado por scripts/test-crm-calc.js) ══
+// Design: docs/2026-10-14-crm-design.md. A identidade do cliente é o ID da ficha
+// (C001…); o telefone é só um atributo dela.
+function crmT(v) { return String(v == null ? '' : v).trim(); }
+function crmNorm(s) {
+  return crmT(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function crmFone(s) { const n = crmT(s).replace(/\D/g, ''); return n.length >= 10 ? n.slice(-10) : ''; }
+function crmFmtFone(f) { return f ? '(' + f.slice(0, 3) + ') ' + f.slice(3, 6) + '-' + f.slice(6) : ''; }
+// 'YYYY-MM-DD' a partir de "2026/04/04 00:00:00", "2026-04-04" ou Date
+function crmIso(v) {
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return '';
+    const p = n => String(n).padStart(2, '0');
+    return v.getFullYear() + '-' + p(v.getMonth() + 1) + '-' + p(v.getDate());
+  }
+  const m = /^(\d{4})[-/](\d{2})[-/](\d{2})/.exec(crmT(v));
+  return m ? m[1] + '-' + m[2] + '-' + m[3] : '';
+}
+function crmUtc(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN; }
+function crmDias(de, ate) { return Math.round((crmUtc(ate) - crmUtc(de)) / 86400000); }
+// meses de calendário completos entre duas datas (17/04 → 16/10 = 5; → 17/10 = 6)
+function crmMeses(de, ate) {
+  const a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(de || ''), b = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ate || '');
+  if (!a || !b) return NaN;
+  let m = (+b[1] - +a[1]) * 12 + (+b[2] - +a[2]);
+  if (+b[3] < +a[3]) m--;
+  return m;
+}
+function crmIdade(iso, hoje) {
+  const d = crmDias(iso, hoje);
+  if (!(d >= 0)) return '';
+  if (d === 0) return 'hoje';
+  const m = crmMeses(iso, hoje);
+  if (m < 1) return d === 1 ? 'há 1 dia' : 'há ' + d + ' dias';
+  if (m < 12) return m === 1 ? 'há 1 mês' : 'há ' + m + ' meses';
+  const a = Math.floor(m / 12), r = m % 12;
+  return 'há ' + a + (a === 1 ? ' ano' : ' anos') + (r ? ' e ' + r + (r === 1 ? ' mês' : ' meses') : '');
+}
+// distância de edição com saída antecipada (só interessa ≤ 1)
+function crmLev(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return 2;
+  const p = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = p[0]; p[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = p[j];
+      p[j] = Math.min(p[j] + 1, p[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return p[b.length];
+}
+
+// Último dia de trabalho por obra. Entrada: [{ addr, dia: 'YYYY-MM-DD' }].
+function crmUltimoTrabalho(registros) {
+  const m = {};
+  (registros || []).forEach(r => {
+    const k = crmNorm(r.addr), d = crmIso(r.dia);
+    if (k && d && (!m[k] || d > m[k])) m[k] = d;
+  });
+  return m;
+}
+
+// Data de conclusão suspeita (obras fechadas em lote, com a data do dia):
+//   - último trabalho mais de 14 dias antes da data → sugere o último trabalho;
+//   - sem horas lançadas e data compartilhada por 5+ obras → pede a data à mão.
+// "Conferida" = o Nilmar já decidiu; a sugestão não volta.
+function crmSugestaoData(obra, ultimo, contagemPorData) {
+  if (!obra.finalizada || obra.conferida || !obra.dtFinal) return null;
+  if (ultimo && crmDias(ultimo, obra.dtFinal) > 14) return { tipo: 'sugerida', data: ultimo };
+  if (!ultimo && (contagemPorData[obra.dtFinal] || 0) >= 5) return { tipo: 'manual' };
+  return null;
+}
+
+// Possíveis duplicatas: só quando ao menos um lado não tem telefone (telefones
+// diferentes = pessoas diferentes) e os nomes compartilham um termo forte:
+//   - termo igual com ≥5 letras ("hubley");
+//   - termo de ≥6 letras com no máximo 1 de diferença ("kadlak"/"kadilak").
+//     Com 5 letras o erro é alto: "stern"/"stein" são sobrenomes diferentes;
+//   - termo de ≥6 letras contido no nome do outro sem espaços ("builtwell" em "Built well - bob").
+// Primeiro nome curto (Eric, Cris, Kate) não dispara.
+function crmDuplicatas(fichas) {
+  const out = {};
+  const toks = f => crmNorm(f.nome).split(' ').filter(x => x.length >= 5);
+  const junto = f => crmNorm(f.nome).replace(/ /g, '');
+  const parecem = (a, b) => {
+    const ta = toks(a), tb = toks(b);
+    if (ta.some(x => tb.some(y => x === y || (x.length >= 6 && y.length >= 6 && crmLev(x, y) <= 1)))) return true;
+    if (ta.some(x => x.length >= 6 && junto(b).includes(x))) return true;
+    if (tb.some(y => y.length >= 6 && junto(a).includes(y))) return true;
+    return false;
+  };
+  for (let i = 0; i < fichas.length; i++) {
+    for (let j = i + 1; j < fichas.length; j++) {
+      const a = fichas[i], b = fichas[j];
+      const mesmoFone = a.fone && b.fone && a.fone === b.fone;
+      if (a.fone && b.fone && !mesmoFone) continue;
+      if (mesmoFone || parecem(a, b)) {
+        (out[a.id] = out[a.id] || []).push({ id: b.id, nome: b.nome });
+        (out[b.id] = out[b.id] || []).push({ id: a.id, nome: a.nome });
+      }
+    }
+  }
+  return out;
+}
+
+// Monta a lista da aba: fichas com suas obras, da obra mais antiga para a mais
+// nova, e as obras sem cliente. Não filtra — quem filtra é crmFiltrar.
+function crmMontar({ clientes, obras, ultimo, hoje }) {
+  const porId = {};
+  const fichas = (clientes || []).filter(c => c.id).map(c => {
+    const f = { ...c, fone: crmFone(c.contato), obras: [] };
+    porId[c.id] = f;
+    return f;
+  });
+  const contagemPorData = {};
+  (obras || []).forEach(o => { if (o.finalizada && o.dtFinal) contagemPorData[o.dtFinal] = (contagemPorData[o.dtFinal] || 0) + 1; });
+
+  const aIdentificar = [];
+  (obras || []).forEach(o => {
+    if (!o.addr) return;
+    const ult = (ultimo || {})[crmNorm(o.addr)] || '';
+    const sugestao = crmSugestaoData(o, ult, contagemPorData);
+    // enquanto o Nilmar não confirma, os marcos usam a data sugerida
+    const conclusao = o.finalizada ? ((sugestao && sugestao.tipo === 'sugerida') ? sugestao.data : o.dtFinal) : '';
+    const item = { ...o, ultimoTrabalho: ult, sugestao, conclusao, idade: conclusao ? crmIdade(conclusao, hoje) : '' };
+    const f = o.idCliente && porId[o.idCliente];
+    if (f) f.obras.push(item); else aIdentificar.push(item);
+  });
+
+  const ordemObra = o => (o.conclusao ? '0' + o.conclusao : '1' + (o.dtInicio || '9999'));
+  fichas.forEach(f => {
+    f.obras.sort((a, b) => ordemObra(a).localeCompare(ordemObra(b)));
+    f.ordem = f.obras.length ? ordemObra(f.obras[0]) : '2';
+  });
+  fichas.sort((a, b) => a.ordem.localeCompare(b.ordem) || crmNorm(a.nome).localeCompare(crmNorm(b.nome)));
+  aIdentificar.sort((a, b) => ordemObra(a).localeCompare(ordemObra(b)));
+
+  const dupes = crmDuplicatas(fichas);
+  fichas.forEach(f => { f.dupes = dupes[f.id] || []; f.aConfirmar = f.origem !== 'Nilmar'; });
+
+  return {
+    fichas,
+    aIdentificar,
+    contagem: {
+      aConfirmar: fichas.filter(f => f.aConfirmar).length,
+      aIdentificar: aIdentificar.length,
+      datas: fichas.reduce((s, f) => s + f.obras.filter(o => o.sugestao).length, 0)
+        + aIdentificar.filter(o => o.sugestao).length,
+    },
+  };
+}
+
+// Filtro + busca sobre o resultado de crmMontar. Devolve os dois grupos já separados.
+function crmFiltrar(m, filtro, busca) {
+  const q = crmNorm(busca), qd = crmT(busca).replace(/\D/g, '');
+  const casa = f => !q || crmNorm(f.nome).includes(q) || crmNorm(f.empresa).includes(q)
+    || (qd.length >= 3 && f.fone.includes(qd)) || f.obras.some(o => crmNorm(o.addr).includes(q));
+  let fichas = m.fichas.filter(casa);
+  if (filtro === 'confirmar') fichas = fichas.filter(f => f.aConfirmar || f.dupes.length);
+  if (filtro === 'datas') fichas = fichas.filter(f => f.obras.some(o => o.sugestao));
+  const ident = (filtro === 'todos' || filtro === 'identificar' || filtro === 'datas')
+    ? m.aIdentificar.filter(o => (!q || crmNorm(o.addr).includes(q) || crmNorm(o.cliente).includes(q))
+      && (filtro !== 'datas' || o.sugestao))
+    : [];
+  return {
+    empreiteiros: filtro === 'identificar' ? [] : fichas.filter(f => f.tipo === 'Empreiteiro'),
+    clientes: filtro === 'identificar' ? [] : fichas.filter(f => f.tipo !== 'Empreiteiro'),
+    aIdentificar: ident,
+  };
+}
+// ══ FIM CRM — CÁLCULO ══
+
 // ══ DESCONTOS PROGRAMADOS — CÁLCULO (bloco puro, sem DOM; testado por scripts/test-desconto-prog.js) ══
 // Parcelamento de dívida do funcionário: a NJR adianta um valor e desconta em N
 // semanas. A tabela é só de consulta — quem lança o desconto no pagamento é o
@@ -2482,13 +2736,23 @@ function processAll() {
     fotosBefore:r['Link Fotos Antes']||'',
     finalizada:String(r['Finalizada']||'').toLowerCase()==='sim',
     dtFinal:r['Data Finalização']||'', fotosAfter:r['Link Fotos Depois']||'',
+    // CRM
+    idCliente:String(r['ID Cliente']||'').trim(),
+    conferida:String(r['Conclusão Conferida']||'').trim().toLowerCase()==='sim',
+    moradorNome:String(r['Morador Nome']||'').trim(), moradorTel:String(r['Morador Telefone']||'').trim(),
+    autorizadoEm:String(r['Autorizado Em']||'').trim(),
   }));
   PROC.clients=(DB.clients||[]).map(r=>({
+    _row:r._row,
     nome:String(r['Nome do Cliente']||'').trim(),
     contato:String(r['Contato do Cliente']||'').trim(),
     empresa:String(r['Empresa do Cliente']||'').trim(),
     email:String(r['Email do Cliente']||'').trim(),
     obs:String(r['Observação']||'').trim(),
+    // CRM
+    id:String(r['ID Cliente']||'').trim(), tipo:String(r['Tipo']||'').trim(),
+    canal:String(r['Canal Preferido']||'').trim(), origem:String(r['Origem']||'').trim(),
+    naoContatar:String(r['Não Contatar']||'').trim().toLowerCase()==='sim',
   })).filter(c=>c.nome);
   // Insurance & W9 — cadastros de compliance enviados pelo formulário público
   PROC.subProfiles=(DB.subProfiles||[]).map(r=>({
@@ -3492,16 +3756,23 @@ async function submitObra() {
   if (!orc)     { showF3Msg('err','Orçamento é obrigatório.'); return; }
   if (!dtIni)   { showF3Msg('err','Data de início é obrigatória.'); return; }
   if (!dtFim)   { showF3Msg('err','Data de finalização é obrigatória.'); return; }
+  // CRM: cliente novo precisa do tipo
+  f3AtualizaTipo();
+  const novoCli=document.getElementById('f3TipoWrap').style.display!=='none';
+  const tipoSel=(document.querySelector('input[name="f3Tipo"]:checked')||{}).value||'';
+  if (novoCli && !tipoSel) { showF3Msg('err','Cliente novo: diga se é Empreiteiro ou Cliente.'); return; }
   const btn=document.getElementById('f3Btn');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
     const res=await apiWrite({action:'addObra',addr,cliente,contato,
       escopo:document.getElementById('f3Escopo').value.trim(),orcamento:orc,dtInicio:dtIni,dtFim,
-      fotosBefore:document.getElementById('f3FotosBefore').value.trim()});
+      fotosBefore:document.getElementById('f3FotosBefore').value.trim(),
+      clienteId:SEL_CLIENT_ID||undefined, clienteTipo:novoCli?tipoSel:undefined});
     showF3Msg('ok','Obra cadastrada com sucesso!');
     ['f3Addr','f3Cliente','f3Contato','f3Escopo','f3Orcamento','f3DtInicio','f3DtFim','f3FotosBefore']
       .forEach(id=>document.getElementById(id).value='');
-    SEL_CLIENT_NAME=''; toggleClearBtn('clearF3Cliente','');
+    document.querySelectorAll('input[name="f3Tipo"]').forEach(r=>{ r.checked=false; });
+    SEL_CLIENT_NAME=''; SEL_CLIENT_ID=''; toggleClearBtn('clearF3Cliente',''); f3AtualizaTipo();
     await loadData();
   } catch(e) { showF3Msg('err',e.message); }
   finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus-circle"></i> Cadastrar Obra'; }
@@ -3786,6 +4057,27 @@ function pickCliente(nome) {
   if (cli) {
     document.getElementById('f3Contato').value=cli.contato;
   }
+  f3AtualizaTipo();
+}
+// CRM: cliente que já tem ficha mostra o tipo dela; cliente novo pede o tipo,
+// e a ficha nasce junto com a obra (docs/2026-10-14-crm-design.md, decisão 1).
+function f3AtualizaTipo() {
+  const inp = document.getElementById('f3Cliente');
+  const nome = (inp && inp.value || '').trim();
+  const cli = nome ? ALL_CLIENTS.find(c => crmNorm(c.nome) === crmNorm(nome)) : null;
+  SEL_CLIENT_ID = cli && cli.id ? cli.id : '';
+  const wrap = document.getElementById('f3TipoWrap'), info = document.getElementById('f3TipoInfo');
+  if (!wrap || !info) return;
+  if (!nome) { wrap.style.display = 'none'; info.style.display = 'none'; return; }
+  if (cli) {
+    wrap.style.display = 'none';
+    info.style.display = '';
+    info.innerHTML = '<i class="fas fa-address-card"></i> Cliente já cadastrado · '
+      + (cli.tipo ? crmTipoBadge(cli.tipo) : 'ainda sem tipo — defina na aba CRM');
+  } else {
+    wrap.style.display = '';
+    info.style.display = 'none';
+  }
 }
 function closeClienteDD() { setTimeout(()=>{ const dd=document.getElementById('f3ClienteDropdown'); if(dd) dd.classList.remove('open'); },160); }
 function clearClienteF3() {
@@ -3794,6 +4086,7 @@ function clearClienteF3() {
   document.getElementById('f3Contato').value='';
   toggleClearBtn('clearF3Cliente','');
   const dd=document.getElementById('f3ClienteDropdown'); if(dd) dd.classList.remove('open');
+  f3AtualizaTipo();
 }
 
 function filterAddrsMat(q) {
@@ -4040,15 +4333,18 @@ async function submitCliente() {
   const email   = document.getElementById('cliEmail').value.trim();
   const obs     = document.getElementById('cliObs').value.trim();
 
+  const tipo    = document.getElementById('cliTipo').value;
+
   if (!nome)    { showCliMsg('err','Nome do cliente é obrigatório.'); return; }
   if (!contato) { showCliMsg('err','Contato do cliente é obrigatório.'); return; }
+  if (!tipo)    { showCliMsg('err','Diga se é Empreiteiro ou Cliente.'); return; }
 
   const btn=document.getElementById('cliBtn');
   btn.disabled=true; btn.innerHTML='<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:#fff"></div> Salvando...';
   try {
-    await apiWrite({action:'addCliente', nome, contato, empresa, email, obs});
+    await apiWrite({action:'addCliente', nome, contato, empresa, email, obs, tipo});
     showCliMsg('ok',`Cliente "${nome}" cadastrado com sucesso!`);
-    ['cliNome','cliContato','cliEmpresa','cliEmail','cliObs'].forEach(id=>document.getElementById(id).value='');
+    ['cliNome','cliContato','cliEmpresa','cliEmail','cliObs','cliTipo'].forEach(id=>document.getElementById(id).value='');
     await loadData(); // refresh so client appears immediately in the search dropdown
   } catch(e) { showCliMsg('err',e.message); }
   finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Cadastrar Cliente'; }
@@ -4059,6 +4355,314 @@ function showCliMsg(type,msg) {
   el.innerHTML=`<i class="fas ${type==='ok'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
   el.style.display='flex';
   if(type==='ok') setTimeout(()=>el.style.display='none',5000);
+}
+
+// ══ TAB 9: CRM ═══════════════════════════════════════════
+// Lista de clientes e obras para o contato pós-obra. Cálculo no bloco puro
+// "CRM — CÁLCULO"; aqui só tela e ações. Design: docs/2026-10-14-crm-design.md
+let CRM_FILTRO = 'todos', CRM_BUSCA = '', CRM_ABERTO = {}, CRM_M = null, CRM_PICK = '';
+const CRM_MAX_OBRAS = 3;   // obras visíveis por cliente antes do "ver as outras"
+
+function crmDados() {
+  const hoje = crmIso(new Date());
+  const ultimo = crmUltimoTrabalho((PROC.labor || []).map(r => ({ addr: r.addr, dia: r.ts ? crmIso(r.ts) : '' })));
+  const obras = (PROC.obras || []).map(o => ({ ...o, dtFinal: crmIso(o.dtFinal), dtInicio: crmIso(o.dtInicio) }));
+  return crmMontar({ clientes: PROC.clients || [], obras, ultimo, hoje });
+}
+
+function renderCRM() {
+  const el = document.getElementById('t9body'); if (!el) return;
+  // o topo (busca) é montado uma vez só: re-render não tira o foco de quem está digitando
+  if (!String(el.innerHTML).includes('id="crmBusca"')) {
+    el.innerHTML = `<div class="crm-wrap">
+      <div class="crm-top">
+        <input id="crmBusca" class="f-input" type="search" placeholder="Buscar cliente, telefone ou endereço"
+          oninput="CRM_BUSCA=this.value; renderCRMLista()" autocomplete="off">
+        <div class="crm-chips" id="crmChips"></div>
+      </div>
+      <div id="crmLista"></div>
+    </div>`;
+  }
+  CRM_M = crmDados();
+  renderCRMLista();
+}
+
+function crmSetFiltro(f) { CRM_FILTRO = f; renderCRMLista(); }
+function crmToggle(id) { CRM_ABERTO[id] = !CRM_ABERTO[id]; renderCRMLista(); }
+
+function renderCRMLista() {
+  if (!CRM_M) CRM_M = crmDados();
+  const m = CRM_M, c = m.contagem;
+  const chips = [
+    ['todos', 'Todos', m.fichas.length],
+    ['confirmar', 'A confirmar', c.aConfirmar],
+    ['datas', 'Datas a conferir', c.datas],
+    ['identificar', 'A identificar', c.aIdentificar],
+  ];
+  const elC = document.getElementById('crmChips');
+  if (elC) elC.innerHTML = chips.map(([k, l, n]) =>
+    `<button class="crm-chip${CRM_FILTRO === k ? ' on' : ''}" onclick="crmSetFiltro('${k}')">${l}<span class="n">${n}</span></button>`).join('');
+
+  const v = crmFiltrar(m, CRM_FILTRO, CRM_BUSCA);
+  const cols = `<div class="crm-cols"><span>Obra</span><span>Concluída</span><span>Tempo</span><span></span></div>`;
+  const grupo = (titulo, n, corpo) => `<div class="crm-group"><div class="crm-group-h">${titulo}<span>${n}</span></div>${cols}${corpo}</div>`;
+  let html = '';
+  if (v.empreiteiros.length) html += grupo('Empreiteiros', v.empreiteiros.length, v.empreiteiros.map(crmFichaHTML).join(''));
+  if (v.clientes.length) html += grupo('Clientes', v.clientes.length, v.clientes.map(crmFichaHTML).join(''));
+  if (v.aIdentificar.length) html += grupo('A identificar', v.aIdentificar.length, v.aIdentificar.map(crmIdentHTML).join(''));
+  if (!html) {
+    const semFicha = !m.fichas.length && m.aIdentificar.length;
+    html = `<div class="crm-vazio"><i class="fas fa-address-book" style="font-size:28px;opacity:.4"></i><br><br>`
+      + (semFicha ? 'As fichas de cliente ainda não foram montadas.'
+        : CRM_BUSCA ? 'Nada encontrado para "' + escH(CRM_BUSCA) + '".' : 'Nada para mostrar neste filtro.') + `</div>`;
+  }
+  const elL = document.getElementById('crmLista');
+  if (elL) elL.innerHTML = html;
+}
+
+function crmTipoBadge(tipo) {
+  if (tipo === 'Empreiteiro') return '<span class="crm-badge emp">Empreiteiro</span>';
+  if (tipo === 'Cliente') return '<span class="crm-badge cli">Cliente</span>';
+  return '<span class="crm-badge semtipo">sem tipo</span>';
+}
+
+function crmFichaHTML(f) {
+  const tudo = !!CRM_ABERTO[f.id] || !!CRM_BUSCA || CRM_FILTRO === 'datas';
+  const lista = CRM_FILTRO === 'datas' ? f.obras.filter(o => o.sugestao) : f.obras;
+  const obras = tudo ? lista : lista.slice(0, CRM_MAX_OBRAS);
+  const resto = lista.length - obras.length;
+  const sub = [f.fone ? crmFmtFone(f.fone) : 'sem telefone', f.canal, f.obras.length + ' obra' + (f.obras.length === 1 ? '' : 's')]
+    .filter(Boolean).join(' · ');
+  const conf = f.aConfirmar
+    ? `<span class="crm-badge conf">a confirmar · ${f.origem === 'Inferido' ? 'agrupado só pelo nome' : 'identificado pelo telefone'}</span>`
+      + ` <button class="crm-link" onclick="crmConfirmar('${esc(f.id)}')">Confirmar</button>` : '';
+  const dup = f.dupes.map(d => `<div><span class="crm-badge dup">possível duplicata de ${escH(d.nome)}</span>`
+    + ` <button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','${esc(d.id)}')">Juntar</button></div>`).join('');
+  return `<div class="crm-cli">
+    <div class="crm-cli-h">
+      <div style="min-width:0">
+        <div class="crm-cli-nome">${escH(f.nome)}${f.empresa ? ' <span class="emp">· ' + escH(f.empresa) + '</span>' : ''}</div>
+        <div class="crm-cli-sub">${escH(sub)}</div>
+        <div>${crmTipoBadge(f.tipo)}${conf}</div>${dup}
+      </div>
+      <div class="crm-acts"><button class="row-act-btn edit" title="Editar ficha" onclick="openCrmCliente('${esc(f.id)}')"><i class="fas fa-pen"></i></button></div>
+    </div>
+    ${obras.map(crmObraHTML).join('')}
+    ${!lista.length ? '<div class="crm-obra"><div class="c-addr" style="color:#7b8ea4;font-weight:500">nenhuma obra vinculada</div></div>' : ''}
+    ${resto > 0 ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">ver as outras ${resto} ▾</div>` : ''}
+    ${tudo && !CRM_BUSCA && CRM_FILTRO !== 'datas' && lista.length > CRM_MAX_OBRAS ? `<div class="crm-mais" onclick="crmToggle('${esc(f.id)}')">mostrar menos ▴</div>` : ''}
+  </div>`;
+}
+
+function crmDataTxt(o) {
+  if (!o.finalizada) return 'em andamento';
+  if (!o.conclusao) return 'sem data';
+  return fmtDay(o.conclusao) + (o.sugestao && o.sugestao.tipo === 'sugerida' ? '*' : '');
+}
+
+function crmSugHTML(o) {
+  if (!o.sugestao) return '';
+  const a = esc(o.addr);
+  if (o.sugestao.tipo === 'sugerida') {
+    return `<div class="crm-sug"><i class="fas fa-calendar-day"></i> Fechada no sistema em <strong>${fmtDay(o.dtFinal)}</strong>,
+      mas o último dia de trabalho foi <strong>${fmtDay(o.sugestao.data)}</strong>. Até você decidir, o tempo é contado a partir do último trabalho.<br>
+      <button class="crm-mini pri" onclick="crmUsarData('${a}','${o.sugestao.data}')">Usar ${fmtDay(o.sugestao.data)}</button><button class="crm-mini" onclick="crmManterData('${a}')">Manter ${fmtDay(o.dtFinal)}</button><button class="crm-mini" onclick="openCrmData('${a}')">Outra data</button></div>`;
+  }
+  return `<div class="crm-sug"><i class="fas fa-calendar-day"></i> Conclusão <strong>${fmtDay(o.dtFinal)}</strong> a confirmar:
+    várias obras foram fechadas nesse mesmo dia e esta não tem horas lançadas para comparar.<br>
+    <button class="crm-mini pri" onclick="openCrmData('${a}')">Informar a data</button><button class="crm-mini" onclick="crmManterData('${a}')">Está certa</button></div>`;
+}
+
+function crmObraHTML(o) {
+  const sub = [o.finalizada ? (o.conclusao ? 'concluída ' + crmDataTxt(o) : 'concluída, sem data') : 'em andamento', o.idade].filter(Boolean).join(' · ');
+  const sug = crmSugHTML(o);
+  return `<div class="crm-obra">
+    <div class="c-addr">${escH(o.addr)}<div class="c-sub c-sub-m">${escH(sub)}</div></div>
+    <div class="c-data">${escH(crmDataTxt(o))}</div>
+    <div class="c-idade">${escH(o.idade || '')}</div>
+    <div class="c-act"><button class="row-act-btn edit" title="Ações da obra" onclick="openCrmObraMenu('${esc(o.addr)}')"><i class="fas fa-ellipsis"></i></button></div>
+    ${sug ? '<div class="c-extra">' + sug + '</div>' : ''}
+  </div>`;
+}
+
+function crmIdentHTML(o) {
+  const nome = crmT(o.cliente);
+  const sub = [nome ? 'na planilha: "' + nome + '"' : 'sem nome de cliente',
+    o.finalizada ? (o.conclusao ? 'concluída ' + crmDataTxt(o) : 'concluída') : 'em andamento', o.idade].filter(Boolean).join(' · ');
+  const sug = crmSugHTML(o);
+  return `<div class="crm-obra">
+    <div class="c-addr">${escH(o.addr)}<div class="c-sub c-sub-m">${escH(sub)}</div></div>
+    <div class="c-data">${escH(crmDataTxt(o))}</div>
+    <div class="c-idade">${escH(o.idade || '')}</div>
+    <div class="c-act"><button class="row-act-btn edit" title="Atribuir cliente" onclick="openCrmVincular('${esc(o.addr)}')"><i class="fas fa-user-plus"></i></button></div>
+    ${sug ? '<div class="c-extra">' + sug + '</div>' : ''}
+  </div>`;
+}
+
+// ── ações rápidas (atualizam a planilha e o dado local, sem recarregar tudo) ──
+function crmPatch(fn) {
+  try { fn(DB); } catch (_) {}
+  try { localStorage.setItem(DB_CACHE_KEY, JSON.stringify(DB)); } catch (_) {}
+  processAll();
+  renderCRM();
+}
+const crmRowCli = (db, id) => (db.clients || []).find(r => String(r['ID Cliente'] || '').trim() === id);
+const crmRowObra = (db, addr) => (db.obras || []).find(r => normAddr(r['Endereço']) === normAddr(addr));
+
+async function crmConfirmar(id) {
+  try {
+    await apiWrite({ action: 'crmConfirmarCliente', id });
+    crmPatch(db => { crmRowCli(db, id)['Origem'] = 'Nilmar'; });
+    showToast('Ficha confirmada');
+  } catch (e) { showToast(e.message, true); }
+}
+async function crmUsarData(addr, data) {
+  try {
+    await apiWrite({ action: 'crmDataConclusao', addr, data });
+    crmPatch(db => { const r = crmRowObra(db, addr); r['Data Finalização'] = data; r['Conclusão Conferida'] = 'Sim'; });
+    showToast('Conclusão em ' + fmtDay(data));
+  } catch (e) { showToast(e.message, true); }
+}
+async function crmManterData(addr) {
+  try {
+    await apiWrite({ action: 'crmDataConclusao', addr, manter: true });
+    crmPatch(db => { crmRowObra(db, addr)['Conclusão Conferida'] = 'Sim'; });
+    showToast('Data mantida');
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ── modais ──
+function crmModal(titulo, icone, html, salvar) {
+  document.getElementById('rowEditModalTitle').innerHTML = `<i class="fas ${icone}" style="color:var(--orange)"></i><span>${titulo}</span>`;
+  document.getElementById('rowEditModalBody').innerHTML = html;
+  const b = document.getElementById('rowEditSaveBtn');
+  b.style.display = salvar === false ? 'none' : '';
+  b.innerHTML = typeof salvar === 'string' ? salvar : '<i class="fas fa-save"></i> Salvar Alterações';
+  document.getElementById('rowEditModal').classList.add('open');
+}
+const crmFicha = id => (CRM_M || crmDados()).fichas.find(f => f.id === id);
+
+function openCrmCliente(id) {
+  const f = id ? crmFicha(id) : null;
+  EDIT_ROW_STATE = { type: 'crmcli', rowNum: null, addr: null, id: f ? f.id : '' };
+  const tipo = f ? f.tipo : '';
+  crmModal(f ? 'Ficha de ' + escH(f.nome) : 'Nova ficha de cliente', 'fa-address-card', `
+    <div class="row g-3">
+      <div class="col-12"><label class="f-label">Nome <span class="f-req">*</span></label>
+        <input id="cc_nome" class="f-input" value="${f ? escH(f.nome) : ''}"></div>
+      <div class="col-12"><label class="f-label">É empreiteiro ou cliente? <span class="f-req">*</span></label>
+        <select id="cc_tipo" class="f-input">
+          <option value="">Selecione...</option>
+          <option value="Empreiteiro"${tipo === 'Empreiteiro' ? ' selected' : ''}>Empreiteiro — contrata a NJR para obras dos clientes dele</option>
+          <option value="Cliente"${tipo === 'Cliente' ? ' selected' : ''}>Cliente — dono do imóvel</option>
+        </select></div>
+      <div class="col-md-6"><label class="f-label">Telefone</label>
+        <input id="cc_tel" class="f-input" inputmode="tel" value="${f ? escH(f.contato) : ''}" placeholder="(603) 555-0100"></div>
+      <div class="col-md-6"><label class="f-label">Empresa</label>
+        <input id="cc_emp" class="f-input" value="${f ? escH(f.empresa) : ''}"></div>
+      <div class="col-12"><label class="f-label">E-mail</label>
+        <input id="cc_email" class="f-input" type="email" value="${f ? escH(f.email) : ''}"></div>
+      <div class="col-12"><label class="f-label">Observação</label>
+        <textarea id="cc_obs" class="f-input" rows="2">${f ? escH(f.obs) : ''}</textarea></div>
+      ${f ? `<div class="col-12"><button class="crm-link" onclick="openCrmJuntar('${esc(f.id)}','')">Esta pessoa tem outra ficha? Juntar com outra ficha…</button></div>` : ''}
+    </div>`);
+}
+
+// Lista de fichas para escolher (juntar / vincular). Busca local, sem ir ao servidor.
+function crmPickHTML(excluir, q) {
+  const n = crmNorm(q);
+  const fs = (CRM_M || crmDados()).fichas.filter(f => f.id !== excluir
+    && (!n || crmNorm(f.nome).includes(n) || crmNorm(f.empresa).includes(n) || f.fone.includes(crmT(q).replace(/\D/g, '') || '§')))
+    .slice().sort((a, b) => crmNorm(a.nome).localeCompare(crmNorm(b.nome)));
+  if (!fs.length) return '<div class="crm-vazio" style="padding:12px">Nenhuma ficha encontrada</div>';
+  return fs.map(f => `<button type="button" class="crm-pick-opt${CRM_PICK === f.id ? ' on' : ''}" onclick="crmPick('${esc(f.id)}','${esc(excluir || '')}')">
+    <strong>${escH(f.nome)}</strong> ${crmTipoBadge(f.tipo)}<br><small>${escH([f.fone ? crmFmtFone(f.fone) : 'sem telefone', f.empresa, f.obras.length + ' obra(s)'].filter(Boolean).join(' · '))}</small></button>`).join('');
+}
+// Busca + lista de fichas (único lugar com esses ids: os modais se substituem).
+function crmPickerBloco(excluir, placeholder) {
+  return `<input id="crmPickBusca" class="f-input" placeholder="${placeholder}" oninput="document.getElementById('crmPickList').innerHTML=crmPickHTML('${esc(excluir || '')}',this.value)">
+    <div class="crm-pick" id="crmPickList">${crmPickHTML(excluir, '')}</div>`;
+}
+function crmPick(id, excluir) {
+  CRM_PICK = id;
+  const el = document.getElementById('crmPickList');
+  if (el) el.innerHTML = crmPickHTML(excluir, (document.getElementById('crmPickBusca') || {}).value || '');
+  if (EDIT_ROW_STATE.type === 'crmjuntar') crmJuntarResumo();
+  if (EDIT_ROW_STATE.type === 'crmvinc') { const nv = document.getElementById('cv_novo'); if (nv) nv.style.display = 'none'; }
+}
+
+function openCrmJuntar(id, outroId) {
+  const f = crmFicha(id); if (!f) return;
+  CRM_PICK = outroId || '';
+  EDIT_ROW_STATE = { type: 'crmjuntar', rowNum: null, addr: null, id };
+  crmModal('Juntar fichas', 'fa-object-group', `
+    <div style="background:#eef6ff;border-left:3px solid var(--orange);border-radius:8px;padding:11px 13px;font-size:12.5px;color:#31506e;margin-bottom:12px">
+      Use quando a mesma pessoa tem duas fichas. As obras passam para a ficha que fica, e a outra é apagada.</div>
+    <div class="f-label">Juntar <strong>${escH(f.nome)}</strong> com:</div>
+    ${crmPickerBloco(id, 'Buscar ficha')}
+    <div id="crmJuntarResumo" style="margin-top:12px"></div>`, '<i class="fas fa-object-group"></i> Juntar');
+  crmJuntarResumo();
+}
+// qual ficha fica: por padrão a que tem telefone (e, empatando, a com mais obras)
+function crmJuntarResumo() {
+  const el = document.getElementById('crmJuntarResumo'); if (!el) return;
+  const a = crmFicha(EDIT_ROW_STATE.id), b = crmFicha(CRM_PICK);
+  if (!a || !b) { el.innerHTML = ''; return; }
+  const fica = (b.fone && !a.fone) || (!!b.fone === !!a.fone && b.obras.length > a.obras.length) ? b : a;
+  EDIT_ROW_STATE.fica = EDIT_ROW_STATE.fica && [a.id, b.id].includes(EDIT_ROW_STATE.fica) ? EDIT_ROW_STATE.fica : fica.id;
+  const opt = f => `<label class="crm-pick-opt${EDIT_ROW_STATE.fica === f.id ? ' on' : ''}" style="display:block">
+    <input type="radio" name="cj_fica" ${EDIT_ROW_STATE.fica === f.id ? 'checked' : ''} onchange="EDIT_ROW_STATE.fica='${esc(f.id)}';crmJuntarResumo()">
+    Fica <strong>${escH(f.nome)}</strong> <small>(${escH(f.fone ? crmFmtFone(f.fone) : 'sem telefone')} · ${f.obras.length} obra(s))</small></label>`;
+  el.innerHTML = `<div class="f-label">Qual ficha fica?</div>${opt(a)}${opt(b)}`;
+}
+
+function openCrmObraMenu(addr) {
+  const o = (CRM_M || crmDados()).fichas.flatMap(f => f.obras).concat((CRM_M || crmDados()).aIdentificar).find(x => x.addr === addr);
+  if (!o) return;
+  EDIT_ROW_STATE = { type: 'crmmenu', rowNum: null, addr };
+  const a = esc(addr);
+  crmModal(escH(addr), 'fa-ellipsis', `<div class="crm-menu">
+    <button onclick="openCrmVincular('${a}')"><i class="fas fa-user-pen"></i><span>${o.idCliente ? 'Mover para outro cliente' : 'Atribuir cliente'}<small>${o.idCliente ? 'a obra está na ficha errada' : 'a obra está sem cliente'}</small></span></button>
+    ${o.finalizada ? `<button onclick="openCrmData('${a}')"><i class="fas fa-calendar-check"></i><span>Data de conclusão<small>hoje: ${o.dtFinal ? fmtDay(o.dtFinal) : 'sem data'}${o.ultimoTrabalho ? ' · último trabalho ' + fmtDay(o.ultimoTrabalho) : ''}</small></span></button>` : ''}
+  </div>`, false);
+}
+
+function openCrmVincular(addr) {
+  const o = (CRM_M || crmDados()).fichas.flatMap(f => f.obras).concat((CRM_M || crmDados()).aIdentificar).find(x => x.addr === addr);
+  CRM_PICK = '';
+  EDIT_ROW_STATE = { type: 'crmvinc', rowNum: null, addr };
+  const atual = o && o.idCliente ? crmFicha(o.idCliente) : null;
+  crmModal(atual ? 'Mover obra de cliente' : 'Atribuir cliente', 'fa-user-pen', `
+    <div style="font-size:13px;color:#31506e;margin-bottom:10px"><strong>${escH(addr)}</strong><br>
+      ${atual ? 'Hoje está na ficha de <strong>' + escH(atual.nome) + '</strong>.' : (o && crmT(o.cliente) ? 'Na planilha consta "' + escH(o.cliente) + '".' : 'Sem cliente.')}</div>
+    ${crmPickerBloco(atual ? atual.id : '', 'Buscar ficha existente')}
+    <div style="margin-top:12px"><button class="crm-link" onclick="CRM_PICK='';document.getElementById('crmPickList').innerHTML=crmPickHTML('${esc(atual ? atual.id : '')}','');document.getElementById('cv_novo').style.display=''">Não está na lista? Criar ficha nova</button></div>
+    <div id="cv_novo" style="display:none;margin-top:10px" class="row g-2">
+      <div class="col-12"><input id="cv_nome" class="f-input" placeholder="Nome do cliente" value="${o && crmT(o.cliente) && !['nao sei', '6s'].includes(crmNorm(o.cliente)) ? escH(o.cliente) : ''}"></div>
+      <div class="col-md-6"><select id="cv_tipo" class="f-input"><option value="">Empreiteiro ou cliente?</option><option value="Empreiteiro">Empreiteiro</option><option value="Cliente">Cliente</option></select></div>
+      <div class="col-md-6"><input id="cv_tel" class="f-input" inputmode="tel" placeholder="Telefone" value="${o && crmFone(o.contato) ? escH(o.contato) : ''}"></div>
+    </div>
+    ${atual ? `<div style="margin-top:14px"><button class="crm-link" style="color:#b42318" onclick="crmDesvincular('${esc(addr)}')">Tirar desta ficha (voltar para "A identificar")</button></div>` : ''}`);
+}
+async function crmDesvincular(addr) {
+  try {
+    await apiWrite({ action: 'crmVincularObra', addr, id: '' });
+    closeEditModal();
+    crmPatch(db => { crmRowObra(db, addr)['ID Cliente'] = ''; });
+    showToast('Obra devolvida para "A identificar"');
+  } catch (e) { showToast(e.message, true); }
+}
+
+function openCrmData(addr) {
+  const o = (CRM_M || crmDados()).fichas.flatMap(f => f.obras).concat((CRM_M || crmDados()).aIdentificar).find(x => x.addr === addr);
+  EDIT_ROW_STATE = { type: 'crmdata', rowNum: null, addr };
+  const sug = o && o.sugestao && o.sugestao.tipo === 'sugerida' ? o.sugestao.data : '';
+  crmModal('Data de conclusão', 'fa-calendar-check', `
+    <div style="font-size:13px;color:#31506e;margin-bottom:12px"><strong>${escH(addr)}</strong><br>
+      Hoje: ${o && o.dtFinal ? fmtDay(o.dtFinal) : 'sem data'}${o && o.ultimoTrabalho ? ' · último dia de trabalho: <strong>' + fmtDay(o.ultimoTrabalho) + '</strong>' : ' · sem horas lançadas'}</div>
+    <label class="f-label">Concluída em <span class="f-req">*</span></label>
+    <input id="cd_data" class="f-input" type="date" value="${sug || (o && o.dtFinal) || ''}" max="${crmIso(new Date())}">
+    <div style="font-size:12px;color:#7b8ea4;margin-top:8px">É a partir desta data que os marcos de 6 meses, 1 ano etc. são contados.</div>`);
 }
 
 // ── HELPERS ────────────────────────────────────────────────
@@ -4264,6 +4868,61 @@ async function saveRowEdit() {
       showToast('Rate alterado a partir de ' + fmtDay(desde));
       await loadData(); // recalcula só as horas a partir da vigência
       return;
+    } else if (EDIT_ROW_STATE.type === 'crmcli') {
+      const nome = document.getElementById('cc_nome').value.trim();
+      const tipo = document.getElementById('cc_tipo').value;
+      if (!nome) throw new Error('Informe o nome.');
+      if (!tipo) throw new Error('Escolha se é Empreiteiro ou Cliente.');
+      const r = await apiWrite({ action: 'crmSalvarCliente', id: EDIT_ROW_STATE.id, nome, tipo,
+        telefone: document.getElementById('cc_tel').value.trim(),
+        empresa: document.getElementById('cc_emp').value.trim(),
+        email: document.getElementById('cc_email').value.trim(),
+        obs: document.getElementById('cc_obs').value.trim() });
+      closeEditModal();
+      showToast(r.criado ? 'Ficha criada' : 'Ficha salva' + (r.obrasRenomeadas ? ' — nome atualizado em ' + r.obrasRenomeadas + ' obra(s)' : ''));
+      await loadData();
+      return;
+    } else if (EDIT_ROW_STATE.type === 'crmjuntar') {
+      const a = EDIT_ROW_STATE.id, b = CRM_PICK;
+      if (!b) throw new Error('Escolha com qual ficha juntar.');
+      const destino = EDIT_ROW_STATE.fica || a, origem = destino === a ? b : a;
+      let r = await apiWrite({ action: 'crmJuntarClientes', origem, destino }).catch(e => ({ error: e.message, _e: e }));
+      if (r && r.error) {
+        if (!/telefones diferentes/i.test(r.error)) throw new Error(r.error);
+        if (!confirm(r.error + '\n\nJuntar mesmo assim?')) return;
+        r = await apiWrite({ action: 'crmJuntarClientes', origem, destino, forcar: true });
+      }
+      closeEditModal();
+      showToast('Fichas juntadas — ' + (r.obrasMovidas || 0) + ' obra(s) movida(s)');
+      await loadData();
+      return;
+    } else if (EDIT_ROW_STATE.type === 'crmvinc') {
+      const addr = EDIT_ROW_STATE.addr;
+      let id = CRM_PICK;
+      const novo = document.getElementById('cv_novo');
+      if (!id && novo && novo.style.display !== 'none') {
+        const nome = document.getElementById('cv_nome').value.trim();
+        const tipo = document.getElementById('cv_tipo').value;
+        if (!nome) throw new Error('Informe o nome do cliente.');
+        if (!tipo) throw new Error('Escolha se é Empreiteiro ou Cliente.');
+        const r = await apiWrite({ action: 'crmSalvarCliente', nome, tipo, telefone: document.getElementById('cv_tel').value.trim() });
+        id = r.id;
+      }
+      if (!id) throw new Error('Escolha uma ficha ou crie uma nova.');
+      await apiWrite({ action: 'crmVincularObra', addr, id });
+      closeEditModal();
+      showToast('Obra vinculada');
+      await loadData();
+      return;
+    } else if (EDIT_ROW_STATE.type === 'crmdata') {
+      const data = document.getElementById('cd_data').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error('Informe a data.');
+      const addr = EDIT_ROW_STATE.addr;
+      await apiWrite({ action: 'crmDataConclusao', addr, data });
+      closeEditModal();
+      crmPatch(db => { const r = crmRowObra(db, addr); r['Data Finalização'] = data; r['Conclusão Conferida'] = 'Sim'; });
+      showToast('Conclusão em ' + fmtDay(data));
+      return;
     } else if (EDIT_ROW_STATE.type === 'descprog') {
       const emp = document.getElementById('dp_emp').value.trim();
       const descricao = document.getElementById('dp_desc').value.trim();
@@ -4340,6 +4999,10 @@ async function saveRowEdit() {
 function closeEditModal() {
   document.getElementById('rowEditModal').classList.remove('open');
   EDIT_ROW_STATE = { type: null, rowNum: null, addr: null };
+  // o menu de ações do CRM esconde o "Salvar"; os outros modais contam com ele visível
+  const b = document.getElementById('rowEditSaveBtn');
+  b.style.display = '';
+  b.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
 }
 
 // ── ORÇAMENTO EDIT ─────────────────────────────────────────

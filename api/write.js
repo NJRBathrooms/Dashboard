@@ -1,8 +1,16 @@
 const { verifyToken, getCookieValue, readBody } = require('./_auth');
 const A = require('./_actions');
+const CRM = require('./_crm');
 const { getOrCreateFolder, uploadFile } = require('./_drive');
 
 const HANDLERS = {
+  // CRM (docs/2026-10-14-crm-design.md)
+  crmPreparar: CRM.crmPreparar,
+  crmSalvarCliente: CRM.crmSalvarCliente,
+  crmConfirmarCliente: CRM.crmConfirmarCliente,
+  crmJuntarClientes: CRM.crmJuntarClientes,
+  crmVincularObra: CRM.crmVincularObra,
+  crmDataConclusao: CRM.crmDataConclusao,
   addObra: A.addObra,
   closeObra: A.closeObra,
   updateObra: A.updateObra,

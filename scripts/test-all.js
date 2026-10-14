@@ -69,6 +69,9 @@ for (const [titulo, script] of [
   ['cabeçalho — botão de atualizar', 'test-refresh.js'],
   ['lógica — descontos programados (parcelas)', 'test-desconto-prog.js'],
   ['lógica — descontos programados (API)', 'test-desconto-prog-api.js'],
+  ['CRM — montagem das fichas', 'test-crm-fichas.js'],
+  ['CRM — ações no servidor', 'test-crm-api.js'],
+  ['CRM — cálculo da tela', 'test-crm-calc.js'],
 ]) {
   secao(titulo);
   const r = spawnSync(process.execPath, [path.join(__dirname, script)], { encoding: 'utf8' });
