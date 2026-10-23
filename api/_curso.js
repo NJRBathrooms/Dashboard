@@ -22,7 +22,8 @@ const crypto = require('crypto');
 const G = require('./_google');
 
 const CURSO_SHEET = 'Curso Schluter';
-const CURSO_HEADERS = ['Carimbo de data/hora', 'Nome', 'Telefone', 'E-mail'];
+// Empresa entrou depois (opcional) — fica no fim para valer igual em aba nova e em aba já criada
+const CURSO_HEADERS = ['Carimbo de data/hora', 'Nome', 'Telefone', 'E-mail', 'Empresa'];
 const CURSO_KEY_VERSION = 'njr-curso-schluter-v1';
 const CURSO_TZ = 'America/New_York'; // o curso é em Boston
 const MAX_LINHAS = 1500;
@@ -84,12 +85,14 @@ function valida(b) {
   const nome = limpa(b.nome, 80);
   const telRaw = limpa(b.telefone, 25);
   const email = limpa(b.email, 120).toLowerCase();
+  const empresa = limpa(b.empresa, 100); // opcional
   // começa com letra: além de ser nome de verdade, impede "=fórmula" na planilha e no CSV
   if (nome.length < 3 || !/^\p{L}/u.test(nome) || /[<>]/.test(nome)) return { error: 'Informe seu nome completo. / Please enter your full name.' };
   const nd = digitos(telRaw).length;
   if (nd < 10 || nd > 15 || /[^\d\s()+.\-]/.test(telRaw)) return { error: 'Informe um telefone válido, com DDD. / Please enter a valid phone number.' };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { error: 'Informe um e-mail válido. / Please enter a valid email.' };
-  return { nome, telefone: formataTelefone(telRaw), email };
+  if (/[<>]/.test(empresa)) return { error: 'Nome da empresa inválido. / Invalid company name.' };
+  return { nome, telefone: formataTelefone(telRaw), email, empresa };
 }
 
 // ── planilha ──────────────────────────────────────────────
@@ -159,11 +162,23 @@ async function cursoInscrever(b, ip) {
     return { error: 'A lista atingiu o limite. Fale direto com a NJR Bathrooms. / The list is full — please contact NJR Bathrooms.' };
   }
 
+  // aba criada antes do campo Empresa: acrescenta a coluna no fim, sem mexer nas existentes
+  if (!headers.includes('Empresa')) {
+    await G.sheetsApi().spreadsheets.values.update({
+      spreadsheetId: G.SPREADSHEET_ID,
+      range: G.q(CURSO_SHEET) + '!' + G.colLetter(headers.length) + '1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [['Empresa']] },
+    });
+    headers.push('Empresa');
+  }
+
   const row = G.buildRow(headers, [
     { key: 'Carimbo de data/hora', val: G.nowInTz(CURSO_TZ) },
     { key: 'Nome', val: v.nome, forceText: true },
     { key: 'Telefone', val: v.telefone, forceText: true },
     { key: 'E-mail', val: v.email, forceText: true },
+    { key: 'Empresa', val: v.empresa, forceText: true },
   ]);
   await G.appendRow(CURSO_SHEET, row);
   return { ok: true };

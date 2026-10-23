@@ -166,7 +166,7 @@ const DB = {
   ],
   // Curso Schluter — já no formato que o readAll devolve (ts = serial convertido)
   cursoSchluter: [
-    { _row: 2, ts: "2026/10/20 09:15:00", nome: "Carlos Souza", telefone: "(617) 555-0100", email: "carlos@x.com" },
+    { _row: 2, ts: "2026/10/20 09:15:00", nome: "Carlos Souza", telefone: "(617) 555-0100", email: "carlos@x.com", empresa: "Souza Tile LLC" },
     { _row: 3, ts: "2026/10/22 18:40:00", nome: "Ana <b>Lima</b>", telefone: "+55 11 98765-4321", email: "ana@x.com" },
   ],
   subProfiles: [
@@ -260,6 +260,7 @@ roda('Curso Schluter — lista, contagem e nome escapado', () => api.renderCurso
   const ok = semLixo('cursoBody'); if (ok !== true) return ok;
   const h = els['cursoBody'].innerHTML;
   if (!h.includes('Carlos Souza') || !h.includes('(617) 555-0100')) return 'inscrito não aparece na tabela';
+  if (!h.includes('Souza Tile LLC') || !h.includes('<th>Empresa</th>')) return 'empresa não aparece na tabela';
   if (h.includes('<b>Lima</b>') || !h.includes('Ana &lt;b&gt;Lima&lt;/b&gt;')) return 'nome do formulário público não foi escapado';
   if (!/m-value">2</.test(h)) return 'contagem de interessados errada';
   return h.indexOf('Ana &lt;b&gt;') < h.indexOf('Carlos Souza') || 'a mais recente devia vir primeiro';

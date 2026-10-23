@@ -56,6 +56,9 @@ h1{ font:800 clamp(27px,7.4vw,36px)/1.12 'Archivo',sans-serif; letter-spacing:-.
 .card{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px 20px; margin-top:22px; box-shadow:0 1px 2px rgba(28,28,27,.04),0 8px 24px rgba(28,28,27,.05); }
 .f{ margin-bottom:18px; }
 .f label{ display:block; font-weight:700; font-size:16px; margin-bottom:6px; }
+.req{ color:var(--err); font-weight:700; }
+.opt{ font-weight:400; color:var(--muted); font-size:14.5px; }
+.req-note{ font-size:13.5px; color:var(--muted); margin:-6px 0 14px; }
 .f input{ width:100%; font:400 17px/1.3 'Source Sans 3',sans-serif; color:var(--ink); background:#fff; border:1.5px solid #d6d1c7; border-radius:12px; padding:13px 14px; transition:border-color .15s, box-shadow .15s; }
 .f input::placeholder{ color:#a29c91; }
 .f input:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 4px rgba(240,138,30,.18); }
@@ -121,16 +124,21 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
   </section>
 
   <form id="form" class="card" novalidate>
+    <p class="req-note"><span class="req" aria-hidden="true">*</span> <span class="pt">Campo obrigatório</span><span class="en" lang="en">Required field</span></p>
     <div class="f">
-      <label for="nome"><span class="pt">Nome completo</span><span class="en" lang="en">Full name</span></label>
+      <label for="nome"><span class="pt">Nome completo</span><span class="en" lang="en">Full name</span> <span class="req" aria-hidden="true">*</span></label>
       <input id="nome" name="nome" autocomplete="name" autocapitalize="words" maxlength="80" required>
     </div>
     <div class="f">
-      <label for="tel"><span class="pt">Telefone (WhatsApp)</span><span class="en" lang="en">Phone (WhatsApp)</span></label>
+      <label for="empresa"><span class="pt">Nome da empresa</span><span class="en" lang="en">Company name</span> <span class="opt"><span class="pt">(opcional)</span><span class="en" lang="en">(optional)</span></span></label>
+      <input id="empresa" name="empresa" autocomplete="organization" autocapitalize="words" maxlength="100">
+    </div>
+    <div class="f">
+      <label for="tel"><span class="pt">Telefone (WhatsApp)</span><span class="en" lang="en">Phone (WhatsApp)</span> <span class="req" aria-hidden="true">*</span></label>
       <input id="tel" name="telefone" type="tel" inputmode="tel" autocomplete="tel" maxlength="25" placeholder="(617) 555-0100" required>
     </div>
     <div class="f">
-      <label for="email">E-mail</label>
+      <label for="email">E-mail <span class="req" aria-hidden="true">*</span></label>
       <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="120" placeholder="seu@email.com" required>
     </div>
     <div class="hp" aria-hidden="true">
@@ -182,6 +190,7 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
       nome: 'Informe seu nome completo.',
       tel: 'Informe um telefone válido, com código de área.',
       email: 'Informe um e-mail válido.',
+      empresa: 'Nome da empresa inválido.',
       rede: 'Sem conexão. Confira a internet e tente de novo.',
       pronto: n => 'Pronto, ' + n + '! Você está na lista.',
       copiado: 'Link copiado! É só colar no WhatsApp.',
@@ -193,6 +202,7 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
       nome: 'Please enter your full name.',
       tel: 'Please enter a valid phone number, with area code.',
       email: 'Please enter a valid email.',
+      empresa: 'Invalid company name.',
       rede: 'No connection. Check your internet and try again.',
       pronto: n => 'You are on the list, ' + n + '!',
       copiado: 'Link copied! Just paste it into WhatsApp.',
@@ -222,7 +232,7 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
   // mensagens do servidor vêm como "português / english"
   function mostraErro(raw, campo) {
     const el = $('err');
-    ['nome', 'tel', 'email'].forEach(id => $(id).removeAttribute('aria-invalid'));
+    ['nome', 'empresa', 'tel', 'email'].forEach(id => $(id).removeAttribute('aria-invalid'));
     if (!raw) { el.hidden = true; el.textContent = ''; delete el.dataset.raw; return; }
     const partes = String(raw).split(' / ');
     el.dataset.raw = raw;
@@ -230,6 +240,10 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
     el.hidden = false;
     if (campo) { $(campo).setAttribute('aria-invalid', 'true'); $(campo).focus(); }
   }
+
+  // o aviso de erro some assim que a pessoa começa a corrigir
+  ['nome', 'empresa', 'tel', 'email'].forEach(id =>
+    $(id).addEventListener('input', () => { if (!$('err').hidden) mostraErro(''); }));
 
   function mostra(id) {
     ['form', 'done', 'closed'].forEach(s => { $(s).hidden = s !== id; });
@@ -261,10 +275,12 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
     e.preventDefault();
     mostraErro('');
     const nome = $('nome').value.replace(/\s+/g, ' ').trim();
+    const empresa = $('empresa').value.replace(/\s+/g, ' ').trim();
     const telefone = $('tel').value.trim();
     const email = $('email').value.trim().toLowerCase();
     const nd = digitos(telefone).length;
     if (nome.length < 3 || !/^\p{L}/u.test(nome) || /[<>]/.test(nome)) return mostraErro(MSG.pt.nome + ' / ' + MSG.en.nome, 'nome');
+    if (/[<>]/.test(empresa)) return mostraErro(MSG.pt.empresa + ' / ' + MSG.en.empresa, 'empresa');
     if (nd < 10 || nd > 15 || /[^\d\s()+.\-]/.test(telefone)) return mostraErro(MSG.pt.tel + ' / ' + MSG.en.tel, 'tel');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return mostraErro(MSG.pt.email + ' / ' + MSG.en.email, 'email');
 
@@ -274,7 +290,7 @@ footer .credit{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase
     btn.innerHTML = '<span class="spin" aria-hidden="true"></span>';
     btn.setAttribute('aria-label', lang === 'en' ? 'Sending' : 'Enviando');
     try {
-      await api({ action: 'cursoInscrever', nome, telefone, email, site: $('site').value, ms: Date.now() - T0 });
+      await api({ action: 'cursoInscrever', nome, empresa, telefone, email, site: $('site').value, ms: Date.now() - T0 });
       primeiroNome = nome.split(' ')[0];
       $('doneTitle').textContent = MSG[lang].pronto(primeiroNome);
       mostra('done');

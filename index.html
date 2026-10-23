@@ -1661,6 +1661,7 @@ function renderCurso(){
   const trs=lista.map((r,i)=>({r,n:i+1})).reverse().map(({r,n})=>`<tr>
     <td style="color:#7b8ea4">${n}</td>
     <td><strong>${escH(r.nome)}</strong></td>
+    <td>${escH(r.empresa||'—')}</td>
     <td style="white-space:nowrap">${escH(r.telefone||'—')}</td>
     <td style="font-size:12.5px">${escH(r.email||'—')}</td>
     <td style="white-space:nowrap">${r.ts?r.ts.toLocaleDateString('pt-BR'):'—'}</td>
@@ -1675,7 +1676,7 @@ function renderCurso(){
     </div>
     <div class="form-section mb-4">
       <div class="section-title"><i class="fas fa-link" style="color:var(--orange)"></i>Formulário de interesse — curso Schluter</div>
-      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Link público para postar nos grupos e redes. Quem abre só consegue <strong>se cadastrar</strong> (nome, telefone e e-mail) — não vê a lista nem nenhum outro dado. O mesmo telefone ou e-mail não entra duas vezes.</p>
+      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Link público para postar nos grupos e redes. Quem abre só consegue <strong>se cadastrar</strong> (nome, empresa opcional, telefone e e-mail) — não vê a lista nem nenhum outro dado. O mesmo telefone ou e-mail não entra duas vezes.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="submit-btn" id="cursoLinkBtn" style="margin-top:0;width:auto;padding:12px 20px" onclick="copyCursoLink()"><i class="fas fa-link"></i> Copiar link</button>
         <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px;background:var(--navy)" onclick="openCursoForm()"><i class="fas fa-up-right-from-square"></i> Abrir formulário</button>
@@ -1686,8 +1687,8 @@ function renderCurso(){
     <div class="data-table">
       <div class="table-head"><i class="fas fa-graduation-cap me-2" style="color:var(--orange)"></i>Interessados — mais recentes primeiro</div>
       <div class="table-responsive"><table>
-        <thead><tr><th>#</th><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Cadastro</th><th>Ações</th></tr></thead>
-        <tbody>${trs||`<tr><td colspan="6" style="text-align:center;color:#7b8ea4;padding:26px">Ninguém na lista ainda — copie o link acima e poste nos grupos</td></tr>`}</tbody>
+        <thead><tr><th>#</th><th>Nome</th><th>Empresa</th><th>Telefone</th><th>E-mail</th><th>Cadastro</th><th>Ações</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="7" style="text-align:center;color:#7b8ea4;padding:26px">Ninguém na lista ainda — copie o link acima e poste nos grupos</td></tr>`}</tbody>
       </table></div>
     </div>`;
 }
@@ -1714,8 +1715,8 @@ async function delCursoInscrito(rowNum){
 function cursoCelula(v){ let s=String(v==null?'':v); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'; }
 function cursoCSV(){
   const lista=cursoCronologica();
-  const linhas=[['#','Nome','Telefone','E-mail','Data do cadastro']]
-    .concat(lista.map((r,i)=>[i+1,r.nome,r.telefone,r.email,r.ts?r.ts.toLocaleDateString('pt-BR'):'']));
+  const linhas=[['#','Nome','Empresa','Telefone','E-mail','Data do cadastro']]
+    .concat(lista.map((r,i)=>[i+1,r.nome,r.empresa,r.telefone,r.email,r.ts?r.ts.toLocaleDateString('pt-BR'):'']));
   const csv='﻿'+linhas.map(l=>l.map(cursoCelula).join(',')).join('\r\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -1728,7 +1729,7 @@ function cursoImprimir(){
   const lista=cursoCronologica();
   const o=location.origin;
   const hoje=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-  const trs=lista.map((r,i)=>`<tr><td class="n">${i+1}</td><td><strong>${escH(r.nome)}</strong></td><td>${escH(r.telefone)}</td><td>${escH(r.email)}</td></tr>`).join('');
+  const trs=lista.map((r,i)=>`<tr><td class="n">${i+1}</td><td><strong>${escH(r.nome)}</strong></td><td>${escH(r.empresa||'—')}</td><td>${escH(r.telefone)}</td><td>${escH(r.email)}</td></tr>`).join('');
   const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Interest List — Schluter-Systems Training, Boston Area</title>
   <style>
     *{box-sizing:border-box;} body{font-family:Arial,Helvetica,sans-serif;color:#1c1c1b;margin:0;padding:32px;background:#fff;}
@@ -1751,7 +1752,7 @@ function cursoImprimir(){
     <h1>Schluter-Systems Training — Boston Area</h1>
     <div class="sub">Interest list · organized by NJR Bathrooms</div>
     <div class="total"><b>${lista.length}</b><span>people interested in attending · as of ${hoje}</span></div>
-    <table><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th></tr></thead><tbody>${trs}</tbody></table>
+    <table><thead><tr><th>#</th><th>Name</th><th>Company</th><th>Phone</th><th>Email</th></tr></thead><tbody>${trs}</tbody></table>
     <div class="foot">Contact: Nilmar Rebellatto · NJR Bathrooms · (603) 892-0420 · njrbathrooms.com<br>Contact details shared with consent, only to organize this training.</div>
   </div></body></html>`;
   try { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } } catch(_){}
@@ -3079,6 +3080,7 @@ function processAll() {
   PROC.curso=(DB.cursoSchluter||[]).map(r=>({
     _row:r._row, ts:parseDate(r.ts),
     nome:String(r.nome||'').trim(), telefone:String(r.telefone||'').trim(), email:String(r.email||'').trim(),
+    empresa:String(r.empresa||'').trim(),
   })).filter(r=>r.nome);
   // Ajustes de pagamento (bonificação/desconto) keyed por funcionário + semana
   PROC.ajustes={};

@@ -170,6 +170,7 @@ async function readAll() {
       nome: String(r['Nome'] || '').trim(),
       telefone: String(r['Telefone'] || '').trim(),
       email: String(r['E-mail'] || '').trim(),
+      empresa: String(r['Empresa'] || '').trim(),
     })).filter(r => r.nome) : [],
     // Drywall: 1 linha = 1 lançamento. O rateio da diária é calculado no cliente.
     drywall:        dryw  ? rowsToObjects(dryw).map(r => ({

@@ -39,7 +39,7 @@
     {
       "source": "/(curso-schluter|curso-schluter\\.html)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'none'; script-src 'sha256-Ejp7eWAnYqeudtRwJkEDRSAomOZgKsaitvCLhs/k/Zk='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" },
+        { "key": "Content-Security-Policy", "value": "default-src 'none'; script-src 'sha256-RGF1uc8ATr5trS4WQB1tNXfuy4/9oQN0OASX+/5WPUA='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" },
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" }
       ]

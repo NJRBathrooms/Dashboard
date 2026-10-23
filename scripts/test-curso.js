@@ -31,6 +31,7 @@ const gp = path.join(ROOT, 'api', '_google.js');
 require.cache[require.resolve(gp)] = { id: gp, filename: gp, loaded: true, exports: {
   SPREADSHEET_ID: 'teste',
   q: t => `'${String(t).replace(/'/g, "''")}'`,
+  colLetter: i => String.fromCharCode(65 + i),
   normStr: s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' '),
   nowInTz: () => '2026-10-23 10:00:00',
   sheetsApi: () => ({ spreadsheets: {
@@ -42,9 +43,11 @@ require.cache[require.resolve(gp)] = { id: gp, filename: gp, loaded: true, expor
         // o Sheets devolve o texto sem o apóstrofo do forceText
         return { data: { values: SHEETS[title].map(r => r.map(semApostrofo)) } };
       },
+      // escreve a partir da célula do range (A1 = cabeçalho novo; E1 = coluna acrescentada)
       update: async ({ range, requestBody }) => {
-        const title = range.replace(/^'|'!.*$/g, '');
-        SHEETS[title][0] = requestBody.values[0].slice();
+        const m = /^'(.*)'!([A-Z])(\d+)$/.exec(range);
+        const row = SHEETS[m[1]][+m[3] - 1];
+        requestBody.values[0].forEach((v, k) => { row[m[2].charCodeAt(0) - 65 + k] = v; });
       },
     },
     batchUpdate: async ({ requestBody }) => {
@@ -122,6 +125,16 @@ async function http(body, cookie, headers) {
   await roda('telefone curto / longo / com letra é recusado', async () =>
     [recusa({ telefone: '555-0100' }), recusa({ telefone: '1234567890123456' }), recusa({ telefone: '617555010x' }),
       recusa({ telefone: '=1+6175550100' })].find(r => r !== true) || true);
+  await roda('nome, telefone e e-mail vazios são recusados (obrigatórios)', async () =>
+    [recusa({ nome: '' }, 'nome'), recusa({ nome: undefined }, 'nome'), recusa({ telefone: '' }, 'telefone'),
+      recusa({ telefone: undefined }, 'telefone'), recusa({ email: '' }, 'email'), recusa({ email: undefined }, 'email')].find(r => r !== true) || true);
+  await roda('empresa é opcional; com < > é recusada', async () => {
+    const sem = C.valida(pessoa());
+    const com = C.valida(pessoa({ empresa: '  ACME   Tile & Stone ' }));
+    if (sem.error || sem.empresa !== '') return 'sem empresa: ' + JSON.stringify(sem);
+    if (com.empresa !== 'ACME Tile & Stone') return 'com empresa: ' + JSON.stringify(com);
+    return recusa({ empresa: '<b>X</b>' }, 'empresa');
+  });
   await roda('e-mail inválido é recusado', async () =>
     [recusa({ email: 'carlos@' }), recusa({ email: 'carlos x@y.com' }), recusa({ email: 'a@b.c' })].find(r => r !== true) || true);
   await roda('nome com acento, apóstrofo e hífen passa', async () => {
@@ -140,7 +153,14 @@ async function http(body, cookie, headers) {
   });
   await roda('nome, telefone e e-mail vão como texto literal (apóstrofo)', async () => {
     const r = linhas()[0];
-    return (r[1] === "'Carlos Souza" && r[2] === "'(617) 555-0100" && r[3] === "'carlos@x.com") || JSON.stringify(r);
+    return (r[1] === "'Carlos Souza" && r[2] === "'(617) 555-0100" && r[3] === "'carlos@x.com" && r[4] === '') || JSON.stringify(r);
+  });
+  await roda('empresa informada vai como texto literal na coluna Empresa', async () => {
+    const r = await inscreve({ nome: 'Bia Costa', empresa: '=Bia Tile', telefone: '781-555-0300', email: 'bia@x.com' });
+    const l = linhas().find(x => semApostrofo(x[1]) === 'Bia Costa');
+    const ok = r.ok && l && l[4] === "'=Bia Tile";
+    SHEETS['Curso Schluter'] = SHEETS['Curso Schluter'].filter(x => x !== l); // não atrapalha as contagens abaixo
+    return ok || JSON.stringify(l);
   });
   await roda('mesmo telefone com outra formatação não duplica', async () => {
     const r = await inscreve({ telefone: '+1 (617) 555 0100', email: 'outro@x.com', nome: 'Carlos S' });
@@ -223,6 +243,19 @@ async function http(body, cookie, headers) {
   await roda('excluir com o telefone certo apaga a linha', async () => {
     const r = await C.deleteCursoInscrito({ rowNum: 2, telefone: '(617) 555-0100' });
     return (r.ok && apagadas.join() === '2' && !linhas().some(l => semApostrofo(l[2]) === '(617) 555-0100')) || JSON.stringify(r);
+  });
+
+  // ── aba criada antes do campo Empresa ─────────────────────
+  await roda('aba antiga sem "Empresa": coluna entra no fim e as linhas antigas ficam intactas', async () => {
+    reset();
+    SHEETS['Curso Schluter'] = [['Carimbo de data/hora', 'Nome', 'Telefone', 'E-mail'],
+      ['2026-10-23 10:00:00', "'Velho Cadastro", "'(617) 555-0999", "'velho@x.com"]];
+    const r = await inscreve({ nome: 'Novo Cadastro', empresa: 'Tile Co', telefone: '508-555-0777', email: 'novo@x.com' });
+    const s = SHEETS['Curso Schluter'];
+    if (!r.ok) return JSON.stringify(r);
+    if (s[0].join('|') !== 'Carimbo de data/hora|Nome|Telefone|E-mail|Empresa') return 'cabeçalho: ' + s[0].join('|');
+    if (s[1].length !== 4 || s[1][1] !== "'Velho Cadastro") return 'linha antiga mudou: ' + JSON.stringify(s[1]);
+    return (s[2][1] === "'Novo Cadastro" && s[2][4] === "'Tile Co") || JSON.stringify(s[2]);
   });
 
   console.log(fails ? '\n  ' + fails + ' falha(s)' : '\n  formulário do curso — tudo certo');
