@@ -160,7 +160,17 @@ async function readAll() {
   const func  = findValues(byTitle, ['nome', 'senha']);
   const rateh = findValues(byTitle, ['nome', 'vigente desde']);
   const dryw  = findValues(byTitle, ['pessoa', 'diária']);
+  // pelo título, não por palavra-chave: "Nome"/"E-mail" são genéricos demais (CURSO_SHEET em _curso.js)
+  const curso = byTitle['Curso Schluter'];
   return {
+    // Interessados no curso Schluter — 1 linha = 1 pessoa (formulário público)
+    cursoSchluter:  curso ? rowsToObjects(curso).map(r => ({
+      _row: r._row,
+      ts: r['Carimbo de data/hora'] || '',
+      nome: String(r['Nome'] || '').trim(),
+      telefone: String(r['Telefone'] || '').trim(),
+      email: String(r['E-mail'] || '').trim(),
+    })).filter(r => r.nome) : [],
     // Drywall: 1 linha = 1 lançamento. O rateio da diária é calculado no cliente.
     drywall:        dryw  ? rowsToObjects(dryw).map(r => ({
       _row: r._row,

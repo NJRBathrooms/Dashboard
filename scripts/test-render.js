@@ -67,7 +67,7 @@ const sandbox = {
 const nomes = Object.keys(sandbox);
 const run = new Function(...nomes, '__export', code +
   '\n__export({ renderAll, renderTab1, renderTab2, renderDrywall, renderObrasDrywall,' +
-  ' renderClientesTable, renderInsurance, renderUsuarios, renderCloseForm, renderFinObraDetail,' +
+  ' renderClientesTable, renderInsurance, renderUsuarios, renderCurso, renderCloseForm, renderFinObraDetail,' +
   ' renderDetalhada, obraDetailHTML, invoiceHTML, showInsSub, showObrasSub,' +
   ' dwToggleServ, openDwLanc, openDwServ, dwToggleCli, openDwCli,' +
   ' renderCRM, crmSetFiltro, crmToggle, openCrmCliente, openCrmJuntar, openCrmObraMenu, openCrmVincular, openCrmData, f3AtualizaTipo,' +
@@ -164,6 +164,11 @@ const DB = {
     { _row: 2, nome: 'João La Pastina', rate: 25, desde: '2026-08-02' },
     { _row: 3, nome: 'Leandro Venâncio', rate: 23, desde: '2026-08-02' },
   ],
+  // Curso Schluter — já no formato que o readAll devolve (ts = serial convertido)
+  cursoSchluter: [
+    { _row: 2, ts: "2026/10/20 09:15:00", nome: "Carlos Souza", telefone: "(617) 555-0100", email: "carlos@x.com" },
+    { _row: 3, ts: "2026/10/22 18:40:00", nome: "Ana <b>Lima</b>", telefone: "+55 11 98765-4321", email: "ana@x.com" },
+  ],
   subProfiles: [
     { _row: 2, 'Carimbo de data/hora': '2026-07-10 09:00:00', 'Owner Name': 'Bob R',
       'Company Name': 'ACME Plumbing', 'Company Address': '1 Main St', 'Email': 'bob@x.com',
@@ -251,6 +256,14 @@ roda('Controle de Horas — tabela de descontos programados', () => api.renderTa
   return true;
 });
 roda('Insurance & W9 — Control', () => { api.showInsSub('control'); }, () => semLixo('insBody'));
+roda('Curso Schluter — lista, contagem e nome escapado', () => api.renderCurso(), () => {
+  const ok = semLixo('cursoBody'); if (ok !== true) return ok;
+  const h = els['cursoBody'].innerHTML;
+  if (!h.includes('Carlos Souza') || !h.includes('(617) 555-0100')) return 'inscrito não aparece na tabela';
+  if (h.includes('<b>Lima</b>') || !h.includes('Ana &lt;b&gt;Lima&lt;/b&gt;')) return 'nome do formulário público não foi escapado';
+  if (!/m-value">2</.test(h)) return 'contagem de interessados errada';
+  return h.indexOf('Ana &lt;b&gt;') < h.indexOf('Carlos Souza') || 'a mais recente devia vir primeiro';
+});
 roda('Insurance & W9 — Registry', () => { api.showInsSub('registry'); }, () => semLixo('insBody'));
 roda('Usuários', () => api.renderUsuarios(), () => semLixo('usrBody'));
 roda('Drywall — lançamentos + clientes', () => api.renderDrywall(), () => semLixo('t8body'));

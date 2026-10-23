@@ -535,6 +535,7 @@ tbody tr:hover td { background:#fafbfe; }
     <button class="tab-btn" id="t7btn" onclick="showTab(7)"><i class="fas fa-users-gear"></i> Usuários</button>
     <button class="tab-btn" id="t8btn" onclick="showTab(8)"><i class="fas fa-trowel-bricks"></i> Drywall</button>
     <button class="tab-btn" id="t9btn" onclick="showTab(9)"><i class="fas fa-address-book"></i> CRM</button>
+    <button class="tab-btn" id="t10btn" onclick="showTab(10)"><i class="fas fa-graduation-cap"></i> Curso Schluter</button>
     <div id="tabIndicator" class="tab-indicator"></div>
   </div>
 
@@ -993,6 +994,11 @@ tbody tr:hover td { background:#fafbfe; }
     <div id="t9body"><div class="loading-box"><div class="spinner"></div>Carregando dados...</div></div>
   </div>
 
+  <!-- TAB 10: CURSO SCHLUTER (interessados — formulário público /curso-schluter) -->
+  <div id="t10page" class="page" style="display:none">
+    <div id="cursoBody"></div>
+  </div>
+
   </div>
 
   <!-- Edit Row Modal (material / subcontrato) -->
@@ -1304,7 +1310,7 @@ async function runBtn(btn, fn, labelHTML) {
 
 // LOAD DATA
 const DB_CACHE_KEY = 'njr_db_cache';
-function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); renderDrywall(); renderCRM(); }
+function renderAll() { processAll(); fillAddresses(); renderTab1(); renderTab2(); renderClientesTable(); renderInsurance(); renderUsuarios(); renderDrywall(); renderCRM(); renderCurso(); }
 
 // ══ TAB 7: USUÁRIOS (funcionários do app de horas) ════════
 function renderUsuarios(){
@@ -1642,6 +1648,115 @@ function openEditSubProfile(rowNum){
   document.getElementById('rowEditModal').classList.add('open');
 }
 
+// ══ TAB 10: CURSO SCHLUTER ════════════════════════════════
+// Lista de interessados do formulário público /curso-schluter (api/_curso.js).
+// Nilmar apresenta a contagem e a lista à Schluter para trazer o curso a Boston.
+function cursoCronologica(){ return [...(PROC.curso||[])].sort((a,b)=>(a.ts?a.ts.getTime():0)-(b.ts?b.ts.getTime():0)); }
+function renderCurso(){
+  const el=document.getElementById('cursoBody'); if(!el)return;
+  const lista=cursoCronologica();
+  const semana=Date.now()-7*86400000;
+  const novos=lista.filter(r=>r.ts&&r.ts.getTime()>=semana).length;
+  const ultimo=lista.length?lista[lista.length-1].ts:null;
+  const trs=lista.map((r,i)=>({r,n:i+1})).reverse().map(({r,n})=>`<tr>
+    <td style="color:#7b8ea4">${n}</td>
+    <td><strong>${escH(r.nome)}</strong></td>
+    <td style="white-space:nowrap">${escH(r.telefone||'—')}</td>
+    <td style="font-size:12.5px">${escH(r.email||'—')}</td>
+    <td style="white-space:nowrap">${r.ts?r.ts.toLocaleDateString('pt-BR'):'—'}</td>
+    <td class="td-actions"><button class="row-act-btn del" onclick="delCursoInscrito(${r._row})" title="Excluir"><i class="fas fa-trash"></i></button></td>
+  </tr>`).join('');
+  const off=lista.length?'':' disabled';
+  el.innerHTML=`
+    <div class="ins-tiles">
+      <div class="metric-card c-total"><div class="m-label">Interessados</div><div class="m-value">${lista.length}</div><div class="m-sub">na lista do curso</div></div>
+      <div class="metric-card"><div class="m-label">Últimos 7 dias</div><div class="m-value">${novos}</div><div class="m-sub">novos cadastros</div></div>
+      <div class="metric-card"><div class="m-label">Último cadastro</div><div class="m-value">${ultimo?ultimo.toLocaleDateString('pt-BR'):'—'}</div><div class="m-sub">${ultimo?ultimo.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'ninguém ainda'}</div></div>
+    </div>
+    <div class="form-section mb-4">
+      <div class="section-title"><i class="fas fa-link" style="color:var(--orange)"></i>Formulário de interesse — curso Schluter</div>
+      <p style="font-size:12.5px;color:#7b8ea4;margin-bottom:12px">Link público para postar nos grupos e redes. Quem abre só consegue <strong>se cadastrar</strong> (nome, telefone e e-mail) — não vê a lista nem nenhum outro dado. O mesmo telefone ou e-mail não entra duas vezes.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="submit-btn" id="cursoLinkBtn" style="margin-top:0;width:auto;padding:12px 20px" onclick="copyCursoLink()"><i class="fas fa-link"></i> Copiar link</button>
+        <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px;background:var(--navy)" onclick="openCursoForm()"><i class="fas fa-up-right-from-square"></i> Abrir formulário</button>
+        <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px;background:var(--navy)" onclick="cursoImprimir()"${off}><i class="fas fa-print"></i> Lista para a Schluter (PDF)</button>
+        <button class="submit-btn" style="margin-top:0;width:auto;padding:12px 20px;background:var(--navy)" onclick="cursoCSV()"${off}><i class="fas fa-file-csv"></i> Baixar planilha</button>
+      </div>
+    </div>
+    <div class="data-table">
+      <div class="table-head"><i class="fas fa-graduation-cap me-2" style="color:var(--orange)"></i>Interessados — mais recentes primeiro</div>
+      <div class="table-responsive"><table>
+        <thead><tr><th>#</th><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Cadastro</th><th>Ações</th></tr></thead>
+        <tbody>${trs||`<tr><td colspan="6" style="text-align:center;color:#7b8ea4;padding:26px">Ninguém na lista ainda — copie o link acima e poste nos grupos</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+}
+async function copyCursoLink(){
+  try{
+    const r=await apiWrite({action:'getCursoLink',origin:location.origin});
+    try{ await navigator.clipboard.writeText(r.url); showToast('Link do formulário copiado'); }
+    catch(_){ prompt('Copie o link do formulário:', r.url); }
+  }catch(e){ showToast(e.message,true); }
+}
+async function openCursoForm(){
+  const w=window.open('','_blank'); // abre já no clique, senão o navegador bloqueia o pop-up
+  try{ const r=await apiWrite({action:'getCursoLink',origin:location.origin}); if(w) w.location.href=r.url; }
+  catch(e){ if(w) w.close(); showToast(e.message,true); }
+}
+async function delCursoInscrito(rowNum){
+  // o telefone vai junto para o servidor conferir que a linha ainda é a mesma pessoa
+  const p=(PROC.curso||[]).find(x=>x._row===rowNum); const telefone=p?p.telefone:'';
+  if(!confirm('Tirar esta pessoa da lista do curso? Esta ação não pode ser desfeita.'))return;
+  try{ await apiWrite({action:'deleteCursoInscrito',rowNum,telefone}); showToast('Removido da lista'); await loadData(); }
+  catch(e){ showToast(e.message,true); }
+}
+// Excel/Sheets executam célula que começa com = + - @ como fórmula — vira texto
+function cursoCelula(v){ let s=String(v==null?'':v); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'; }
+function cursoCSV(){
+  const lista=cursoCronologica();
+  const linhas=[['#','Nome','Telefone','E-mail','Data do cadastro']]
+    .concat(lista.map((r,i)=>[i+1,r.nome,r.telefone,r.email,r.ts?r.ts.toLocaleDateString('pt-BR'):'']));
+  const csv='﻿'+linhas.map(l=>l.map(cursoCelula).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='curso-schluter-interessados.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+// Lista em inglês para apresentar à Schluter (imprimir ou salvar em PDF)
+function cursoImprimir(){
+  const lista=cursoCronologica();
+  const o=location.origin;
+  const hoje=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const trs=lista.map((r,i)=>`<tr><td class="n">${i+1}</td><td><strong>${escH(r.nome)}</strong></td><td>${escH(r.telefone)}</td><td>${escH(r.email)}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Interest List — Schluter-Systems Training, Boston Area</title>
+  <style>
+    *{box-sizing:border-box;} body{font-family:Arial,Helvetica,sans-serif;color:#1c1c1b;margin:0;padding:32px;background:#fff;}
+    .rpt{max-width:820px;margin:0 auto;}
+    .logos{display:flex;align-items:center;gap:22px;padding-bottom:18px;border-bottom:3px solid #f08a1e;margin-bottom:22px;}
+    .logos img.njr{height:58px;} .logos img.sch{height:62px;} .logos span{color:#b9b3a8;font-size:22px;font-weight:700;}
+    h1{font-size:24px;margin:0 0 4px;} .sub{font-size:12px;color:#5d5952;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;}
+    .total{display:flex;align-items:baseline;gap:10px;margin:20px 0 18px;padding:14px 18px;background:#fff6eb;border-left:4px solid #f08a1e;border-radius:4px 10px 10px 4px;}
+    .total b{font-size:34px;line-height:1;} .total span{font-size:15px;color:#3d372f;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:#1c1c1b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+    tbody td{padding:9px 12px;border-bottom:1px solid #ece8e1;} tbody tr:nth-child(even){background:#faf9f6;}
+    td.n{color:#8a847a;width:40px;}
+    .foot{margin-top:22px;font-size:11px;color:#8a847a;text-align:center;line-height:1.6;}
+    .print-btn{background:#f08a1e;color:#1c1c1b;border:none;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer;font-size:13px;margin-bottom:18px;}
+    @media print{ body{padding:0;} .noprint{display:none;} thead{display:table-header-group;} tr{page-break-inside:avoid;} }
+  </style></head><body><div class="rpt">
+    <div class="noprint"><button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button></div>
+    <div class="logos"><img class="njr" src="${o}/img/njr-bathrooms.svg" alt="NJR Bathrooms"><span>×</span><img class="sch" src="${o}/img/schluter-systems.svg" alt="Schluter Systems"></div>
+    <h1>Schluter-Systems Training — Boston Area</h1>
+    <div class="sub">Interest list · organized by NJR Bathrooms</div>
+    <div class="total"><b>${lista.length}</b><span>people interested in attending · as of ${hoje}</span></div>
+    <table><thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th></tr></thead><tbody>${trs}</tbody></table>
+    <div class="foot">Contact: Nilmar Rebellatto · NJR Bathrooms · (603) 892-0420 · njrbathrooms.com<br>Contact details shared with consent, only to organize this training.</div>
+  </div></body></html>`;
+  try { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); } } catch(_){}
+}
+
 // Sub-abas da aba "Incluir Obra / Cliente" e "Registros"
 function showT3(w){ document.getElementById('st3obra').style.display=w==='obra'?'':'none'; document.getElementById('st3cli').style.display=w==='cli'?'':'none'; document.getElementById('st3obraBtn').classList.toggle('active',w==='obra'); document.getElementById('st3cliBtn').classList.toggle('active',w==='cli'); }
 function showT4(w){ document.getElementById('st4mat').style.display=w==='mat'?'':'none'; document.getElementById('st4sub').style.display=w==='sub'?'':'none'; document.getElementById('st4matBtn').classList.toggle('active',w==='mat'); document.getElementById('st4subBtn').classList.toggle('active',w==='sub'); }
@@ -1740,7 +1855,7 @@ function errBox(msg) {
 
 // TABS
 // nº de abas do app — usado na ativação e no gesto de deslizar
-const TAB_COUNT = 9;
+const TAB_COUNT = 10;
 let CURRENT_TAB = 1;
 function getPageEl(n) { return document.getElementById('t'+n+'page'); }
 function getBtnEl(n) { return document.getElementById('t'+n+'btn'); }
@@ -2960,6 +3075,11 @@ function processAll() {
     ein:String(r['EIN']||'').trim(),
     w9Url:String(r['W9 URL']||'').trim(),
   })).filter(p=>p.companyName);
+  // Curso Schluter — interessados enviados pelo formulário público
+  PROC.curso=(DB.cursoSchluter||[]).map(r=>({
+    _row:r._row, ts:parseDate(r.ts),
+    nome:String(r.nome||'').trim(), telefone:String(r.telefone||'').trim(), email:String(r.email||'').trim(),
+  })).filter(r=>r.nome);
   // Ajustes de pagamento (bonificação/desconto) keyed por funcionário + semana
   PROC.ajustes={};
   (DB.ajustes||[]).forEach(r=>{

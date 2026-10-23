@@ -14,7 +14,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const raiz = path.join(__dirname, '..');
-const HTMLS = ['index.html', 'rentals.html', 'employees.html', 'subcontractors.html'];
+const HTMLS = ['index.html', 'rentals.html', 'employees.html', 'subcontractors.html', 'curso-schluter.html'];
 
 let falhas = 0;
 const secao = t => console.log('\n── ' + t + ' ' + '─'.repeat(Math.max(0, 58 - t.length)));
@@ -57,6 +57,24 @@ for (const f of HTMLS) {
   if (abre === fecha && !dup.length) ok(f + ' — ' + abre + ' divs balanceadas, ' + ids.length + ' ids únicos');
 }
 
+// ── 2b. CSP da página pública do curso ─────────────────────
+// /curso-schluter só executa o script cujo hash está no vercel.json. Editou o
+// <script> e esqueceu o hash → a página vai ao ar sem JavaScript (formulário morto).
+secao('CSP — página pública do curso');
+{
+  const html = fs.readFileSync(path.join(raiz, 'curso-schluter.html'), 'utf8').replace(/\r\n?/g, '\n'); // o navegador normaliza
+  const blocos = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)];
+  const hash = blocos.length === 1 && 'sha256-' + require('crypto').createHash('sha256').update(blocos[0][1], 'utf8').digest('base64');
+  const vercel = JSON.parse(fs.readFileSync(path.join(raiz, 'vercel.json'), 'utf8'));
+  const csp = (vercel.headers || []).filter(h => h.source.includes('curso-schluter'))
+    .flatMap(h => h.headers).find(h => h.key === 'Content-Security-Policy');
+  if (!hash) erro('curso-schluter.html — esperava exatamente 1 <script> inline', blocos.length + ' encontrados');
+  else if (!csp) erro('vercel.json — falta o Content-Security-Policy de /curso-schluter');
+  else if (!csp.value.includes("'" + hash + "'")) erro('vercel.json — hash do script desatualizado', "troque por '" + hash + "'");
+  else if (/\son[a-z]+=/i.test(html.replace(/<script[\s\S]*?<\/script>/g, ''))) erro('curso-schluter.html — handler inline (onclick=…) é bloqueado pela CSP');
+  else ok('curso-schluter.html — hash do script confere com o vercel.json');
+}
+
 // ── 3-5. suítes ────────────────────────────────────────────
 for (const [titulo, script] of [
   ['lint — funções inexistentes', 'test-lint.js'],
@@ -72,6 +90,7 @@ for (const [titulo, script] of [
   ['CRM — montagem das fichas', 'test-crm-fichas.js'],
   ['CRM — ações no servidor', 'test-crm-api.js'],
   ['CRM — cálculo da tela', 'test-crm-calc.js'],
+  ['curso Schluter — formulário público', 'test-curso.js'],
 ]) {
   secao(titulo);
   const r = spawnSync(process.execPath, [path.join(__dirname, script)], { encoding: 'utf8' });

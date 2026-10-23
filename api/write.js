@@ -1,6 +1,7 @@
 const { verifyToken, getCookieValue, readBody } = require('./_auth');
 const A = require('./_actions');
 const CRM = require('./_crm');
+const CURSO = require('./_curso');
 const { getOrCreateFolder, uploadFile } = require('./_drive');
 
 const HANDLERS = {
@@ -49,6 +50,9 @@ const HANDLERS = {
   deleteLabor: A.deleteLabor,
   getSubFormLink: A.getSubFormLink,
   sendSubInvite: A.sendSubInvite,
+  // Curso Schluter — lista de interessados (formulário público em /curso-schluter)
+  getCursoLink: CURSO.getCursoLink,
+  deleteCursoInscrito: CURSO.deleteCursoInscrito,
   getOrCreateFolder,
   uploadFile,
 };
@@ -72,6 +76,23 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(await fn(params));
     } catch (err) {
       return res.status(500).json({ error: 'Error: ' + err.message });
+    }
+  }
+
+  // Lista do curso Schluter (/curso-schluter): link PÚBLICO, postado em grupos.
+  // Sem login; a validação, o anti-robô e o limite por IP ficam em _curso.js.
+  // O erro interno nunca vai para quem preenche — só para o log da Vercel.
+  if (action === 'cursoStatus' || action === 'cursoInscrever') {
+    if (!CURSO.checkCursoKey(params.key)) {
+      return res.status(403).json({ error: 'Este link não está mais ativo. / This link is no longer active.', fechado: true });
+    }
+    if (action === 'cursoStatus') return res.status(200).json({ ok: true });
+    try {
+      const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.headers['x-real-ip'] || '';
+      return res.status(200).json(await CURSO.cursoInscrever(params, ip));
+    } catch (err) {
+      console.error('cursoInscrever:', err);
+      return res.status(500).json({ error: 'Não foi possível salvar agora. Tente de novo em instantes. / Could not save right now — please try again.' });
     }
   }
 
