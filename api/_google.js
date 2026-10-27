@@ -36,18 +36,11 @@ function gmailApi()  { return _gmail  || (_gmail  = google.gmail({ version: 'v1'
 
 // Envia e-mail como o dono da conta, via Gmail API (escopo gmail.send).
 // Passe html=true para enviar corpo em HTML (negrito/emojis renderizam).
+// A mensagem é montada em _mime.js: remetente "NJR Bathrooms", texto + HTML e
+// linhas dentro do limite da norma — o aviso de material caiu no spam do iCloud
+// em 26/10/2026 com o formato antigo (só HTML, sem nome de remetente).
 async function sendEmail(to, subject, body, html) {
-  const subjectEnc = '=?UTF-8?B?' + Buffer.from(String(subject), 'utf8').toString('base64') + '?=';
-  const ctype = html ? 'text/html' : 'text/plain';
-  const msg = [
-    `To: ${to}`,
-    `Subject: ${subjectEnc}`,
-    'MIME-Version: 1.0',
-    `Content-Type: ${ctype}; charset="UTF-8"`,
-    'Content-Transfer-Encoding: 8bit',
-    '',
-    String(body),
-  ].join('\r\n');
+  const msg = require('./_mime').montarMensagem(to, subject, body, html);
   const raw = Buffer.from(msg, 'utf8').toString('base64')
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   await gmailApi().users.messages.send({ userId: 'me', requestBody: { raw } });
