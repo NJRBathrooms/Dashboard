@@ -345,14 +345,19 @@ function buildRow(headers, mapping) {
   return row;
 }
 
+// Devolve o nº da linha gravada (0 se a API não informar), lido do intervalo
+// que o append responde — "'Aba'!A697:N697" → 697.
 async function appendRow(title, row) {
-  await sheetsApi().spreadsheets.values.append({
+  const r = await sheetsApi().spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: q(title),
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] },
   });
+  const rng = (((r || {}).data || {}).updates || {}).updatedRange || '';
+  const m = /![A-Z]+(\d+)/.exec(rng);
+  return m ? +m[1] : 0;
 }
 
 async function updateCell(title, rowNum, colIdx0, value) {

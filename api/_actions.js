@@ -381,25 +381,57 @@ async function addLabor(params) {
     { key: 'material', fuzzy: true, val: params.materialNeeded || '' },
     { key: 'observa', fuzzy: true, val: params.obs || '' },
   ]);
-  await G.appendRow(sh.title, row);
+  const linha = await G.appendRow(sh.title, row);
 
-  // Aviso por e-mail ao Nilmar quando o funcionário sinaliza material necessário p/ amanhã.
-  // Não-fatal: se o e-mail falhar, o registro já foi gravado.
+  // Aviso ao Nilmar quando o funcionário pede material para amanhã. O registro
+  // já está gravado e o aviso nunca derruba o lançamento — mas o resultado fica
+  // anotado na própria linha, em "Status do Aviso". Antes a falha era engolida
+  // sem rastro, e não havia como saber se o e-mail tinha saído (Edelson, 26/10).
   if (params.materialNeeded && String(params.materialNeeded).trim()) {
-    try {
-      const to = process.env.NOTIFY_EMAIL || 'tenilmar@icloud.com';
-      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const addr = esc(params.addr);
-      const materiais = esc(params.materialNeeded).replace(/\n/g, '<br>');
-      const quando = G.nowFriendly();
-      const html = `
+    const status = await avisarMaterial({ emp, addr: params.addr, material: params.materialNeeded });
+    if (linha) {
+      try {
+        await ensureColumn(sh, COL_STATUS_AVISO);
+        await G.updateRowCells(sh.title, linha, sh.headers, [{ key: COL_STATUS_AVISO, val: status }]);
+      } catch (e) { console.error('Status do Aviso (linha ' + linha + '):', e.message); }
+    }
+  }
+
+  return { ok: true };
+}
+
+// Nome escolhido para não casar com as buscas por trecho usadas no lançamento
+// ("material", "foto", "observa", "horas trab").
+const COL_STATUS_AVISO = 'Status do Aviso';
+
+// Assunto único por pedido. O Mail do iPhone agrupa assuntos iguais numa
+// conversa só; com o assunto fixo de antes, o aviso novo ia parar no fim de uma
+// conversa antiga. Agora o Nilmar lê material, quem pediu e a obra na notificação.
+function assuntoMaterial(emp, addr, material) {
+  const primeira = String(material || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)[0] || '';
+  const curto = primeira.length > 50 ? primeira.slice(0, 47).trim() + '…' : primeira;
+  const nome = String(emp || '').trim().split(/\s+/)[0] || '';
+  const end = String(addr || '').split(',')[0].trim();
+  return 'Material para amanhã: ' + curto + (nome ? ' — ' + nome : '') + (end ? ' · ' + end : '');
+}
+
+// Envia o aviso, com uma segunda tentativa. Nunca lança: devolve o texto que
+// vai para "Status do Aviso" — "enviado …" ou "FALHOU …: motivo".
+async function avisarMaterial({ emp, addr, material }) {
+  const to = process.env.NOTIFY_EMAIL || 'tenilmar@icloud.com';
+  let ultimoErro = '';
+  try {
+    const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const materiais = esc(material).replace(/\n/g, '<br>');
+    const quando = G.nowFriendly();
+    const html = `
 <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#222;line-height:1.6;max-width:620px">
   <p>Olá, Nilmar.</p>
   <p>🔧 <strong>SOLICITAÇÃO DE MATERIAL PARA PRÓXIMO DIA DE TRABALHO</strong></p>
   <p>Um membro da equipe registrou a necessidade de materiais para a obra de amanhã:</p>
   <p>
     👤 <strong>Funcionário:</strong> ${esc(emp)}<br>
-    📍 <strong>Endereço da Obra:</strong> ${addr}<br>
+    📍 <strong>Endereço da Obra:</strong> ${esc(addr)}<br>
     📦 <strong>Materiais Solicitados:</strong> ${materiais}<br>
     🕐 <strong>Data/Hora da Solicitação:</strong> ${quando}
   </p>
@@ -415,11 +447,24 @@ async function addLabor(params) {
     <em>Em caso de dúvidas, entre em contato com Felipe (Admin).</em>
   </p>
 </div>`;
-      await G.sendEmail(to, 'Material necessário amanhã — Nilmar Rebellatto', html, true);
-    } catch (_) {}
+    const assunto = assuntoMaterial(emp, addr, material);
+    for (let tentativa = 1; tentativa <= 2; tentativa++) {
+      try {
+        await G.sendEmail(to, assunto, html, true);
+        return 'enviado ' + G.nowFriendly() + ' → ' + to + (tentativa > 1 ? ' (2ª tentativa)' : '');
+      } catch (e) {
+        ultimoErro = String((e && e.message) || e).slice(0, 180);
+        console.error('aviso de material, tentativa ' + tentativa + ':', ultimoErro);
+        if (tentativa === 1) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+  } catch (e) {
+    ultimoErro = String((e && e.message) || e).slice(0, 180);
+    console.error('aviso de material:', ultimoErro);
   }
-
-  return { ok: true };
+  let agora = '';
+  try { agora = ' ' + G.nowFriendly(); } catch (_) {}
+  return 'FALHOU' + agora + ': ' + ultimoErro;
 }
 
 // ── AJUSTES DE PAGAMENTO (bonificação / desconto por funcionário e semana) ──

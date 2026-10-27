@@ -91,6 +91,7 @@ for (const [titulo, script] of [
   ['CRM — ações no servidor', 'test-crm-api.js'],
   ['CRM — cálculo da tela', 'test-crm-calc.js'],
   ['curso Schluter — formulário público', 'test-curso.js'],
+  ['horas — aviso de material ao Nilmar', 'test-aviso-material.js'],
 ]) {
   secao(titulo);
   const r = spawnSync(process.execPath, [path.join(__dirname, script)], { encoding: 'utf8' });
